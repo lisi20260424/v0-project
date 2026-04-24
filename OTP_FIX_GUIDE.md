@@ -51,22 +51,45 @@ await supabase.auth.verifyOtp({
 
 ### ⚠️ 关键步骤（必须完成）
 
-为了确保验证码长度为 6 位，需要在 Supabase Dashboard 中配置：
+目前收到的是 **Magic Link**（登录链接）而不是验证码，这是因为 Supabase 默认启用了 Magic Link。需要在 Supabase Dashboard 中进行以下配置：
 
 **步骤**：
 1. 登录 [Supabase Dashboard](https://app.supabase.com)
 2. 选择你的项目
 3. 左侧菜单 → **Authentication** → **Providers** → **Email**
-4. 在 **Email Provider** 设置中，找到以下选项：
-   - **OTP Expiry Time**: 建议 10-15 分钟
-   - **OTP Length**: **设置为 6 位** ✅
-5. 点击 **Save** 保存配置
+
+**配置详情**：
+
+#### ❌ 必须禁用 Magic Link
+```
+[ ] Confirm email (Magic Link)
+    └─ Toggle: OFF（关闭）
+```
+这是导致收到登录链接邮件的原因
+
+#### ✅ 必须启用 OTP
+```
+[x] Confirm email (OTP)
+    ├─ Toggle: ON（打开）
+    ├─ OTP Expiry: 600（秒）- 10 分钟有效期
+    └─ OTP Length: 6（数字）- 验证码长度
+```
+
+**保存**：点击 **Save** 或 **Update** 按钮
 
 ### 验证配置是否生效
-- 再次尝试注册
-- 点击"获取验证码"
-- 检查收到的邮件中的验证码长度是否为 6 位
-- 输入 6 位验证码完成注册
+1. 配置保存后，等待 1-2 分钟生效
+2. 再次尝试注册
+3. 点击"获取验证码"
+4. 检查收到的邮件：
+   - ❌ 错误：Magic Link 邮件（标题：Follow this link to login）
+   - ✅ 正确：Your verification code: 123456
+5. 输入 6 位验证码完成注册
+
+### 如何确认配置已正确应用
+- 邮件标题应为 `Your verification code` 或 `Verify your email`
+- 邮件内容应包含 **6 位数字**（如 `123456`）
+- 不应该包含任何登录链接
 
 ---
 
@@ -102,17 +125,47 @@ await supabase.auth.verifyOtp({
 
 ## 故障排除
 
-### 问题：仍然收到 8 位验证码
-**解决**：检查 Supabase Dashboard 中 Email Provider 的 OTP Length 配置，确保设为 6 位
+### 问题 1：仍然收到 Magic Link 登录邮件
+**原因**：Supabase Dashboard 中 Magic Link 仍未禁用
 
-### 问题：收到激活邮件而非 OTP
-**解决**：确认代码已更新为 `signInWithOtp()`，可以检查浏览器控制台是否有错误
+**解决步骤**：
+1. 进入 Authentication > Providers > Email
+2. 确保 `Confirm email (Magic Link)` 已关闭（OFF）
+3. 确保 `Confirm email (OTP)` 已打开（ON）
+4. 点击 Save 按钮
+5. 等待 1-2 分钟生效
+6. 重新测试注册
 
-### 问题：验证码提示"错误或已过期"
-**解决**：
-- 检查输入的验证码是否正确
-- OTP 有 10-15 分钟的有效期（根据配置）
-- 尝试点击"重新发送验证码"获取新的 OTP
+### 问题 2：收到的验证码不是 6 位
+**原因**：OTP Length 未正确设置为 6
+
+**解决步骤**：
+1. 进入 Authentication > Providers > Email
+2. 找到 OTP 配置中的 `OTP Length` 字段
+3. 改为 `6`
+4. 点击 Save 按钮
+5. 重新测试
+
+### 问题 3：验证码过期或提示"错误"
+**原因**：
+- 输入的验证码错误
+- 验证码已过期（10 分钟）
+- 邮箱与发送时不一致
+
+**解决步骤**：
+1. 检查输入的验证码是否与邮件中完全一致
+2. 如果过期，点击"重新发送验证码"按钮
+3. 获取新的验证码后立即输入
+
+### 问题 4：收到的还是激活邮件而非 OTP
+**原因**：可能 Dashboard 配置未完全保存
+
+**解决步骤**：
+1. 刷新 Dashboard 页面
+2. 重新进入 Authentication > Providers > Email
+3. 检查配置是否仍然如预期
+4. 重新保存一次
+5. 清除浏览器缓存后重新测试
 
 ---
 
