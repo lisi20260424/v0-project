@@ -59,12 +59,10 @@ export function SignUpForm() {
     setLoading(true)
     try {
       const supabase = createClient()
-      const { error } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signInWithOtp({
         email,
-        password,
         options: {
-          emailRedirectTo:
-            process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ?? `${window.location.origin}/auth/callback`,
+          shouldCreateUser: true,
           data: {
             display_name: displayName || email.split("@")[0],
           },
@@ -94,7 +92,7 @@ export function SignUpForm() {
       const { error } = await supabase.auth.verifyOtp({
         email,
         token: code,
-        type: "signup",
+        type: "email",
       })
       if (error) throw error
       router.push("/dashboard")
