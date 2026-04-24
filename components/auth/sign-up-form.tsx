@@ -1,42 +1,58 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { AlertCircle } from "lucide-react"
+import { AlertCircle, ArrowLeft, CheckCircle2, MailCheck } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Spinner } from "@/components/ui/spinner"
 import { OAuthButtons } from "./oauth-buttons"
+import { OtpInput } from "./otp-input"
+
+type Step = "form" | "verify"
+
+const RESEND_SECONDS = 60
 
 export function SignUpForm() {
   const router = useRouter()
 
+  const [step, setStep] = useState<Step>("form")
   const [displayName, setDisplayName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [agree, setAgree] = useState(true)
+
+  const [otp, setOtp] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [cooldown, setCooldown] = useState(0)
 
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
+  useEffect(() => {
+    if (cooldown <= 0) return
+    const timer = setInterval(() => setCooldown((s) => Math.max(0, s - 1)), 1000)
+    return () => clearInterval(timer)
+  }, [cooldown])
+
+  async function sendOtp(isResend = false) {
     setError(null)
 
-    if (password.length < 8) {
-      setError("密码至少需要 8 位")
-      return
-    }
-    if (password !== confirmPassword) {
-      setError("两次输入的密码不一致")
-      return
-    }
-    if (!agree) {
-      setError("请先阅读并同意用户协议与隐私政策")
-      return
+    if (!isResend) {
+      if (password.length < 8) {
+        setError("密码至少需要 8 位")
+        return
+      }
+      if (password !== confirmPassword) {
+        setError("两次输入的密码不一致")
+        return
+      }
+      if (!agree) {
+        setError("请先阅读并同意用户协议与隐私政策")
+        return
+      }
     }
 
     setLoading(true)
@@ -47,19 +63,120 @@ export function SignUpForm() {
         password,
         options: {
           emailRedirectTo:
-            process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ??
-            `${window.location.origin}/auth/callback`,
+            process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ?? `${window.location.origin}/auth/callback`,
           data: {
             display_name: displayName || email.split("@")[0],
           },
         },
       })
       if (error) throw error
-      router.push("/auth/sign-up-success")
+      setStep("verify")
+      setOtp("")
+      setCooldown(RESEND_SECONDS)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "注册失败，请稍后重试")
+      setError(err instanceof Error ? err.message : "发送验证码失败，请稍后重试")
+    } finally {
       setLoading(false)
     }
+  }
+
+  async function handleFormSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    await sendOtp(false)
+  }
+
+  async function verifyOtp(code: string) {
+    setError(null)
+    setLoading(true)
+    try {
+      const supabase = createClient()
+      const { error } = await supabase.auth.verifyOtp({
+        email,
+        token: code,
+        type: "signup",
+      })
+      if (error) throw error
+      router.push("/dashboard")
+      router.refresh()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "验证码错误或已过期")
+      setOtp("")
+      setLoading(false)
+    }
+  }
+
+  async function handleVerifySubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    if (otp.length !== 6) {
+      setError("请输入 6 位验证码")
+      return
+    }
+    await verifyOtp(otp)
+  }
+
+  if (step === "verify") {
+    return (
+      <div className="flex flex-col gap-6">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <MailCheck className="h-6 w-6" />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <h1 className="text-2xl font-bold tracking-tight">输入验证码</h1>
+            <p className="text-sm text-muted-foreground">
+              我们已向 <span className="font-medium text-foreground">{email}</span> 发送了 6 位验证码
+            </p>
+          </div>
+        </div>
+
+        <form onSubmit={handleVerifySubmit} className="flex flex-col gap-5">
+          <OtpInput
+            value={otp}
+            onChange={setOtp}
+            onComplete={(code) => {
+              if (!loading) verifyOtp(code)
+            }}
+            disabled={loading}
+          />
+
+          {error ? (
+            <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+              <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              <span>{error}</span>
+            </div>
+          ) : null}
+
+          <Button type="submit" className="h-10" disabled={loading || otp.length !== 6}>
+            {loading ? <Spinner className="mr-2 h-4 w-4" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
+            {loading ? "验证中..." : "完成注册"}
+          </Button>
+
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <button
+              type="button"
+              onClick={() => {
+                setStep("form")
+                setError(null)
+                setOtp("")
+              }}
+              className="inline-flex items-center gap-1 transition-colors hover:text-foreground"
+              disabled={loading}
+            >
+              <ArrowLeft className="h-3 w-3" />
+              修改邮箱
+            </button>
+            <button
+              type="button"
+              onClick={() => sendOtp(true)}
+              disabled={cooldown > 0 || loading}
+              className="font-medium transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {cooldown > 0 ? `${cooldown} 秒后可重新发送` : "重新发送验证码"}
+            </button>
+          </div>
+        </form>
+      </div>
+    )
   }
 
   return (
@@ -77,7 +194,7 @@ export function SignUpForm() {
         <div className="flex-1 border-t border-border" />
       </div>
 
-      <form onSubmit={onSubmit} className="flex flex-col gap-4">
+      <form onSubmit={handleFormSubmit} className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="display_name">昵称（选填）</Label>
           <Input
@@ -162,7 +279,7 @@ export function SignUpForm() {
 
         <Button type="submit" className="h-10" disabled={loading}>
           {loading ? <Spinner className="mr-2 h-4 w-4" /> : null}
-          {loading ? "注册中..." : "创建账号"}
+          {loading ? "发送验证码..." : "获取验证码"}
         </Button>
       </form>
 
