@@ -59,10 +59,10 @@ export function SignUpForm() {
     setLoading(true)
     try {
       const supabase = createClient()
-      const { error } = await supabase.auth.signInWithOtp({
+      const { error } = await supabase.auth.signUp({
         email,
+        password,
         options: {
-          shouldCreateUser: true,
           data: {
             display_name: displayName || email.split("@")[0],
           },
@@ -73,7 +73,7 @@ export function SignUpForm() {
       setOtp("")
       setCooldown(RESEND_SECONDS)
     } catch (err) {
-      setError(translateAuthError(err, "发送验证码失败，请稍后重试"))
+      setError(translateAuthError(err, "发送验证邮件失败，请稍后重试"))
     } finally {
       setLoading(false)
     }
@@ -92,7 +92,7 @@ export function SignUpForm() {
       const { error } = await supabase.auth.verifyOtp({
         email,
         token: code,
-        type: "email",
+        type: "signup",
       })
       if (error) throw error
       router.push("/dashboard")
@@ -121,9 +121,9 @@ export function SignUpForm() {
             <MailCheck className="h-6 w-6" />
           </div>
           <div className="flex flex-col gap-1.5">
-            <h1 className="text-2xl font-bold tracking-tight">输入验证码</h1>
+            <h1 className="text-2xl font-bold tracking-tight">验证你的邮箱</h1>
             <p className="text-sm text-muted-foreground">
-              我们已向 <span className="font-medium text-foreground">{email}</span> 发送了 6 位验证码
+              我们已向 <span className="font-medium text-foreground">{email}</span> 发送了 6 位验证码，请输入进行邮箱验证
             </p>
           </div>
         </div>
@@ -278,7 +278,7 @@ export function SignUpForm() {
 
         <Button type="submit" className="h-10" disabled={loading}>
           {loading ? <Spinner className="mr-2 h-4 w-4" /> : null}
-          {loading ? "发送验证码..." : "获取验证码"}
+          {loading ? "发送验证邮件..." : "注册"}
         </Button>
       </form>
 
