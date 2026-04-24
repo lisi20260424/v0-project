@@ -174,32 +174,32 @@ export function MembershipDialog({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
           showCloseButton={false}
-          className="max-w-5xl gap-0 overflow-hidden border-border/70 bg-card p-0"
+          className="w-[calc(100vw-1.5rem)] max-w-5xl gap-0 overflow-hidden border-border/70 bg-card p-0 sm:w-[calc(100vw-2rem)]"
         >
-          <div className="relative p-8">
+          <div className="relative max-h-[90vh] overflow-y-auto p-5 sm:p-8">
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-accent/5" />
             <button
               onClick={() => onOpenChange(false)}
-              className="absolute right-5 top-5 flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition hover:bg-secondary hover:text-foreground"
+              className="absolute right-4 top-4 z-10 flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition hover:bg-secondary hover:text-foreground sm:right-5 sm:top-5"
               aria-label="关闭"
             >
               <X className="h-4 w-4" />
             </button>
 
             <div className="relative">
-              <DialogTitle className="text-pretty text-3xl font-bold tracking-tight text-primary">
+              <DialogTitle className="text-pretty pr-10 text-2xl font-bold tracking-tight text-primary sm:text-3xl">
                 让创意灵感即刻成片
               </DialogTitle>
-              <DialogDescription className="mt-1.5 text-sm text-muted-foreground">
+              <DialogDescription className="mt-1.5 text-xs text-muted-foreground sm:text-sm">
                 选择合适的套餐，会员用户创作享受点数优惠折扣
               </DialogDescription>
 
-              <div className="mt-6 flex items-center justify-between">
-                <div className="inline-flex items-center gap-2 rounded-lg border border-border bg-background/50 p-1">
+              <div className="mt-5 flex flex-wrap items-center justify-between gap-3 sm:mt-6">
+                <div className="inline-flex items-center gap-1 rounded-lg border border-border bg-background/50 p-1 sm:gap-2">
                   <button
                     onClick={() => setTab("membership")}
                     className={cn(
-                      "inline-flex items-center gap-1.5 rounded-md px-4 py-1.5 text-sm font-medium transition-colors",
+                      "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors sm:px-4",
                       tab === "membership"
                         ? "bg-primary/15 text-primary ring-1 ring-primary/40"
                         : "text-muted-foreground hover:text-foreground",
@@ -211,7 +211,7 @@ export function MembershipDialog({
                   <button
                     onClick={() => setTab("points")}
                     className={cn(
-                      "inline-flex items-center gap-1.5 rounded-md px-4 py-1.5 text-sm font-medium transition-colors",
+                      "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors sm:px-4",
                       tab === "points"
                         ? "bg-primary/15 text-primary ring-1 ring-primary/40"
                         : "text-muted-foreground hover:text-foreground",
@@ -231,13 +231,13 @@ export function MembershipDialog({
                 </button>
               </div>
 
-              <div className="mt-6 grid gap-4 md:grid-cols-3">
+              <div className="mt-5 grid gap-4 sm:mt-6 md:grid-cols-2 lg:grid-cols-3">
                 {tab === "membership"
                   ? MEMBERSHIP_PLANS.map((plan) => (
                       <article
                         key={plan.id}
                         className={cn(
-                          "relative flex flex-col rounded-2xl border bg-background/60 p-6 transition-all",
+                          "relative flex min-w-0 flex-col rounded-2xl border bg-background/60 p-5 transition-all sm:p-6",
                           plan.recommended
                             ? "border-primary/60 shadow-xl shadow-primary/10"
                             : "border-border hover:border-primary/40",
@@ -245,12 +245,12 @@ export function MembershipDialog({
                       >
                         {plan.badge && <BadgeTag tone={plan.badgeTone}>{plan.badge}</BadgeTag>}
 
-                        <header className="flex items-center gap-2">
-                          <h3 className="text-xl font-bold">{plan.name}</h3>
+                        <header className="flex flex-wrap items-center gap-2">
+                          <h3 className="whitespace-nowrap text-xl font-bold">{plan.name}</h3>
                           {plan.recommended && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-orange-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-orange-500">
+                            <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-orange-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-orange-500">
                               <Sparkles className="h-3 w-3" />
-                              Highly Recommended
+                              Recommended
                             </span>
                           )}
                         </header>
@@ -294,11 +294,13 @@ export function MembershipDialog({
                   : POINTS_PACKAGES.map((pkg) => (
                       <article
                         key={pkg.id}
-                        className="relative flex flex-col rounded-2xl border border-border bg-background/60 p-6 transition-all hover:border-primary/40"
+                        className="relative flex min-w-0 flex-col rounded-2xl border border-border bg-background/60 p-5 transition-all hover:border-primary/40 sm:p-6"
                       >
                         {pkg.badge && <BadgeTag tone="accent">{pkg.badge}</BadgeTag>}
 
-                        <h3 className="text-xl font-bold tabular-nums">{pkg.points.toLocaleString()} 点</h3>
+                        <h3 className="whitespace-nowrap text-xl font-bold tabular-nums">
+                          {pkg.points.toLocaleString()} 点
+                        </h3>
 
                         <div className="mt-3 flex items-baseline gap-2">
                           <span className="text-sm font-medium text-foreground">¥</span>
@@ -345,9 +347,12 @@ export function MembershipDialog({
       </Dialog>
 
       <Dialog open={pointsOpen} onOpenChange={setPointsOpen}>
-        <DialogContent showCloseButton={false} className="max-w-3xl gap-0 overflow-hidden p-0">
-          <div className="flex items-center justify-between border-b border-border px-6 py-4">
-            <DialogTitle className="text-lg font-semibold">点数说明</DialogTitle>
+        <DialogContent
+          showCloseButton={false}
+          className="w-[calc(100vw-1.5rem)] max-w-3xl gap-0 overflow-hidden p-0 sm:w-[calc(100vw-2rem)]"
+        >
+          <div className="flex items-center justify-between border-b border-border px-4 py-3 sm:px-6 sm:py-4">
+            <DialogTitle className="text-base font-semibold sm:text-lg">点数说明</DialogTitle>
             <button
               onClick={() => setPointsOpen(false)}
               className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition hover:bg-secondary hover:text-foreground"
@@ -360,25 +365,25 @@ export function MembershipDialog({
           <DialogDescription className="sr-only">所有 AI 产品的点数消耗说明，VIP 会员享受折扣价</DialogDescription>
 
           <div className="max-h-[70vh] overflow-y-auto">
-            <div className="bg-primary/5 px-6 py-3 text-sm font-medium text-primary">
+            <div className="bg-primary/5 px-4 py-3 text-xs font-medium text-primary sm:px-6 sm:text-sm">
               VIP 会员期间享受以下产品点数折扣
             </div>
 
-            <div className="px-6 pb-6">
-              <div className="sticky top-0 grid grid-cols-[1fr_90px_90px] items-center gap-4 border-b border-border bg-card py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <div className="px-4 pb-6 sm:px-6">
+              <div className="sticky top-0 z-10 grid grid-cols-[1fr_60px_60px] items-center gap-3 border-b border-border bg-card py-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground sm:grid-cols-[1fr_90px_90px] sm:gap-4 sm:text-xs">
                 <span>名称</span>
-                <span className="text-right tabular-nums">普通（点）</span>
-                <span className="text-right tabular-nums">VIP（点）</span>
+                <span className="text-right tabular-nums">普通</span>
+                <span className="text-right tabular-nums">VIP</span>
               </div>
               <ul>
                 {POINT_COSTS.map((item) => (
                   <li
                     key={item.name}
-                    className="grid grid-cols-[1fr_90px_90px] items-center gap-4 border-b border-border/60 py-3.5 last:border-b-0"
+                    className="grid grid-cols-[1fr_60px_60px] items-center gap-3 border-b border-border/60 py-3 last:border-b-0 sm:grid-cols-[1fr_90px_90px] sm:gap-4 sm:py-3.5"
                   >
                     <div className="min-w-0">
-                      <p className="text-sm font-medium">{item.name}</p>
-                      <p className="mt-0.5 truncate text-xs text-primary/90">{item.desc}</p>
+                      <p className="truncate text-sm font-medium">{item.name}</p>
+                      <p className="mt-0.5 line-clamp-2 text-xs text-primary/90 sm:truncate">{item.desc}</p>
                     </div>
                     <span className="text-right text-sm tabular-nums">{item.normal}</span>
                     <span className="text-right text-sm font-semibold tabular-nums text-primary">{item.vip}</span>
