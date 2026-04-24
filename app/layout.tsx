@@ -3,6 +3,8 @@ import { Inter, JetBrains_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { ThemeProvider } from "@/components/theme-provider"
 import { MembershipProvider } from "@/components/membership-provider"
+import { UserProvider } from "@/components/user-provider"
+import { getCurrentUser } from "@/lib/supabase/get-user"
 import "./globals.css"
 
 const inter = Inter({
@@ -25,16 +27,20 @@ export const metadata: Metadata = {
   generator: "v0.app",
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const user = await getCurrentUser().catch(() => null)
+
   return (
     <html lang="zh-CN" suppressHydrationWarning className={`${inter.variable} ${jetbrainsMono.variable} bg-background`}>
       <body className="font-sans antialiased">
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
-          <MembershipProvider>{children}</MembershipProvider>
+          <UserProvider initialUser={user}>
+            <MembershipProvider>{children}</MembershipProvider>
+          </UserProvider>
         </ThemeProvider>
         {process.env.NODE_ENV === "production" && <Analytics />}
       </body>

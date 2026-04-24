@@ -55,7 +55,9 @@ export function DashboardSidebar() {
           <ul className="space-y-0.5">
             {section.items.map((item) => {
               const Icon = item.icon
-              const active = pathname === item.href
+              const active =
+                pathname === item.href ||
+                (item.href !== "/dashboard" && pathname.startsWith(`${item.href}/`))
               return (
                 <li key={item.href}>
                   <Link

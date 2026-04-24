@@ -4,6 +4,7 @@ import { ArrowRight, Video, ImageIcon, Music2, Sparkles, TrendingUp } from "luci
 import { Button } from "@/components/ui/button"
 import { TOOLS } from "@/lib/tools"
 import { MOCK_CREATIONS, MOCK_TASKS } from "@/lib/mock-data"
+import { getCurrentUser } from "@/lib/supabase/get-user"
 
 export const metadata = {
   title: "工作台 · 灵境 AI",
@@ -16,7 +17,17 @@ const quickStats = [
   { label: "音乐作品", value: 4, trend: "+1", icon: Music2 },
 ]
 
-export default function DashboardPage() {
+function greeting() {
+  const h = new Date().getHours()
+  if (h < 6) return "夜深了"
+  if (h < 12) return "早上好"
+  if (h < 14) return "中午好"
+  if (h < 18) return "下午好"
+  return "晚上好"
+}
+
+export default async function DashboardPage() {
+  const user = await getCurrentUser()
   const runningTasks = MOCK_TASKS.filter((t) => t.status === "running" || t.status === "queued")
   const recentCreations = MOCK_CREATIONS.slice(0, 6)
 
@@ -25,7 +36,9 @@ export default function DashboardPage() {
       <section>
         <div className="flex items-end justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">早上好，创作者_2048</h1>
+            <h1 className="text-2xl font-bold tracking-tight">
+              {greeting()}，{user?.displayName ?? "创作者"}
+            </h1>
             <p className="mt-1 text-sm text-muted-foreground">今天也是充满灵感的一天，来看看最新的工具吧。</p>
           </div>
         </div>

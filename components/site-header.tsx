@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { TOOLS, CATEGORY_LABEL, type ToolCategory } from "@/lib/tools"
 import { useMembership } from "@/components/membership-provider"
+import { useUser } from "@/components/user-provider"
 
 const navItems = [
   { label: "作品广场", href: "/gallery" },
@@ -26,6 +27,12 @@ const navItems = [
 
 export function SiteHeader() {
   const membership = useMembership()
+  const { user } = useUser()
+  const tierLabel: Record<NonNullable<NonNullable<typeof user>["vipTier"]>, string> = {
+    monthly: "月会员",
+    annual: "年会员",
+    lifetime: "终身会员",
+  }
   const grouped = (["video", "image", "audio", "chat"] as ToolCategory[]).map((c) => ({
     category: c,
     label: CATEGORY_LABEL[c],
@@ -112,82 +119,102 @@ export function SiteHeader() {
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => membership.open("points")}
-            className="hidden items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-foreground transition-colors hover:border-primary/40 sm:inline-flex"
-            aria-label="充值点数"
-          >
-            <Zap className="h-3.5 w-3.5 text-accent" fill="currentColor" />
-            <span className="tabular-nums">1,280</span>
-            <span className="text-muted-foreground">点</span>
-          </button>
-          <Button
-            size="sm"
-            onClick={() => membership.open("membership")}
-            className="hidden h-8 rounded-full bg-gradient-to-r from-primary to-accent px-3 text-xs font-semibold text-primary-foreground shadow-sm hover:opacity-90 sm:inline-flex"
-          >
-            <CreditCard className="mr-1 h-3.5 w-3.5" />
-            会员充值
-          </Button>
+          {user ? (
+            <>
+              <button
+                type="button"
+                onClick={() => membership.open("points")}
+                className="hidden items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-foreground transition-colors hover:border-primary/40 sm:inline-flex"
+                aria-label="充值点数"
+              >
+                <Zap className="h-3.5 w-3.5 text-accent" fill="currentColor" />
+                <span className="tabular-nums">{user.points.toLocaleString()}</span>
+                <span className="text-muted-foreground">点</span>
+              </button>
+              <Button
+                size="sm"
+                onClick={() => membership.open("membership")}
+                className="hidden h-8 rounded-full bg-gradient-to-r from-primary to-accent px-3 text-xs font-semibold text-primary-foreground shadow-sm hover:opacity-90 sm:inline-flex"
+              >
+                <CreditCard className="mr-1 h-3.5 w-3.5" />
+                会员充值
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex">
+                <Link href="/auth/login">登录</Link>
+              </Button>
+              <Button size="sm" asChild className="hidden sm:inline-flex">
+                <Link href="/auth/sign-up">免费注册</Link>
+              </Button>
+            </>
+          )}
+
           <ThemeToggle />
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                aria-label="用户菜单"
-                className="hidden h-8 w-8 overflow-hidden rounded-full ring-1 ring-border transition hover:ring-primary/40 sm:inline-flex"
-              >
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src="/placeholder-user.jpg" alt="用户头像" />
-                  <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-xs text-primary-foreground">
-                    灵
-                  </AvatarFallback>
-                </Avatar>
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <div className="px-2 py-2">
-                <p className="truncate text-sm font-semibold">创作者_2048</p>
-                <p className="truncate text-xs text-muted-foreground">Pro 会员 · 1,280 点</p>
-              </div>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link href="/dashboard">
-                  <LayoutDashboard className="mr-2 h-4 w-4" />
-                  工作台
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/tasks">
-                  <ListChecks className="mr-2 h-4 w-4" />
-                  我的任务
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/creations">
-                  <Images className="mr-2 h-4 w-4" />
-                  我的创作
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={() => membership.open("membership")}>
-                <CreditCard className="mr-2 h-4 w-4" />
-                订阅与充值
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/settings">
-                  <Settings className="mr-2 h-4 w-4" />
-                  账户设置
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-muted-foreground">
-                <LogOut className="mr-2 h-4 w-4" />
-                退出登录
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {user ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  aria-label="用户菜单"
+                  className="hidden h-8 w-8 overflow-hidden rounded-full ring-1 ring-border transition hover:ring-primary/40 sm:inline-flex"
+                >
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={user.avatarUrl ?? undefined} alt="用户头像" />
+                    <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-xs text-primary-foreground">
+                      {user.displayName.slice(0, 1).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <div className="px-2 py-2">
+                  <p className="truncate text-sm font-semibold">{user.displayName}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {user.vipTier ? tierLabel[user.vipTier] : "免费用户"} · {user.points.toLocaleString()} 点
+                  </p>
+                </div>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/dashboard">
+                    <LayoutDashboard className="mr-2 h-4 w-4" />
+                    工作台
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/tasks">
+                    <ListChecks className="mr-2 h-4 w-4" />
+                    我的任务
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/creations">
+                    <Images className="mr-2 h-4 w-4" />
+                    我的创作
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={() => membership.open("membership")}>
+                  <CreditCard className="mr-2 h-4 w-4" />
+                  订阅与充值
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/settings">
+                    <Settings className="mr-2 h-4 w-4" />
+                    账户设置
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild className="text-muted-foreground">
+                  <a href="/auth/sign-out">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    退出登录
+                  </a>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : null}
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -211,18 +238,38 @@ export function SiteHeader() {
                 </DropdownMenuItem>
               ))}
               <DropdownMenuSeparator />
-              <DropdownMenuLabel className="text-[11px] uppercase tracking-wider text-muted-foreground">
-                用户中心
-              </DropdownMenuLabel>
-              <DropdownMenuItem asChild>
-                <Link href="/dashboard">工作台</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/tasks">我的任务</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/creations">我的创作</Link>
-              </DropdownMenuItem>
+              {user ? (
+                <>
+                  <DropdownMenuLabel className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                    用户中心
+                  </DropdownMenuLabel>
+                  <DropdownMenuItem asChild>
+                    <Link href="/dashboard">工作台</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/tasks">我的任务</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/creations">我的创作</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/settings">账户设置</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild className="text-muted-foreground">
+                    <a href="/auth/sign-out">退出登录</a>
+                  </DropdownMenuItem>
+                </>
+              ) : (
+                <>
+                  <DropdownMenuItem asChild>
+                    <Link href="/auth/login">登录</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/auth/sign-up">免费注册</Link>
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

@@ -1,10 +1,21 @@
 import type { ReactNode } from "react"
+import { redirect } from "next/navigation"
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import { DashboardSidebar } from "@/components/dashboard-sidebar"
 import { DashboardUserCard } from "@/components/dashboard-user-card"
+import { createClient } from "@/lib/supabase/server"
 
-export default function DashboardLayout({ children }: { children: ReactNode }) {
+export default async function DashboardLayout({ children }: { children: ReactNode }) {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    redirect("/auth/login?next=/dashboard")
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <SiteHeader />
