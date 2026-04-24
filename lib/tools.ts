@@ -8,6 +8,7 @@ import {
   Music2,
   MessageSquare,
   Wand2,
+  Play,
 } from "lucide-react"
 
 export type ToolCategory = "video" | "image" | "audio" | "chat"
@@ -68,6 +69,18 @@ export const TOOLS: Tool[] = [
     icon: Sparkles,
     accent: "from-amber-500/30 to-orange-500/10",
     cost: "20 点起",
+  },
+  {
+    id: "grok",
+    name: "Grok 视频",
+    brand: "xAI Grok Video",
+    desc: "单图快速驱动成片，视频尺寸自动跟随参考图，轻量创意首选。",
+    href: "/grok",
+    category: "video",
+    tag: "新",
+    icon: Play,
+    accent: "from-zinc-500/30 to-slate-500/10",
+    cost: "15 点起",
   },
   {
     id: "gpt-image",
