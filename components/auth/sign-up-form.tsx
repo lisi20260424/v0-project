@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Spinner } from "@/components/ui/spinner"
 import { OAuthButtons } from "./oauth-buttons"
 import { OtpInput } from "./otp-input"
+import { translateAuthError } from "@/lib/auth-errors"
 
 type Step = "form" | "verify"
 
@@ -74,7 +75,7 @@ export function SignUpForm() {
       setOtp("")
       setCooldown(RESEND_SECONDS)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "发送验证码失败，请稍后重试")
+      setError(translateAuthError(err, "发送验证码失败，请稍后重试"))
     } finally {
       setLoading(false)
     }
@@ -99,7 +100,7 @@ export function SignUpForm() {
       router.push("/dashboard")
       router.refresh()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "验证码错误或已过期")
+      setError(translateAuthError(err, "验证码错误或已过期"))
       setOtp("")
       setLoading(false)
     }

@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label"
 import { Spinner } from "@/components/ui/spinner"
 import { OAuthButtons } from "./oauth-buttons"
 import { OtpInput } from "./otp-input"
+import { translateAuthError } from "@/lib/auth-errors"
 
 type Mode = "password" | "otp"
 type OtpStep = "email" | "verify"
@@ -58,7 +59,7 @@ export function LoginForm() {
       router.push(next)
       router.refresh()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "登录失败，请检查账号密码")
+      setError(translateAuthError(err, "登录失败，请检查账号密码"))
       setLoading(false)
     }
   }
@@ -85,12 +86,7 @@ export function LoginForm() {
       setOtp("")
       setCooldown(RESEND_SECONDS)
     } catch (err) {
-      const message = err instanceof Error ? err.message : "发送验证码失败"
-      setError(
-        message.includes("User not found") || message.toLowerCase().includes("signups not allowed")
-          ? "该邮箱尚未注册，请先去注册账号"
-          : message,
-      )
+      setError(translateAuthError(err, "发送验证码失败，请稍后重试"))
     } finally {
       setLoading(false)
     }
@@ -115,7 +111,7 @@ export function LoginForm() {
       router.push(next)
       router.refresh()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "验证码错误或已过期")
+      setError(translateAuthError(err, "验证码错误或已过期"))
       setOtp("")
       setLoading(false)
     }
