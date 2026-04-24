@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { TOOLS, CATEGORY_LABEL, type ToolCategory } from "@/lib/tools"
+import { useMembership } from "@/components/membership-provider"
 
 const navItems = [
   { label: "作品广场", href: "/gallery" },
@@ -24,6 +25,7 @@ const navItems = [
 ]
 
 export function SiteHeader() {
+  const membership = useMembership()
   const grouped = (["video", "image", "audio", "chat"] as ToolCategory[]).map((c) => ({
     category: c,
     label: CATEGORY_LABEL[c],
@@ -110,15 +112,24 @@ export function SiteHeader() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Link
-            href="/pricing"
+          <button
+            type="button"
+            onClick={() => membership.open("points")}
             className="hidden items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-foreground transition-colors hover:border-primary/40 sm:inline-flex"
-            aria-label="我的点数"
+            aria-label="充值点数"
           >
             <Zap className="h-3.5 w-3.5 text-accent" fill="currentColor" />
-            <span className="tabular-nums">0</span>
+            <span className="tabular-nums">1,280</span>
             <span className="text-muted-foreground">点</span>
-          </Link>
+          </button>
+          <Button
+            size="sm"
+            onClick={() => membership.open("membership")}
+            className="hidden h-8 rounded-full bg-gradient-to-r from-primary to-accent px-3 text-xs font-semibold text-primary-foreground shadow-sm hover:opacity-90 sm:inline-flex"
+          >
+            <CreditCard className="mr-1 h-3.5 w-3.5" />
+            会员充值
+          </Button>
           <ThemeToggle />
 
           <DropdownMenu>
@@ -160,11 +171,9 @@ export function SiteHeader() {
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link href="/billing">
-                  <CreditCard className="mr-2 h-4 w-4" />
-                  订阅与账单
-                </Link>
+              <DropdownMenuItem onSelect={() => membership.open("membership")}>
+                <CreditCard className="mr-2 h-4 w-4" />
+                订阅与充值
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link href="/settings">

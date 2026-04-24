@@ -1,10 +1,13 @@
-import Link from "next/link"
+"use client"
+
 import { Zap, Crown } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
+import { useMembership } from "@/components/membership-provider"
 
 export function DashboardUserCard() {
+  const membership = useMembership()
   return (
     <div className="rounded-2xl border border-border bg-card p-5">
       <div className="flex items-center gap-3">
@@ -41,11 +44,16 @@ export function DashboardUserCard() {
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-2">
-        <Button asChild size="sm" variant="outline" className="h-8 text-xs bg-transparent">
-          <Link href="/pricing">续费</Link>
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-8 bg-transparent text-xs"
+          onClick={() => membership.open("membership")}
+        >
+          续费会员
         </Button>
-        <Button asChild size="sm" className="h-8 text-xs">
-          <Link href="/pricing#points">充值点数</Link>
+        <Button size="sm" className="h-8 text-xs" onClick={() => membership.open("points")}>
+          充值点数
         </Button>
       </div>
     </div>
