@@ -17,10 +17,10 @@ const jetbrainsMono = JetBrains_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "VeoCraft · AI 视频生成工坊",
+  title: "灵境 AI · 一站式多模态 AI 创作平台",
   description:
-    "VeoCraft 是专业的 AI 视频生成平台，支持文生视频、图生视频，基于 Veo 3.1 多模态大模型，快速生成电影级视频作品。",
-  keywords: ["AI 视频生成", "文生视频", "图生视频", "Veo", "AI SaaS", "AIGC"],
+    "灵境 AI 聚合全球主流 AI 模型，提供 Veo / Sora / 可灵视频生成、GPT-Image / Nano Banana 图像生成、Suno 音乐生成、AI 对话等一站式创作能力。",
+  keywords: ["AI 视频生成", "AI 图像生成", "AI 音乐", "Veo", "Sora", "可灵", "GPT-Image", "Nano Banana", "Suno", "AI SaaS"],
   generator: "v0.app",
 }
 

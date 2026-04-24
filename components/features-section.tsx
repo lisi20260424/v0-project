@@ -1,46 +1,46 @@
-import { Type, ImageIcon, Zap, Layers, Globe2, ShieldCheck } from "lucide-react"
+import { Layers, Zap, Globe2, ShieldCheck, Coins, Code2 } from "lucide-react"
 
 const FEATURES = [
   {
-    icon: Type,
-    title: "文生视频",
-    desc: "输入一句描述，即可生成电影级镜头。支持 5000 字超长 Prompt，精准控制镜头、光线、情绪。",
+    icon: Layers,
+    title: "20+ 顶级模型",
+    desc: "Veo 3.1、Sora 2、可灵 2.0、GPT-Image、Nano Banana、Suno V5…… 全球主流模型一次集齐，持续更新。",
   },
   {
-    icon: ImageIcon,
-    title: "图生视频",
-    desc: "上传一张静态图片，AI 自动理解画面，生成自然流畅的动态视频，让你的图片动起来。",
+    icon: Coins,
+    title: "统一点数计费",
+    desc: "一套点数畅通所有模型，无需为每个平台单独充值。按实际消耗扣费，用多少付多少。",
   },
   {
     icon: Zap,
-    title: "极速生成",
-    desc: "GPU 集群加速，平均 45 秒完成一段 8 秒视频。会员优先排队，高峰期也无需等待。",
-  },
-  {
-    icon: Layers,
-    title: "多模型支持",
-    desc: "集成 Veo 3.1 Fast、4K、Pro 三大版本，适配不同场景。灵活选择速度、画质与成本。",
+    title: "极速国内直连",
+    desc: "国内节点中转加速，免翻墙直接调用海外模型。平均响应 30 秒，高峰期优先级保障。",
   },
   {
     icon: Globe2,
-    title: "原生中文",
-    desc: "专为中文创作者优化，精准理解成语、网络用语、古诗词等本土表达，无需翻译。",
+    title: "原生中文优化",
+    desc: "针对中文指令、成语、古诗词、网络语进行指令优化。生成结果更懂中文语境与审美。",
+  },
+  {
+    icon: Code2,
+    title: "开放 API",
+    desc: "提供标准 REST API 与 Webhook，兼容 OpenAI SDK 调用格式，轻松接入自有产品。",
   },
   {
     icon: ShieldCheck,
-    title: "内容合规",
-    desc: "全链路内容安全审核，符合国内监管要求。企业用户可申请私有化部署与数据隔离。",
+    title: "合规与安全",
+    desc: "全链路内容安全审核，通过等保三级。企业可申请私有部署、数据隔离与审计日志。",
   },
 ]
 
 export function FeaturesSection() {
   return (
-    <section id="features" className="border-b border-border/60 bg-muted/30">
+    <section id="features" className="border-b border-border/60">
       <div className="mx-auto max-w-7xl px-4 py-16 md:px-6 md:py-20">
         <div className="mx-auto max-w-2xl text-center">
-          <h2 className="text-balance text-3xl font-semibold tracking-tight md:text-4xl">为什么选择 VeoCraft</h2>
+          <h2 className="text-balance text-3xl font-semibold tracking-tight md:text-4xl">为什么选择灵境 AI</h2>
           <p className="mt-3 text-pretty text-muted-foreground">
-            一站式 AI 视频创作平台，从想法到成片，只需几步操作。
+            国内可直接使用的多模态 AI 聚合平台，让创作者与开发者专注于灵感本身。
           </p>
         </div>
 
