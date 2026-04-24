@@ -2,8 +2,9 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { Menu, Zap, ChevronDown } from "lucide-react"
+import { Menu, Zap, ChevronDown, LayoutDashboard, ListChecks, Images, CreditCard, Settings, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ThemeToggle } from "@/components/theme-toggle"
 import {
   DropdownMenu,
@@ -119,12 +120,65 @@ export function SiteHeader() {
             <span className="text-muted-foreground">点</span>
           </Link>
           <ThemeToggle />
-          <Button variant="ghost" className="hidden sm:inline-flex" size="sm">
-            登录
-          </Button>
-          <Button size="sm" className="hidden sm:inline-flex">
-            免费注册
-          </Button>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                aria-label="用户菜单"
+                className="hidden h-8 w-8 overflow-hidden rounded-full ring-1 ring-border transition hover:ring-primary/40 sm:inline-flex"
+              >
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src="/placeholder-user.jpg" alt="用户头像" />
+                  <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-xs text-primary-foreground">
+                    灵
+                  </AvatarFallback>
+                </Avatar>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <div className="px-2 py-2">
+                <p className="truncate text-sm font-semibold">创作者_2048</p>
+                <p className="truncate text-xs text-muted-foreground">Pro 会员 · 1,280 点</p>
+              </div>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link href="/dashboard">
+                  <LayoutDashboard className="mr-2 h-4 w-4" />
+                  工作台
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/tasks">
+                  <ListChecks className="mr-2 h-4 w-4" />
+                  我的任务
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/creations">
+                  <Images className="mr-2 h-4 w-4" />
+                  我的创作
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link href="/billing">
+                  <CreditCard className="mr-2 h-4 w-4" />
+                  订阅与账单
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/settings">
+                  <Settings className="mr-2 h-4 w-4" />
+                  账户设置
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="text-muted-foreground">
+                <LogOut className="mr-2 h-4 w-4" />
+                退出登录
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -148,11 +202,17 @@ export function SiteHeader() {
                 </DropdownMenuItem>
               ))}
               <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                用户中心
+              </DropdownMenuLabel>
               <DropdownMenuItem asChild>
-                <Link href="#login">登录</Link>
+                <Link href="/dashboard">工作台</Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href="#signup">免费注册</Link>
+                <Link href="/tasks">我的任务</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/creations">我的创作</Link>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
