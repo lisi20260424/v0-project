@@ -132,7 +132,7 @@ export function SignUpForm() {
         <p className="text-sm text-muted-foreground">注册即可获得 100 点免费创作点数</p>
       </div>
 
-      <OAuthButtons />
+      <OAuthButtons redirectTo="/dashboard" />
 
       <div className="relative flex items-center">
         <div className="flex-1 border-t border-border" />
