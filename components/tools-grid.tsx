@@ -1,9 +1,14 @@
 import Link from "next/link"
 import { ArrowUpRight } from "lucide-react"
-import { TOOLS, CATEGORY_LABEL, type ToolCategory } from "@/lib/tools"
+import { TOOLS, CATEGORY_LABEL, type ToolCategory, type Tool } from "@/lib/tools"
 import { cn } from "@/lib/utils"
 
-export function ToolsGrid() {
+export type ToolsGridProps = {
+  models?: Tool[]
+}
+
+export function ToolsGrid({ models }: ToolsGridProps) {
+  const tools = models || TOOLS
   const categories: ToolCategory[] = ["video", "image", "audio", "chat"]
 
   return (
@@ -23,7 +28,7 @@ export function ToolsGrid() {
 
         <div className="mt-12 flex flex-col gap-10">
           {categories.map((cat) => {
-            const items = TOOLS.filter((t) => t.category === cat)
+            const items = tools.filter((t) => t.category === cat)
             return (
               <div key={cat}>
                 <div className="mb-4 flex items-end justify-between">
