@@ -31,12 +31,19 @@ export type VideoGeneratorModelData = {
   capabilities: VideoCapabilities
 }
 
+export type PromptChip = {
+  id: string
+  title: string
+  content: string
+  category?: string | null
+}
+
 export type VideoGeneratorProps = {
   models: VideoGeneratorModelData[]
   defaultModelId?: string
   activeProviderName?: string | null
   memberDiscount?: number
-  examplePrompts?: string[]
+  prompts?: PromptChip[]
 }
 
 const DEFAULT_EXAMPLES = [
@@ -109,8 +116,13 @@ export function VideoGenerator({
   models,
   defaultModelId,
   memberDiscount = 0.75,
-  examplePrompts = DEFAULT_EXAMPLES,
+  prompts = [],
 }: VideoGeneratorProps) {
+  // 没有后台配置时，回退到内置示例，保证空数据库下也能给用户灵感
+  const promptChips: PromptChip[] =
+    prompts.length > 0
+      ? prompts
+      : DEFAULT_EXAMPLES.map((p, i) => ({ id: `default-${i}`, title: `示例 ${i + 1}`, content: p }))
   // 空状态
   if (!models.length) {
     return (
@@ -328,19 +340,22 @@ export function VideoGenerator({
             }
             className="min-h-[140px] resize-none bg-background"
           />
-          <div className="mt-3 flex flex-wrap gap-2">
-            {examplePrompts.map((p, i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={() => setPrompt(p)}
-                className="rounded-full border border-border bg-background px-3 py-1 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
-              >
-                <Sparkles className="mr-1 inline h-3 w-3 text-primary" />
-                示例 {i + 1}
-              </button>
-            ))}
-          </div>
+          {promptChips.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {promptChips.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  title={p.content}
+                  onClick={() => setPrompt(p.content.slice(0, cap.maxPromptLength))}
+                  className="rounded-full border border-border bg-background px-3 py-1 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+                >
+                  <Sparkles className="mr-1 inline h-3 w-3 text-primary" />
+                  {p.title}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Negative prompt */}

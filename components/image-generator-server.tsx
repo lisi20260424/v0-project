@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { parseImageCapabilities } from "@/lib/model-capabilities"
+import { getPromptsByType } from "@/lib/get-prompts"
 import { ImageGenerator, type ImageGeneratorModelData } from "./image-generator"
 
 type Props = {
@@ -12,7 +13,7 @@ type Props = {
 export async function ImageGeneratorServer({ provider }: Props = {}) {
   const supabase = await createClient()
 
-  const [providersRes, modelsRes] = await Promise.all([
+  const [providersRes, modelsRes, prompts] = await Promise.all([
     supabase
       .from("admin_providers")
       .select("name, display_name, sort_order")
@@ -24,6 +25,7 @@ export async function ImageGeneratorServer({ provider }: Props = {}) {
       .eq("enabled", true)
       .eq("model_type", "image")
       .order("sort_order", { ascending: true }),
+    getPromptsByType("image"),
   ])
 
   const providers = (providersRes.data ?? []).filter((p) => p.name)
@@ -66,6 +68,7 @@ export async function ImageGeneratorServer({ provider }: Props = {}) {
       models={generatorModels}
       defaultModelId={generatorModels[0]?.id}
       activeProviderName={activeProviderName}
+      prompts={prompts}
     />
   )
 }

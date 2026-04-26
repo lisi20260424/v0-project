@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { parseMusicCapabilities } from "@/lib/model-capabilities"
+import { getPromptsByType } from "@/lib/get-prompts"
 import { MusicGenerator, type MusicGeneratorModelData } from "./music-generator"
 
 type Props = {
@@ -12,7 +13,7 @@ type Props = {
 export async function MusicGeneratorServer({ provider }: Props = {}) {
   const supabase = await createClient()
 
-  const [providersRes, modelsRes] = await Promise.all([
+  const [providersRes, modelsRes, prompts] = await Promise.all([
     supabase
       .from("admin_providers")
       .select("name, display_name, sort_order")
@@ -24,6 +25,7 @@ export async function MusicGeneratorServer({ provider }: Props = {}) {
       .eq("enabled", true)
       .eq("model_type", "music")
       .order("sort_order", { ascending: true }),
+    getPromptsByType("music"),
   ])
 
   const providers = (providersRes.data ?? []).filter((p) => p.name)
@@ -66,6 +68,7 @@ export async function MusicGeneratorServer({ provider }: Props = {}) {
       models={generatorModels}
       defaultModelId={generatorModels[0]?.id}
       activeProviderName={activeProviderName}
+      prompts={prompts}
     />
   )
 }

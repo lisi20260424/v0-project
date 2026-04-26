@@ -35,13 +35,21 @@ export type MusicGeneratorModelData = {
   capabilities: MusicCapabilities
 }
 
+export type MusicPromptChip = {
+  id: string
+  title: string
+  content: string
+  category?: string | null
+}
+
 export type MusicGeneratorProps = {
   models: MusicGeneratorModelData[]
   defaultModelId?: string
   activeProviderName?: string | null
+  prompts?: MusicPromptChip[]
 }
 
-const EXAMPLE_DESC = [
+const DEFAULT_EXAMPLE_DESC = [
   "一首温暖的中文民谣，木吉他伴奏，女声清澈，讲述夏夜海边的回忆",
   "电子舞曲，BPM 128，合成器 Lead 旋律抓耳，适合夜店氛围",
   "史诗级交响乐配乐，管弦乐编制，适合电影片头，气势磅礴",
@@ -71,7 +79,11 @@ const SAMPLE_TRACKS = [
   },
 ]
 
-export function MusicGenerator({ models, defaultModelId }: MusicGeneratorProps) {
+export function MusicGenerator({ models, defaultModelId, prompts = [] }: MusicGeneratorProps) {
+  const promptChips: MusicPromptChip[] =
+    prompts.length > 0
+      ? prompts
+      : DEFAULT_EXAMPLE_DESC.map((p, i) => ({ id: `default-${i}`, title: `示例 ${i + 1}`, content: p }))
   if (!models.length) {
     return (
       <div className="rounded-2xl border border-dashed border-border bg-card p-10 text-center text-sm text-muted-foreground">
@@ -193,18 +205,22 @@ export function MusicGenerator({ models, defaultModelId }: MusicGeneratorProps) 
               placeholder="描述你想要的歌曲风格、情绪、场景、乐器等，AI 会自动写词并谱曲"
               className="min-h-[120px] resize-none bg-background"
             />
-            <div className="mt-3 flex flex-wrap gap-2">
-              {EXAMPLE_DESC.map((p, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => setDesc(p)}
-                  className="rounded-full border border-border bg-background px-3 py-1 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
-                >
-                  示例 {i + 1}
-                </button>
-              ))}
-            </div>
+            {promptChips.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {promptChips.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    title={p.content}
+                    onClick={() => setDesc(p.content.slice(0, cap.maxDescLength))}
+                    className="rounded-full border border-border bg-background px-3 py-1 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+                  >
+                    <Sparkles className="mr-1 inline h-3 w-3 text-primary" />
+                    {p.title}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         ) : (
           <div className="mt-5 space-y-4">

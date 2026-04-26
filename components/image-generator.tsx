@@ -28,13 +28,21 @@ export type ImageGeneratorModelData = {
   capabilities: ImageCapabilities
 }
 
+export type ImagePromptChip = {
+  id: string
+  title: string
+  content: string
+  category?: string | null
+}
+
 export type ImageGeneratorProps = {
   models: ImageGeneratorModelData[]
   defaultModelId?: string
   activeProviderName?: string | null
+  prompts?: ImagePromptChip[]
 }
 
-const EXAMPLES = [
+const DEFAULT_EXAMPLES = [
   "一只戴着圆框眼镜的橘色柯基犬坐在书桌前阅读《百年孤独》，皮克斯 3D 动画风格，暖色调灯光",
   "上海外滩的赛博朋克夜景海报，中文标题「未来已来」，霓虹色调，电影海报构图",
   "一朵正在盛开的牡丹花微距特写，花瓣上有细小水珠，柔和自然光，摄影杂志封面",
@@ -46,7 +54,11 @@ const QUALITY_EXTRA: Record<string, number> = {
   standard: 0,
 }
 
-export function ImageGenerator({ models, defaultModelId }: ImageGeneratorProps) {
+export function ImageGenerator({ models, defaultModelId, prompts = [] }: ImageGeneratorProps) {
+  const promptChips: ImagePromptChip[] =
+    prompts.length > 0
+      ? prompts
+      : DEFAULT_EXAMPLES.map((p, i) => ({ id: `default-${i}`, title: `示例 ${i + 1}`, content: p }))
   if (!models.length) {
     return (
       <div className="rounded-2xl border border-dashed border-border bg-card p-10 text-center text-sm text-muted-foreground">
@@ -214,19 +226,22 @@ export function ImageGenerator({ models, defaultModelId }: ImageGeneratorProps) 
             placeholder="描述你想要的图像，包括主体、风格、光线、构图、细节等"
             className="min-h-[120px] resize-none bg-background"
           />
-          <div className="mt-3 flex flex-wrap gap-2">
-            {EXAMPLES.map((p, i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={() => setPrompt(p)}
-                className="rounded-full border border-border bg-background px-3 py-1 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
-              >
-                <Sparkles className="mr-1 inline h-3 w-3 text-primary" />
-                示例 {i + 1}
-              </button>
-            ))}
-          </div>
+          {promptChips.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {promptChips.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  title={p.content}
+                  onClick={() => setPrompt(p.content.slice(0, cap.maxPromptLength))}
+                  className="rounded-full border border-border bg-background px-3 py-1 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+                >
+                  <Sparkles className="mr-1 inline h-3 w-3 text-primary" />
+                  {p.title}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Negative prompt */}

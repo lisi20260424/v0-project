@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { parseVideoCapabilities } from "@/lib/model-capabilities"
+import { getPromptsByType } from "@/lib/get-prompts"
 import { VideoGenerator, type VideoGeneratorModelData } from "./video-generator"
 
 type Props = {
@@ -13,7 +14,7 @@ type Props = {
 export async function VideoGeneratorServer({ provider }: Props = {}) {
   const supabase = await createClient()
 
-  const [providersRes, modelsRes] = await Promise.all([
+  const [providersRes, modelsRes, prompts] = await Promise.all([
     supabase
       .from("admin_providers")
       .select("name, display_name, sort_order")
@@ -25,6 +26,7 @@ export async function VideoGeneratorServer({ provider }: Props = {}) {
       .eq("enabled", true)
       .eq("model_type", "video")
       .order("sort_order", { ascending: true }),
+    getPromptsByType("video"),
   ])
 
   const providers = (providersRes.data ?? []).filter((p) => p.name)
@@ -69,6 +71,7 @@ export async function VideoGeneratorServer({ provider }: Props = {}) {
       models={generatorModels}
       defaultModelId={generatorModels[0]?.id}
       activeProviderName={activeProviderName}
+      prompts={prompts}
     />
   )
 }
