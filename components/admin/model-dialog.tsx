@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { AlertCircle } from "lucide-react"
+import { AlertCircle, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -25,6 +25,12 @@ import {
   type ModelType,
 } from "@/lib/admin"
 import type { AdminModel } from "@/components/admin/models-manager"
+
+type Provider = {
+  id: string
+  name: string
+  display_name: string
+}
 
 type FormState = {
   id?: string
@@ -60,13 +66,29 @@ export function ModelDialog({ open, onOpenChange, model, defaultModelType = "vid
   const [form, setForm] = useState<FormState>(() => initial(model, defaultModelType))
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [providers, setProviders] = useState<Provider[]>([])
+  const [loadingProviders, setLoadingProviders] = useState(true)
 
   useEffect(() => {
     if (open) {
       setForm(initial(model, defaultModelType))
       setError(null)
+      loadProviders()
     }
   }, [open, model, defaultModelType])
+
+  async function loadProviders() {
+    setLoadingProviders(true)
+    try {
+      const res = await fetch("/api/admin/providers")
+      const json = await res.json()
+      setProviders(json.providers ?? [])
+    } catch (err) {
+      console.error("加载供应商失败:", err)
+    } finally {
+      setLoadingProviders(false)
+    }
+  }
 
   const fields: ModelConfigField[] = useMemo(() => MODEL_CONFIG_SCHEMA[form.modelType] ?? [], [form.modelType])
 
@@ -95,7 +117,7 @@ export function ModelDialog({ open, onOpenChange, model, defaultModelType = "vid
       return
     }
     if (!form.provider.trim()) {
-      setError("请填写模型供应商")
+      setError("请选择模型供应商")
       return
     }
     if (!Number.isFinite(form.costPerUse) || form.costPerUse < 0) {
@@ -147,16 +169,35 @@ export function ModelDialog({ open, onOpenChange, model, defaultModelType = "vid
                 <Label htmlFor="m-provider" className="text-xs font-medium">
                   模型供应商
                 </Label>
-                <Input
-                  id="m-provider"
-                  size="sm"
+                <Select
                   value={form.provider}
-                  onChange={(e) => update("provider", e.target.value)}
-                  placeholder="例如：OpenAI"
-                  disabled={submitting}
-                  required
-                  className="h-8 text-sm"
-                />
+                  onValueChange={(v) => update("provider", v)}
+                  disabled={submitting || loadingProviders}
+                >
+                  <SelectTrigger id="m-provider" className="h-8 text-sm">
+                    {loadingProviders ? (
+                      <div className="flex items-center gap-2">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        <span>加载中...</span>
+                      </div>
+                    ) : (
+                      <SelectValue placeholder="选择供应商" />
+                    )}
+                  </SelectTrigger>
+                  <SelectContent>
+                    {providers.length === 0 ? (
+                      <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                        {loadingProviders ? "加载中..." : "暂无供应商"}
+                      </div>
+                    ) : (
+                      providers.map((p) => (
+                        <SelectItem key={p.id} value={p.name}>
+                          {p.display_name}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="flex flex-col gap-1.5">

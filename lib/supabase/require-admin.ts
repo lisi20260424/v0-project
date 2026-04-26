@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
-import { isAdminEmail } from "@/lib/admin"
+import { isAdminEmail, getAdminEmails } from "@/lib/admin"
 
 /**
  * 服务端鉴权：要求当前会话是管理员，否则重定向。
@@ -16,7 +16,19 @@ export async function requireAdmin() {
     redirect("/auth/login?next=/settings")
   }
 
-  if (!isAdminEmail(user.email)) {
+  const adminEmails = getAdminEmails()
+  const userEmail = user.email?.trim().toLowerCase()
+  const isAdmin = isAdminEmail(user.email)
+
+  console.log("[v0] Admin check:", {
+    userEmail,
+    adminEmails,
+    isAdmin,
+    envValue: process.env.ADMIN_EMAILS,
+  })
+
+  if (!isAdmin) {
+    console.log("[v0] User not admin, redirecting from /admin/settings to /settings/profile")
     redirect("/settings/profile")
   }
 
