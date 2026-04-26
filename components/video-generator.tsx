@@ -186,14 +186,13 @@ export function VideoGenerator({
     setTimeout(() => setLoading(false), 2200)
   }
 
-  const aspectClass =
-    ratio.ratio === "9:16"
-      ? "aspect-[9/16] w-48"
-      : ratio.ratio === "16:9"
-        ? "aspect-video w-full"
-        : ratio.ratio === "1:1"
-          ? "aspect-square w-56"
-          : "aspect-video w-full"
+  // 根据 ratio.w/h 动态计算宽高比；竖屏用窄宽度避免太高，方屏适中，横屏占满
+  const ratioW = ratio?.w ?? 16
+  const ratioH = ratio?.h ?? 9
+  const isPortrait = ratioH > ratioW
+  const isSquare = ratioW === ratioH
+  const previewWidthClass = isPortrait ? "w-48" : isSquare ? "w-56" : "w-full"
+  const previewAspectStyle = { aspectRatio: `${ratioW}/${ratioH}` } as React.CSSProperties
 
   const updateMultiAt = (i: number, v: string | null) => {
     setMultiImages((prev) => {
@@ -539,8 +538,9 @@ export function VideoGenerator({
           <div
             className={cn(
               "relative mx-auto flex items-center justify-center overflow-hidden rounded-xl border border-border bg-muted",
-              aspectClass,
+              previewWidthClass,
             )}
+            style={previewAspectStyle}
           >
             {loading ? (
               <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
