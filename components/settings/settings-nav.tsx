@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { User, ShieldCheck, SlidersHorizontal, Trash2, Plug, Cpu, Sparkles } from "lucide-react"
+import { User, ShieldCheck, SlidersHorizontal, Trash2, Settings } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useUser } from "@/components/user-provider"
 
@@ -21,11 +21,7 @@ const ACCOUNT_ITEMS: NavItem[] = [
   { label: "账号注销", href: "/settings/danger", icon: Trash2, desc: "永久删除账户", danger: true },
 ]
 
-const ADMIN_ITEMS: NavItem[] = [
-  { label: "API 网关", href: "/settings/admin/gateway", icon: Plug, desc: "密钥与网关地址" },
-  { label: "模型配置", href: "/settings/admin/models", icon: Cpu, desc: "管理平台可用模型" },
-  { label: "提示词配置", href: "/settings/admin/prompts", icon: Sparkles, desc: "快捷提示词管理" },
-]
+const ADMIN_ITEM = { label: "后台设置", href: "/admin/settings/gateway", icon: Settings, desc: "API、模型、提示词" }
 
 export function SettingsNav() {
   const pathname = usePathname()
@@ -42,10 +38,8 @@ export function SettingsNav() {
 
       {isAdmin ? (
         <div className="flex flex-col gap-1">
-          <p className="px-3 pb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">管理员</p>
-          {ADMIN_ITEMS.map((item) => (
-            <NavLink key={item.href} item={item} active={pathname === item.href} />
-          ))}
+          <p className="px-3 pb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">其他</p>
+          <NavLink item={ADMIN_ITEM} active={pathname.startsWith("/admin/settings")} />
         </div>
       ) : null}
     </nav>
