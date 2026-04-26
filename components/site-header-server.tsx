@@ -1,14 +1,14 @@
 import { Suspense } from 'react'
 import { SiteHeader } from '@/components/site-header'
 import type { Tool } from '@/lib/tools'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { createClient } from '@/lib/supabase/server'
 
 async function SiteHeaderContent() {
   try {
-    const admin = createAdminClient()
+    const supabase = await createClient()
     
-    // 获取所有启用的模型
-    const { data: models, error } = await admin
+    // 获取所有启用的模型（依赖 RLS 策略 admin_models_select_enabled）
+    const { data: models, error } = await supabase
       .from('admin_models')
       .select('*')
       .eq('enabled', true)
