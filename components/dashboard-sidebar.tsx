@@ -12,7 +12,9 @@ import {
   Settings,
   Gift,
   HelpCircle,
-  Cog,
+  Plug,
+  Cpu,
+  Sparkles,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useUser } from "@/components/user-provider"
@@ -57,8 +59,13 @@ const sections: SidebarSection[] = [
 ]
 
 const ADMIN_SECTION: SidebarSection = {
-  label: "管理",
-  items: [{ href: "/admin-settings", label: "后台设置", icon: Cog }],
+  label: "后台设置",
+  items: [
+    { href: "/admin-settings/gateway", label: "API 网关", icon: Plug },
+    { href: "/admin-settings/gateway/providers", label: "供应商配置", icon: Sparkles },
+    { href: "/admin-settings/models", label: "模型配置", icon: Cpu },
+    { href: "/admin-settings/prompts", label: "提示词配置", icon: Sparkles },
+  ],
 }
 
 export function DashboardSidebar() {
