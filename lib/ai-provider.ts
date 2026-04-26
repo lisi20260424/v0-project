@@ -12,6 +12,7 @@ export type AIProviderConfig = {
 
 /**
  * 根据模型 provider 和配置选择对应的 AI 模型实例
+ * modelId 应该是实际的 AI SDK 模型标识（如 gpt-4-vision、claude-3-opus-20240229）
  * 目前支持 openai 和 anthropic；如需扩展，在此追加分支
  */
 export function resolveModel(config: AIProviderConfig): LanguageModel {
@@ -19,9 +20,9 @@ export function resolveModel(config: AIProviderConfig): LanguageModel {
 
   switch (provider.toLowerCase()) {
     case "openai":
-      return openai(modelId)
+      return openai(modelId || "gpt-4-turbo")
     case "anthropic":
-      return anthropic(modelId)
+      return anthropic(modelId || "claude-3-opus-20240229")
     default:
       throw new Error(`Unsupported AI provider: ${provider}`)
   }

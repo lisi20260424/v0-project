@@ -12,10 +12,13 @@ export async function POST(req: Request) {
     // 获取模型信息（校验模型是否存在且启用）
     const model = await getModelInfo(modelId)
 
+    // 从 config 中读取实际的 AI SDK 模型 ID，或使用默认值
+    const actualModelId = (model.config?.model_id as string) || model.name
+
     // 构建模型配置
     const aiModel = resolveModel({
       provider: model.provider,
-      modelId: model.name,
+      modelId: actualModelId,
     })
 
     // 调用 AI SDK 进行流式生成
