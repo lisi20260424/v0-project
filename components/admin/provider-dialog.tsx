@@ -125,17 +125,30 @@ function initial(provider?: AdminProvider): FormState {
 }
 
 export function ProviderDialog({ open, onOpenChange, provider, onSave }: Props) {
-  const isEdit = !!provider
+  const isEdit = !!provider?.id
   const [form, setForm] = useState<FormState>(initial(provider))
+  const [selectedType, setSelectedType] = useState<ProviderModelType>("video")
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (open) {
-      setForm(initial(provider))
+      const initialForm = initial(provider)
+      setForm(initialForm)
       setError(null)
+      
+      // 编辑现有供应商时，自动选中第一个有配置的类型
+      if (isEdit) {
+        const firstConfiguredType = MODEL_TYPES.find((t) => {
+          const ui = initialForm.uiByType[t]
+          return ui.icon || ui.tag || ui.cost || ui.description
+        })
+        setSelectedType(firstConfiguredType || "video")
+      } else {
+        setSelectedType("video")
+      }
     }
-  }, [open, provider])
+  }, [open, provider, isEdit])
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }))
@@ -242,7 +255,7 @@ export function ProviderDialog({ open, onOpenChange, provider, onSave }: Props) 
                 <p className="text-xs font-medium">展示配置</p>
                 <p className="text-[10px] text-muted-foreground">不同类型可独立配置图标 / 标签 / 跳转</p>
               </div>
-              <Tabs defaultValue="video" className="w-full">
+              <Tabs value={selectedType} onValueChange={setSelectedType} className="w-full">
                 <TabsList className="grid grid-cols-3 h-8">
                   {MODEL_TYPES.map((t) => (
                     <TabsTrigger key={t} value={t} className="text-xs">
