@@ -6,7 +6,7 @@ import type { Tool } from '@/lib/tools'
 
 async function ToolsGridContent() {
   try {
-    const res = await fetch('/api/models/grouped', { cache: 'revalidate' })
+    const res = await fetch('/api/models/grouped', { next: { revalidate: 3600 } })
     const data = await res.json()
     
     if (!data.grouped || Object.keys(data.grouped).length === 0) {
