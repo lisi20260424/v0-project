@@ -54,10 +54,12 @@ export function LoginForm() {
     setLoading(true)
     try {
       const supabase = createClient()
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) throw error
-      router.push(next)
-      router.refresh()
+      if (data?.session) {
+        router.push(next)
+        router.refresh()
+      }
     } catch (err) {
       setError(translateAuthError(err, "登录失败，请检查账号密码"))
       setLoading(false)
@@ -102,14 +104,16 @@ export function LoginForm() {
     setLoading(true)
     try {
       const supabase = createClient()
-      const { error } = await supabase.auth.verifyOtp({
+      const { data, error } = await supabase.auth.verifyOtp({
         email,
         token: code,
         type: "email",
       })
       if (error) throw error
-      router.push(next)
-      router.refresh()
+      if (data?.session) {
+        router.push(next)
+        router.refresh()
+      }
     } catch (err) {
       setError(translateAuthError(err, "验证码错误或已过期"))
       setOtp("")
