@@ -22,29 +22,31 @@ export function AdminSettingsNav() {
   const pathname = usePathname()
 
   return (
-    <nav className="rounded-2xl border border-border bg-card p-3">
-      <div className="flex flex-col gap-1">
-        {ADMIN_NAV_ITEMS.map((item) => {
-          const Icon = item.icon
-          const active = pathname === item.href
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "group flex items-start gap-3 rounded-lg border border-transparent px-3 py-2.5 transition-colors",
-                active ? "border-border bg-secondary" : "hover:border-border hover:bg-secondary/60",
-              )}
-            >
-              <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-              <div className="flex min-w-0 flex-col gap-0.5">
-                <span className={cn("text-sm font-medium", active && "text-primary")}>{item.label}</span>
-                <span className="text-[11px] text-muted-foreground">{item.desc}</span>
-              </div>
-            </Link>
-          )
-        })}
-      </div>
+    <nav className="space-y-2">
+      {ADMIN_NAV_ITEMS.map((item) => {
+        const Icon = item.icon
+        const active = pathname === item.href
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            className={cn(
+              "flex items-center gap-3 rounded-lg border px-4 py-3 transition-all",
+              active
+                ? "border-primary bg-primary/5"
+                : "border-border bg-card hover:border-primary/40 hover:bg-secondary",
+            )}
+          >
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-primary/20 to-accent/10">
+              <Icon className={cn("h-5 w-5", active ? "text-primary" : "text-muted-foreground")} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className={cn("text-sm font-medium", active && "text-primary")}>{item.label}</div>
+              <div className="text-[11px] text-muted-foreground">{item.desc}</div>
+            </div>
+          </Link>
+        )
+      })}
     </nav>
   )
 }
