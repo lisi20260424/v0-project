@@ -1,29 +1,43 @@
-'use client'
-
-import { Suspense, useState, useEffect } from 'react'
+import { Suspense } from 'react'
 import { ToolsGrid } from '@/components/tools-grid'
 import type { Tool } from '@/lib/tools'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 async function ToolsGridContent() {
   try {
-    const res = await fetch('/api/models/grouped', { next: { revalidate: 3600 } })
-    const data = await res.json()
+    const admin = createAdminClient()
     
-    if (!data.grouped || Object.keys(data.grouped).length === 0) {
+    // 获取所有启用的模型
+    const { data: models, error } = await admin
+      .from('admin_models')
+      .select('*')
+      .eq('enabled', true)
+      .order('sort_order', { ascending: true })
+    
+    if (error) {
+      console.error('[v0] 获取模型失败:', error)
       return <ToolsGrid />
     }
 
-    // 将分组数据转换为 TOOLS 格式
+    if (!models || models.length === 0) {
+      return <ToolsGrid />
+    }
+
+    // 按 model_type 分组
+    const groupedByType: Record<string, any[]> = {}
+    for (const model of models) {
+      if (!groupedByType[model.model_type]) {
+        groupedByType[model.model_type] = []
+      }
+      groupedByType[model.model_type].push(model)
+    }
+
+    // 转换为 TOOLS 格式
     const tools: Tool[] = []
     const categoryMap: Record<string, 'video' | 'image' | 'audio'> = {
       video: 'video',
       image: 'image',
       music: 'audio',
-    }
-    const iconMap: Record<string, any> = {
-      video: 'Video',
-      image: 'ImageIcon',
-      music: 'Music2',
     }
     const accentMap: Record<string, string> = {
       video: 'from-sky-500/30 to-indigo-500/10',
@@ -31,27 +45,21 @@ async function ToolsGridContent() {
       music: 'from-cyan-500/30 to-blue-500/10',
     }
 
-    // 遍历分组数据，按供应商聚合
-    for (const [modelType, groupData] of Object.entries(data.grouped)) {
+    for (const [modelType, modelList] of Object.entries(groupedByType)) {
       const category = categoryMap[modelType] || 'video'
       
-      for (const [provider, providerData] of Object.entries(groupData.providers || {})) {
-        const models = (providerData as any).models || []
-        
-        // 每个供应商下的模型都转换为 Tool 对象
-        for (const model of models) {
-          tools.push({
-            id: model.id,
-            name: model.name,
-            brand: provider,
-            desc: model.description || '',
-            href: getCategoryHref(category, model.id),
-            category: category,
-            icon: getIconForModel(modelType),
-            accent: accentMap[modelType] || 'from-primary/30 to-accent/10',
-            cost: `${model.cost_per_use} 点起`,
-          })
-        }
+      for (const model of modelList) {
+        tools.push({
+          id: model.id,
+          name: model.name,
+          brand: model.provider,
+          desc: model.description || '',
+          href: getCategoryHref(category, model.id),
+          category: category,
+          icon: getIconForModel(modelType),
+          accent: accentMap[modelType] || 'from-primary/30 to-accent/10',
+          cost: `${model.cost_per_use} 点起`,
+        })
       }
     }
 
