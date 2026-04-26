@@ -14,19 +14,19 @@ export async function POST(req: Request) {
     // 获取网关配置（URL + API Key）
     const gateway = await getGatewayConfig()
 
-    // 调用 New API 网关的聊天完成接口
+    // 从 config 中读取 API 模型 ID，用于调用网关接口
+    const apiModelId = (model.config?.api_model_id as string) || model.name
+
+    // 调用 New API 网关的视频生成接口
     const response = await callAIGateway(
       {
         baseURL: gateway.base_url,
         apiKey: gateway.api_key,
-        modelId: model.name,
+        modelId: apiModelId,
+        modelType: "video",
       },
       {
-        system: "You are a professional video generation prompt engineer. Create detailed, cinematic video generation prompts based on user input.",
         prompt: prompt.slice(0, 3000),
-        maxTokens: 1500,
-        temperature: 0.8,
-        stream: true,
       }
     )
 
