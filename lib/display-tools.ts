@@ -92,12 +92,14 @@ export async function getDisplayTools(supabase: SupabaseLike): Promise<Tool[]> {
     const icon = (ui.icon as string | undefined) || defaultIconNameForType(modelType)
     const accent = (ui.accent as string | undefined) || defaultAccentForType(modelType)
 
+    // 默认跳转：统一生成页 + provider 参数；ui_href 优先（管理员手动配置）
+    const defaultHref = `/${modelType}?provider=${encodeURIComponent(providerName)}`
     tools.push({
       id: `${providerName}-${modelType}`,
       name: displayName,
       brand: defaultModel.name,
       desc: (ui.description as string | undefined) ?? "",
-      href: (ui.href as string | undefined) || `/${modelType}`,
+      href: (ui.href as string | undefined) || defaultHref,
       category: TYPE_TO_CATEGORY[modelType],
       icon,
       accent,
