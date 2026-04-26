@@ -18,6 +18,21 @@ export const CATEGORY_LABEL: Record<ToolCategory, string> = {
   audio: "音乐生成",
 }
 
+export type Tool = {
+  id: string
+  name: string
+  brand: string
+  desc: string
+  href: string
+  category: ToolCategory
+  /** 图标既支持直接传入的 LucideIcon 组件（mock 数据），
+   *  也支持图标名字符串（来自数据库 config.ui_icon）。 */
+  icon: LucideIcon | string
+  accent: string
+  cost: string
+  tag?: string
+}
+
 export const TOOLS: Tool[] = [
   {
     id: "veo",

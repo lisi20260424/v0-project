@@ -1,86 +1,65 @@
-import { Suspense } from 'react'
-import { SiteHeader } from '@/components/site-header'
-import type { Tool } from '@/lib/tools'
-import { createClient } from '@/lib/supabase/server'
+import { Suspense } from "react"
+import { SiteHeader } from "@/components/site-header"
+import type { Tool, ToolCategory } from "@/lib/tools"
+import { createClient } from "@/lib/supabase/server"
+import { defaultIconNameForType, defaultAccentForType } from "@/lib/icon-map"
+
+const MODEL_TYPE_TO_CATEGORY: Record<string, ToolCategory> = {
+  video: "video",
+  image: "image",
+  music: "audio",
+}
+
+function modelToTool(model: any): Tool | null {
+  const category = MODEL_TYPE_TO_CATEGORY[model.model_type]
+  if (!category) return null
+
+  const config = (model.config ?? {}) as Record<string, unknown>
+  const uiIcon = (config.ui_icon as string | undefined) || defaultIconNameForType(model.model_type)
+  const uiAccent = (config.ui_accent as string | undefined) || defaultAccentForType(model.model_type)
+  const uiTag = (config.ui_tag as string | undefined) || undefined
+  const uiHref = (config.ui_href as string | undefined) || `/${category}/${model.id}`
+
+  return {
+    id: model.id,
+    name: model.name,
+    brand: model.provider,
+    desc: model.description ?? "",
+    href: uiHref,
+    category,
+    icon: uiIcon,
+    accent: uiAccent,
+    cost: `${model.cost_per_use} 点起`,
+    tag: uiTag,
+  }
+}
 
 async function SiteHeaderContent() {
   try {
     const supabase = await createClient()
-    
-    // 获取所有启用的模型（依赖 RLS 策略 admin_models_select_enabled）
     const { data: models, error } = await supabase
-      .from('admin_models')
-      .select('*')
-      .eq('enabled', true)
-      .order('sort_order', { ascending: true })
-    
+      .from("admin_models")
+      .select("*")
+      .eq("enabled", true)
+      .order("model_type", { ascending: true })
+      .order("sort_order", { ascending: true })
+
     if (error) {
-      console.error('[v0] 获取模型失败:', error)
+      console.error("[v0] site-header-server 获取模型失败:", error.message)
       return <SiteHeader />
     }
-
     if (!models || models.length === 0) {
       return <SiteHeader />
     }
 
-    // 转换为 TOOLS 格式
-    const tools: Tool[] = []
-    const categoryMap: Record<string, 'video' | 'image' | 'audio'> = {
-      video: 'video',
-      image: 'image',
-      music: 'audio',
-    }
-    const accentMap: Record<string, string> = {
-      video: 'from-sky-500/30 to-indigo-500/10',
-      image: 'from-violet-500/30 to-fuchsia-500/10',
-      music: 'from-cyan-500/30 to-blue-500/10',
-    }
-
-    for (const model of models) {
-      const category = categoryMap[model.model_type] || 'video'
-      
-      tools.push({
-        id: model.id,
-        name: model.name,
-        brand: model.provider,
-        desc: model.description || '',
-        href: getCategoryHref(category, model.id),
-        category: category,
-        icon: getIconForModel(model.model_type),
-        accent: accentMap[model.model_type] || 'from-primary/30 to-accent/10',
-        cost: `${model.cost_per_use} 点起`,
-        tag: undefined,
-      })
-    }
+    const tools = models.map(modelToTool).filter((t): t is Tool => t !== null)
+    if (tools.length === 0) return <SiteHeader />
 
     return <SiteHeader models={tools} />
-  } catch (error) {
-    console.error('[v0] 加载模型数据失败:', error)
+  } catch (err) {
+    console.error("[v0] site-header-server 异常:", err)
     return <SiteHeader />
   }
-}
-
-function getCategoryHref(category: string, modelId: string): string {
-  const modelPageMap: Record<string, string> = {
-    'sora': '/sora',
-    'kling': '/kling',
-    'veo': '/veo',
-    'grok': '/grok',
-    'gpt-image': '/image',
-    'nano-banana': '/image?model=nano-banana',
-    'flux': '/image?model=flux',
-    'suno': '/suno',
-  }
-  return modelPageMap[modelId] || `/${category}/${modelId}`
-}
-
-function getIconForModel(type: string) {
-  const icons: Record<string, any> = {
-    video: 'Video',
-    image: 'ImageIcon',
-    music: 'Music2',
-  }
-  return icons[type] || 'Sparkles'
 }
 
 export function SiteHeaderServer() {

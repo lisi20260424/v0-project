@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { TOOLS, CATEGORY_LABEL, type ToolCategory, type Tool } from "@/lib/tools"
+import { resolveIcon } from "@/lib/icon-map"
 import { useMembership } from "@/components/membership-provider"
 import { useUser } from "@/components/user-provider"
 
@@ -75,7 +76,7 @@ export function SiteHeader({ models }: SiteHeaderProps) {
                         {g.label}
                       </DropdownMenuLabel>
                       {g.items.map((t) => {
-                        const Icon = t.icon
+                        const Icon = resolveIcon(t.icon)
                         return (
                           <DropdownMenuItem key={t.id} asChild className="gap-3 rounded-md py-2">
                             <Link href={t.href}>
