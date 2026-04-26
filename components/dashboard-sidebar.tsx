@@ -105,8 +105,12 @@ export function DashboardSidebar() {
 
 function SidebarLink({ item, pathname }: { item: SidebarItem; pathname: string }) {
   const Icon = item.icon
-  const active =
-    pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(`${item.href}/`))
+  
+  // 对于后台设置的菜单项，使用精确匹配；其他菜单项支持前缀匹配
+  const isAdminItem = item.href.startsWith("/admin-settings/")
+  const active = isAdminItem 
+    ? pathname === item.href 
+    : pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(`${item.href}/`))
 
   return (
     <li>
