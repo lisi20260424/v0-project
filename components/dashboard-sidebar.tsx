@@ -12,12 +12,26 @@ import {
   Settings,
   Gift,
   HelpCircle,
-  Cog,
+  Plug,
+  Cpu,
+  Sparkles,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useUser } from "@/components/user-provider"
 
-const sections = [
+type SidebarItem = {
+  href: string
+  label: string
+  icon: typeof LayoutDashboard
+  badge?: string
+}
+
+type SidebarSection = {
+  label: string
+  items: SidebarItem[]
+}
+
+const sections: SidebarSection[] = [
   {
     label: "工作台",
     items: [
@@ -42,19 +56,13 @@ const sections = [
       { href: "/help", label: "帮助中心", icon: HelpCircle },
     ],
   },
-] as const
+]
 
-type AdminItem = {
-  href: string
-  label: string
-  icon: typeof Cog
-}
-
-const ADMIN_ITEM: AdminItem = {
-  href: "/admin/settings/gateway",
-  label: "后台设置",
-  icon: Cog,
-}
+const ADMIN_ITEMS: SidebarItem[] = [
+  { href: "/admin/settings/gateway", label: "API 网关", icon: Plug },
+  { href: "/admin/settings/models", label: "模型配置", icon: Cpu },
+  { href: "/admin/settings/prompts", label: "提示词配置", icon: Sparkles },
+]
 
 export function DashboardSidebar() {
   const pathname = usePathname()
@@ -63,72 +71,65 @@ export function DashboardSidebar() {
   return (
     <nav aria-label="用户中心导航" className="rounded-2xl border border-border bg-card p-3">
       {sections.map((section) => (
-        <div key={section.label} className="mb-3 last:mb-0">
+        <div key={section.label} className="mb-3">
           <div className="px-3 pb-1 pt-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
             {section.label}
           </div>
           <ul className="space-y-0.5">
-            {section.items.map((item) => {
-              const Icon = item.icon
-              const active =
-                pathname === item.href ||
-                (item.href !== "/dashboard" && pathname.startsWith(`${item.href}/`))
-              return (
-                <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    className={cn(
-                      "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors",
-                      active
-                        ? "bg-primary/10 font-medium text-primary"
-                        : "text-foreground/80 hover:bg-secondary hover:text-foreground",
-                    )}
-                  >
-                    <Icon className="h-4 w-4" />
-                    <span className="flex-1">{item.label}</span>
-                    {"badge" in item && item.badge && (
-                      <span
-                        className={cn(
-                          "rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
-                          item.badge === "NEW"
-                            ? "bg-accent/15 text-accent"
-                            : "bg-primary/15 text-primary tabular-nums",
-                        )}
-                      >
-                        {item.badge}
-                      </span>
-                    )}
-                  </Link>
-                </li>
-              )
-            })}
+            {section.items.map((item) => (
+              <SidebarLink key={item.href} item={item} pathname={pathname} />
+            ))}
           </ul>
         </div>
       ))}
 
       {isAdmin && (
-        <div className="mb-0 border-t border-border pt-3 mt-3">
+        <div className="border-t border-border pt-3 mt-3">
           <div className="px-3 pb-1 pt-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-            管理员
+            后台设置
           </div>
           <ul className="space-y-0.5">
-            <li>
-              <Link
-                href={ADMIN_ITEM.href}
-                className={cn(
-                  "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors",
-                  pathname.startsWith("/admin/settings")
-                    ? "bg-primary/10 font-medium text-primary"
-                    : "text-foreground/80 hover:bg-secondary hover:text-foreground",
-                )}
-              >
-                <ADMIN_ITEM.icon className="h-4 w-4" />
-                <span className="flex-1">{ADMIN_ITEM.label}</span>
-              </Link>
-            </li>
+            {ADMIN_ITEMS.map((item) => (
+              <SidebarLink key={item.href} item={item} pathname={pathname} />
+            ))}
           </ul>
         </div>
       )}
     </nav>
+  )
+}
+
+function SidebarLink({ item, pathname }: { item: SidebarItem; pathname: string }) {
+  const Icon = item.icon
+  const active =
+    pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(`${item.href}/`))
+
+  return (
+    <li>
+      <Link
+        href={item.href}
+        className={cn(
+          "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors",
+          active
+            ? "bg-primary/10 font-medium text-primary"
+            : "text-foreground/80 hover:bg-secondary hover:text-foreground",
+        )}
+      >
+        <Icon className="h-4 w-4" />
+        <span className="flex-1">{item.label}</span>
+        {item.badge && (
+          <span
+            className={cn(
+              "rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
+              item.badge === "NEW"
+                ? "bg-accent/15 text-accent"
+                : "bg-primary/15 text-primary tabular-nums",
+            )}
+          >
+            {item.badge}
+          </span>
+        )}
+      </Link>
+    </li>
   )
 }
