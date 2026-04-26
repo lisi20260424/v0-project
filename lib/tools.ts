@@ -6,24 +6,16 @@ import {
   ImageIcon,
   Banana,
   Music2,
-  MessageSquare,
   Wand2,
   Play,
 } from "lucide-react"
 
-export type ToolCategory = "video" | "image" | "audio" | "chat"
+export type ToolCategory = "video" | "image" | "audio"
 
-export type Tool = {
-  id: string
-  name: string
-  brand: string
-  desc: string
-  href: string
-  category: ToolCategory
-  tag?: string
-  icon: LucideIcon
-  accent: string // tailwind gradient classes
-  cost: string
+export const CATEGORY_LABEL: Record<ToolCategory, string> = {
+  video: "视频生成",
+  image: "图像生成",
+  audio: "音乐生成",
 }
 
 export const CATEGORY_LABEL: Record<ToolCategory, string> = {
@@ -127,16 +119,5 @@ export const TOOLS: Tool[] = [
     icon: Music2,
     accent: "from-cyan-500/30 to-blue-500/10",
     cost: "8 点起",
-  },
-  {
-    id: "chat",
-    name: "AI 对话",
-    brand: "GPT-5 · Claude · Gemini",
-    desc: "主流大模型一键切换，长文档总结、代码编写、翻译全能。",
-    href: "/chat",
-    category: "chat",
-    icon: MessageSquare,
-    accent: "from-primary/30 to-accent/10",
-    cost: "0.1 点/千字",
   },
 ]

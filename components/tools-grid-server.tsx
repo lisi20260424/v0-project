@@ -1,43 +1,68 @@
 'use client'
 
-import { Suspense } from 'react'
-import { getModels } from '@/lib/get-models'
+import { Suspense, useState, useEffect } from 'react'
 import { ToolsGrid } from '@/components/tools-grid'
+import type { Tool } from '@/lib/tools'
 
 async function ToolsGridContent() {
-  const models = await getModels()
-  
-  // 如果数据库中没有模型，返回 null，tools-grid 会使用 mock 数据
-  if (models.length === 0) {
-    return <ToolsGrid />
-  }
+  try {
+    const res = await fetch('/api/models/grouped', { cache: 'revalidate' })
+    const data = await res.json()
+    
+    if (!data.grouped || Object.keys(data.grouped).length === 0) {
+      return <ToolsGrid />
+    }
 
-  // 转换 models 为 TOOLS 格式
-  const tools = models.map((m) => {
-    const categoryMap: Record<string, 'video' | 'image' | 'audio' | 'chat'> = {
+    // 将分组数据转换为 TOOLS 格式
+    const tools: Tool[] = []
+    const categoryMap: Record<string, 'video' | 'image' | 'audio'> = {
       video: 'video',
       image: 'image',
       music: 'audio',
     }
-    
-    return {
-      id: m.id,
-      name: m.name,
-      brand: m.provider,
-      desc: m.desc,
-      href: getCategoryHref(categoryMap[m.modelType] || 'chat', m.id),
-      category: categoryMap[m.modelType] || 'chat' as const,
-      icon: getIconForModel(m.modelType),
-      accent: getAccentForModel(m.modelType),
-      cost: `${m.price} 点起`,
+    const iconMap: Record<string, any> = {
+      video: 'Video',
+      image: 'ImageIcon',
+      music: 'Music2',
     }
-  })
+    const accentMap: Record<string, string> = {
+      video: 'from-sky-500/30 to-indigo-500/10',
+      image: 'from-violet-500/30 to-fuchsia-500/10',
+      music: 'from-cyan-500/30 to-blue-500/10',
+    }
 
-  return <ToolsGrid models={tools} />
+    // 遍历分组数据，按供应商聚合
+    for (const [modelType, groupData] of Object.entries(data.grouped)) {
+      const category = categoryMap[modelType] || 'video'
+      
+      for (const [provider, providerData] of Object.entries(groupData.providers || {})) {
+        const models = (providerData as any).models || []
+        
+        // 每个供应商下的模型都转换为 Tool 对象
+        for (const model of models) {
+          tools.push({
+            id: model.id,
+            name: model.name,
+            brand: provider,
+            desc: model.description || '',
+            href: getCategoryHref(category, model.id),
+            category: category,
+            icon: getIconForModel(modelType),
+            accent: accentMap[modelType] || 'from-primary/30 to-accent/10',
+            cost: `${model.cost_per_use} 点起`,
+          })
+        }
+      }
+    }
+
+    return <ToolsGrid models={tools} />
+  } catch (error) {
+    console.error('[v0] 加载模型数据失败:', error)
+    return <ToolsGrid />
+  }
 }
 
 function getCategoryHref(category: string, modelId: string): string {
-  // 根据模型 ID 返回对应的页面 URL
   const modelPageMap: Record<string, string> = {
     'sora': '/sora',
     'kling': '/kling',
@@ -47,9 +72,8 @@ function getCategoryHref(category: string, modelId: string): string {
     'nano-banana': '/image?model=nano-banana',
     'flux': '/image?model=flux',
     'suno': '/suno',
-    'chat': '/chat',
   }
-  return modelPageMap[modelId] || `/${modelId}`
+  return modelPageMap[modelId] || `/${category}/${modelId}`
 }
 
 function getIconForModel(type: string) {
@@ -57,19 +81,8 @@ function getIconForModel(type: string) {
     video: 'Video',
     image: 'ImageIcon',
     music: 'Music2',
-    chat: 'MessageSquare',
   }
   return icons[type] || 'Sparkles'
-}
-
-function getAccentForModel(type: string): string {
-  const accents: Record<string, string> = {
-    video: 'from-sky-500/30 to-indigo-500/10',
-    image: 'from-violet-500/30 to-fuchsia-500/10',
-    music: 'from-cyan-500/30 to-blue-500/10',
-    chat: 'from-primary/30 to-accent/10',
-  }
-  return accents[type] || 'from-primary/30 to-accent/10'
 }
 
 export function ToolsGridServer() {

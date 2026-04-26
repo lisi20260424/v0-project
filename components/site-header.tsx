@@ -31,7 +31,7 @@ export function SiteHeader({ models }: SiteHeaderProps) {
     annual: "年会员",
     lifetime: "终身会员",
   }
-  const grouped = (["video", "image", "audio", "chat"] as ToolCategory[]).map((c) => ({
+  const grouped = (["video", "image", "audio"] as ToolCategory[]).map((c) => ({
     category: c,
     label: CATEGORY_LABEL[c],
     items: tools.filter((t) => t.category === c),

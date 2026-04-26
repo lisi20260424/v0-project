@@ -9,7 +9,7 @@ export type ToolsGridProps = {
 
 export function ToolsGrid({ models }: ToolsGridProps) {
   const tools = models || TOOLS
-  const categories: ToolCategory[] = ["video", "image", "audio", "chat"]
+  const categories: ToolCategory[] = ["video", "image", "audio"]
 
   return (
     <section id="tools" className="border-b border-border/60 bg-muted/30">
