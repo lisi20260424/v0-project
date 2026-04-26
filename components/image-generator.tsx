@@ -19,43 +19,19 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 
-type ImageModelId = "gpt-image" | "nano-banana" | "flux"
-
-const MODELS: {
-  id: ImageModelId
+export type GeneratorModel = {
+  id: string
   name: string
-  brand: string
-  icon: typeof ImageLucide
+  brand?: string
   desc: string
   price: number
   tag?: string
-}[] = [
-  {
-    id: "gpt-image",
-    name: "GPT-Image 2",
-    brand: "OpenAI",
-    icon: ImageLucide,
-    desc: "全新多模态，支持精准中文文字、海报、Logo 渲染。",
-    price: 4,
-    tag: "新",
-  },
-  {
-    id: "nano-banana",
-    name: "Nano Banana",
-    brand: "Google",
-    icon: Banana,
-    desc: "交互式编辑，多图融合、局部重绘、风格迁移。",
-    price: 5,
-  },
-  {
-    id: "flux",
-    name: "Flux 1.1",
-    brand: "Black Forest Labs",
-    icon: FluxIcon,
-    desc: "摄影级真实质感，艺术创作首选，开源顶级模型。",
-    price: 3,
-  },
-]
+}
+
+export type ImageGeneratorProps = {
+  models: GeneratorModel[]
+  defaultModelId?: string
+}
 
 const STYLES = ["自动", "写实摄影", "电影感", "赛博朋克", "动漫", "水彩", "油画", "3D 渲染", "像素艺术"]
 

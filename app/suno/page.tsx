@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import { ToolPageShell } from "@/components/tool-page-shell"
-import { MusicGenerator } from "@/components/music-generator"
+import { MusicGeneratorServer } from "@/components/music-generator-server"
 
 export const metadata: Metadata = {
   title: "Suno 音乐生成 · 灵境 AI",
@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 export default function SunoPage() {
   return (
     <ToolPageShell toolId="suno">
-      <MusicGenerator />
+      <MusicGeneratorServer />
     </ToolPageShell>
   )
 }
