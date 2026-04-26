@@ -25,7 +25,7 @@ export async function POST(req: Request) {
   const admin = createAdminClient()
 
   const form = await req.json()
-  const { id: userId } = await admin.auth.admin.getUserById((await admin.auth.getUser()).data.user?.id ?? "")
+  const { data: { user } } = await admin.auth.getUser()
 
   const { data, error } = await admin
     .from("admin_providers")
@@ -36,7 +36,7 @@ export async function POST(req: Request) {
         description: form.description || null,
         enabled: form.enabled ?? true,
         sort_order: form.sortOrder ?? 0,
-        created_by: (await admin.auth.getUser()).data.user?.id,
+        created_by: user?.id,
       },
     ])
     .select()
