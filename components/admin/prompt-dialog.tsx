@@ -79,74 +79,92 @@ export function PromptDialog({ open, onOpenChange, prompt, defaultModelType = "v
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[90vh] w-full flex-col max-w-2xl">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle>{isEdit ? "编辑提示词" : "新建提示词"}</DialogTitle>
           <DialogDescription>启用后会出现在对应模型类型的生成页面，作为快捷提示词供用户一键填入。</DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="p-type">适用类型</Label>
-              <Select value={form.modelType} onValueChange={(v) => update("modelType", v as ModelType)} disabled={submitting}>
-                <SelectTrigger id="p-type">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {MODEL_TYPES.map((t) => (
-                    <SelectItem key={t} value={t}>
-                      {MODEL_TYPE_LABELS[t]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-col gap-3">
+          {/* 可滚动的表单内容区 */}
+          <div className="min-h-0 flex-1 overflow-y-auto px-1 pr-3 space-y-3">
+            {/* 适用类型 */}
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="p-type" className="text-xs font-medium">
+                  适用类型
+                </Label>
+                <Select
+                  value={form.modelType}
+                  onValueChange={(v) => update("modelType", v as ModelType)}
+                  disabled={submitting}
+                >
+                  <SelectTrigger id="p-type" className="h-8 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MODEL_TYPES.map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {MODEL_TYPE_LABELS[t]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="p-category" className="text-xs font-medium">
+                  分类标签
+                </Label>
+                <Input
+                  id="p-category"
+                  value={form.category}
+                  onChange={(e) => update("category", e.target.value)}
+                  placeholder="例如：创意、风景、人物"
+                  disabled={submitting}
+                  className="h-8 text-sm"
+                />
+              </div>
             </div>
+
+            {/* 提示词标题 */}
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="p-cat">分类标签（可选）</Label>
+              <Label htmlFor="p-title" className="text-xs font-medium">
+                提示词标题
+              </Label>
               <Input
-                id="p-cat"
-                value={form.category}
-                onChange={(e) => update("category", e.target.value)}
-                placeholder="例如：风景 / 人像 / 电影感"
+                id="p-title"
+                value={form.title}
+                onChange={(e) => update("title", e.target.value)}
+                placeholder="向用户展示的提示词名称"
                 disabled={submitting}
-                maxLength={20}
+                required
+                className="h-8 text-sm"
               />
             </div>
-          </div>
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="p-title">标题</Label>
-            <Input
-              id="p-title"
-              value={form.title}
-              onChange={(e) => update("title", e.target.value)}
-              placeholder="一句话描述提示词主题"
-              disabled={submitting}
-              maxLength={48}
-              required
-            />
-            <p className="text-[11px] text-muted-foreground tabular-nums">{form.title.length} / 48</p>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="p-content">提示词内容</Label>
-            <Textarea
-              id="p-content"
-              rows={6}
-              value={form.content}
-              onChange={(e) => update("content", e.target.value)}
-              placeholder="完整的提示词内容，将填入用户的生成输入框"
-              disabled={submitting}
-              maxLength={2000}
-              required
-            />
-            <p className="text-[11px] text-muted-foreground tabular-nums">{form.content.length} / 2000</p>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
+            {/* 提示词内容 */}
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="p-sort">排序权重</Label>
+              <Label htmlFor="p-content" className="text-xs font-medium">
+                提示词内容
+              </Label>
+              <Textarea
+                id="p-content"
+                rows={4}
+                value={form.content}
+                onChange={(e) => update("content", e.target.value)}
+                placeholder="用户点击此提示词时会自动填入生成页面的提示词输入框"
+                disabled={submitting}
+                required
+                className="text-sm resize-none"
+              />
+            </div>
+
+            {/* 排序权重 */}
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="p-sort" className="text-xs font-medium">
+                排序权重
+              </Label>
               <Input
                 id="p-sort"
                 type="number"
@@ -154,12 +172,18 @@ export function PromptDialog({ open, onOpenChange, prompt, defaultModelType = "v
                 value={form.sortOrder}
                 onChange={(e) => update("sortOrder", Number(e.target.value))}
                 disabled={submitting}
+                className="h-8 text-sm"
               />
             </div>
-            <div className="flex items-center justify-between rounded-lg border border-border bg-secondary/30 px-4">
-              <Label htmlFor="p-enabled" className="text-sm font-medium">
-                启用提示词
-              </Label>
+
+            {/* 启用状态 */}
+            <div className="flex items-center justify-between rounded-lg border border-border/50 bg-secondary/20 px-3 py-2.5">
+              <div className="flex flex-col gap-0.5">
+                <Label htmlFor="p-enabled" className="text-xs font-medium">
+                  启用提示词
+                </Label>
+                <span className="text-[10px] text-muted-foreground">停用后不会出现在生成页面中</span>
+              </div>
               <Switch
                 id="p-enabled"
                 checked={form.enabled}
@@ -167,21 +191,23 @@ export function PromptDialog({ open, onOpenChange, prompt, defaultModelType = "v
                 disabled={submitting}
               />
             </div>
+
+            {/* 错误提示 */}
+            {error ? (
+              <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                <span>{error}</span>
+              </div>
+            ) : null}
           </div>
 
-          {error ? (
-            <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-              <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              <span>{error}</span>
-            </div>
-          ) : null}
-
-          <DialogFooter>
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={submitting}>
+          {/* 固定在底部的按钮 */}
+          <DialogFooter className="flex-shrink-0 border-t border-border/50 pt-3">
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={submitting} size="sm">
               取消
             </Button>
-            <Button type="submit" disabled={submitting}>
-              {submitting ? <Spinner className="mr-2 h-4 w-4" /> : null}
+            <Button type="submit" disabled={submitting} size="sm">
+              {submitting ? <Spinner className="mr-2 h-3 w-3" /> : null}
               {submitting ? "保存中..." : isEdit ? "保存更改" : "创建提示词"}
             </Button>
           </DialogFooter>

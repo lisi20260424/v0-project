@@ -115,83 +115,95 @@ export function ModelDialog({ open, onOpenChange, model, defaultModelType = "vid
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[90vh] w-full flex-col max-w-2xl">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle>{isEdit ? "编辑模型" : "新建模型"}</DialogTitle>
           <DialogDescription>
             配置模型基本信息和对应类型的生成参数。修改后将立即对所有用户生效。
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="m-name">模型名称</Label>
-              <Input
-                id="m-name"
-                value={form.name}
-                onChange={(e) => update("name", e.target.value)}
-                placeholder="例如：Sora Turbo"
-                disabled={submitting}
-                required
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="m-provider">模型供应商</Label>
-              <Input
-                id="m-provider"
-                value={form.provider}
-                onChange={(e) => update("provider", e.target.value)}
-                placeholder="例如：OpenAI"
-                disabled={submitting}
-                required
-              />
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-col gap-4">
+          {/* 可滚动的表单内容区 */}
+          <div className="min-h-0 flex-1 overflow-y-auto px-1 pr-3 space-y-4">
+            {/* 基础信息 */}
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="m-name" className="text-xs font-medium">
+                  模型名称
+                </Label>
+                <Input
+                  id="m-name"
+                  size="sm"
+                  value={form.name}
+                  onChange={(e) => update("name", e.target.value)}
+                  placeholder="例如：Sora Turbo"
+                  disabled={submitting}
+                  required
+                  className="h-8 text-sm"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="m-provider" className="text-xs font-medium">
+                  模型供应商
+                </Label>
+                <Input
+                  id="m-provider"
+                  size="sm"
+                  value={form.provider}
+                  onChange={(e) => update("provider", e.target.value)}
+                  placeholder="例如：OpenAI"
+                  disabled={submitting}
+                  required
+                  className="h-8 text-sm"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="m-type" className="text-xs font-medium">
+                  模型类型
+                </Label>
+                <Select
+                  value={form.modelType}
+                  onValueChange={(v) => changeModelType(v as ModelType)}
+                  disabled={submitting}
+                >
+                  <SelectTrigger id="m-type" className="h-8 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MODEL_TYPES.map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {MODEL_TYPE_LABELS[t]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="m-cost" className="text-xs font-medium">
+                  单次消耗（点）
+                </Label>
+                <Input
+                  id="m-cost"
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={Number.isFinite(form.costPerUse) ? form.costPerUse : 0}
+                  onChange={(e) => update("costPerUse", Number(e.target.value))}
+                  disabled={submitting}
+                  required
+                  className="h-8 text-sm"
+                />
+              </div>
             </div>
 
+            {/* 排序权重 */}
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="m-type">模型类型</Label>
-              <Select value={form.modelType} onValueChange={(v) => changeModelType(v as ModelType)} disabled={submitting}>
-                <SelectTrigger id="m-type">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {MODEL_TYPES.map((t) => (
-                    <SelectItem key={t} value={t}>
-                      {MODEL_TYPE_LABELS[t]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="m-billing">计费类型</Label>
-              <Select value="per_use" disabled>
-                <SelectTrigger id="m-billing">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="per_use">按次计费</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="m-cost">单次消耗（点）</Label>
-              <Input
-                id="m-cost"
-                type="number"
-                min={0}
-                step={1}
-                value={Number.isFinite(form.costPerUse) ? form.costPerUse : 0}
-                onChange={(e) => update("costPerUse", Number(e.target.value))}
-                disabled={submitting}
-                required
-              />
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="m-sort">排序权重</Label>
+              <Label htmlFor="m-sort" className="text-xs font-medium">
+                排序权重
+              </Label>
               <Input
                 id="m-sort"
                 type="number"
@@ -199,67 +211,77 @@ export function ModelDialog({ open, onOpenChange, model, defaultModelType = "vid
                 value={form.sortOrder}
                 onChange={(e) => update("sortOrder", Number(e.target.value))}
                 disabled={submitting}
+                className="h-8 text-sm"
               />
             </div>
-          </div>
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="m-desc">模型描述</Label>
-            <Textarea
-              id="m-desc"
-              rows={2}
-              value={form.description}
-              onChange={(e) => update("description", e.target.value)}
-              placeholder="向用户说明该模型的特点、适用场景"
-              disabled={submitting}
-            />
-          </div>
-
-          {fields.length > 0 ? (
-            <div className="rounded-lg border border-border bg-secondary/30 p-4">
-              <p className="mb-3 text-sm font-medium">{MODEL_TYPE_LABELS[form.modelType]} · 基础参数</p>
-              <div className="grid gap-3 md:grid-cols-2">
-                {fields.map((field) => (
-                  <ConfigFieldInput
-                    key={field.key}
-                    field={field}
-                    value={form.config[field.key]}
-                    onChange={(v) => updateConfig(field.key, v)}
-                    disabled={submitting}
-                  />
-                ))}
-              </div>
-            </div>
-          ) : null}
-
-          <div className="flex items-center justify-between rounded-lg border border-border bg-secondary/30 p-4">
-            <div className="flex flex-col gap-0.5">
-              <Label htmlFor="m-enabled" className="text-sm font-medium">
-                启用模型
+            {/* 模型描述 */}
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="m-desc" className="text-xs font-medium">
+                模型描述
               </Label>
-              <span className="text-[11px] text-muted-foreground">停用后该模型不会出现在生成页面中</span>
+              <Textarea
+                id="m-desc"
+                rows={2}
+                value={form.description}
+                onChange={(e) => update("description", e.target.value)}
+                placeholder="向用户说明该模型的特点、适用场景"
+                disabled={submitting}
+                className="text-sm resize-none"
+              />
             </div>
-            <Switch
-              id="m-enabled"
-              checked={form.enabled}
-              onCheckedChange={(v) => update("enabled", v)}
-              disabled={submitting}
-            />
+
+            {/* 类型特定参数 */}
+            {fields.length > 0 ? (
+              <div className="space-y-2 rounded-lg border border-border/50 bg-secondary/20 p-3">
+                <p className="text-xs font-medium text-foreground">{MODEL_TYPE_LABELS[form.modelType]} · 生成参数</p>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {fields.map((field) => (
+                    <ConfigFieldInput
+                      key={field.key}
+                      field={field}
+                      value={form.config[field.key]}
+                      onChange={(v) => updateConfig(field.key, v)}
+                      disabled={submitting}
+                      compact
+                    />
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {/* 启用状态 */}
+            <div className="flex items-center justify-between rounded-lg border border-border/50 bg-secondary/20 px-3 py-2.5">
+              <div className="flex flex-col gap-0.5">
+                <Label htmlFor="m-enabled" className="text-xs font-medium">
+                  启用模型
+                </Label>
+                <span className="text-[10px] text-muted-foreground">停用后该模型不会出现在生成页面中</span>
+              </div>
+              <Switch
+                id="m-enabled"
+                checked={form.enabled}
+                onCheckedChange={(v) => update("enabled", v)}
+                disabled={submitting}
+              />
+            </div>
+
+            {/* 错误提示 */}
+            {error ? (
+              <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                <span>{error}</span>
+              </div>
+            ) : null}
           </div>
 
-          {error ? (
-            <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-              <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              <span>{error}</span>
-            </div>
-          ) : null}
-
-          <DialogFooter>
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={submitting}>
+          {/* 固定在底部的按钮 */}
+          <DialogFooter className="flex-shrink-0 border-t border-border/50 pt-3">
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={submitting} size="sm">
               取消
             </Button>
-            <Button type="submit" disabled={submitting}>
-              {submitting ? <Spinner className="mr-2 h-4 w-4" /> : null}
+            <Button type="submit" disabled={submitting} size="sm">
+              {submitting ? <Spinner className="mr-2 h-3 w-3" /> : null}
               {submitting ? "保存中..." : isEdit ? "保存更改" : "创建模型"}
             </Button>
           </DialogFooter>
@@ -300,22 +322,28 @@ function ConfigFieldInput({
   value,
   onChange,
   disabled,
+  compact = false,
 }: {
   field: ModelConfigField
   value: unknown
   onChange: (v: unknown) => void
   disabled?: boolean
+  compact?: boolean
 }) {
+  const labelClass = compact ? "text-xs font-medium" : "text-sm font-medium"
+  const inputClass = compact ? "h-7 text-xs" : "h-8 text-sm"
+  const gapClass = compact ? "gap-1" : "gap-1.5"
+
   if (field.type === "boolean") {
     const checked = value === true || value === "true"
     return (
-      <div className="flex items-start justify-between gap-3 rounded-md border border-border bg-background px-3 py-2.5 md:col-span-2">
-        <div className="flex flex-col gap-0.5">
-          <Label htmlFor={`f-${field.key}`} className="text-sm font-medium">
+      <div className={`flex items-start justify-between gap-2 rounded-md border border-border/50 bg-background px-2.5 py-2 ${compact ? "md:col-span-2" : ""}`}>
+        <div className={`flex flex-col ${gapClass} flex-1`}>
+          <Label htmlFor={`f-${field.key}`} className={labelClass}>
             {field.label}
           </Label>
           {field.description ? (
-            <span className="text-[11px] text-muted-foreground">{field.description}</span>
+            <span className="text-[10px] text-muted-foreground">{field.description}</span>
           ) : null}
         </div>
         <Switch
@@ -330,14 +358,16 @@ function ConfigFieldInput({
 
   if (field.type === "select" && field.options) {
     return (
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor={`f-${field.key}`}>{field.label}</Label>
+      <div className={`flex flex-col ${gapClass}`}>
+        <Label htmlFor={`f-${field.key}`} className={labelClass}>
+          {field.label}
+        </Label>
         <Select
           value={value !== undefined && value !== null ? String(value) : ""}
           onValueChange={(v) => onChange(v)}
           disabled={disabled}
         >
-          <SelectTrigger id={`f-${field.key}`}>
+          <SelectTrigger id={`f-${field.key}`} className={inputClass}>
             <SelectValue placeholder="请选择" />
           </SelectTrigger>
           <SelectContent>
@@ -349,7 +379,7 @@ function ConfigFieldInput({
           </SelectContent>
         </Select>
         {field.description ? (
-          <span className="text-[11px] text-muted-foreground">{field.description}</span>
+          <span className="text-[10px] text-muted-foreground">{field.description}</span>
         ) : null}
       </div>
     )
@@ -357,8 +387,10 @@ function ConfigFieldInput({
 
   if (field.type === "number") {
     return (
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor={`f-${field.key}`}>{field.label}</Label>
+      <div className={`flex flex-col ${gapClass}`}>
+        <Label htmlFor={`f-${field.key}`} className={labelClass}>
+          {field.label}
+        </Label>
         <Input
           id={`f-${field.key}`}
           type="number"
@@ -366,9 +398,10 @@ function ConfigFieldInput({
           onChange={(e) => onChange(e.target.value === "" ? undefined : Number(e.target.value))}
           placeholder={field.placeholder}
           disabled={disabled}
+          className={inputClass}
         />
         {field.description ? (
-          <span className="text-[11px] text-muted-foreground">{field.description}</span>
+          <span className="text-[10px] text-muted-foreground">{field.description}</span>
         ) : null}
       </div>
     )
@@ -376,8 +409,10 @@ function ConfigFieldInput({
 
   if (field.type === "list") {
     return (
-      <div className="flex flex-col gap-1.5 md:col-span-2">
-        <Label htmlFor={`f-${field.key}`}>{field.label}</Label>
+      <div className={`flex flex-col ${gapClass} ${compact ? "md:col-span-2" : ""}`}>
+        <Label htmlFor={`f-${field.key}`} className={labelClass}>
+          {field.label}
+        </Label>
         <Input
           id={`f-${field.key}`}
           type="text"
@@ -385,17 +420,20 @@ function ConfigFieldInput({
           onChange={(e) => onChange(e.target.value)}
           placeholder={field.placeholder}
           disabled={disabled}
+          className={inputClass}
         />
         {field.description ? (
-          <span className="text-[11px] text-muted-foreground">{field.description}</span>
+          <span className="text-[10px] text-muted-foreground">{field.description}</span>
         ) : null}
       </div>
     )
   }
 
   return (
-    <div className="flex flex-col gap-1.5">
-      <Label htmlFor={`f-${field.key}`}>{field.label}</Label>
+    <div className={`flex flex-col ${gapClass}`}>
+      <Label htmlFor={`f-${field.key}`} className={labelClass}>
+        {field.label}
+      </Label>
       <Input
         id={`f-${field.key}`}
         type="text"
@@ -403,9 +441,10 @@ function ConfigFieldInput({
         onChange={(e) => onChange(e.target.value)}
         placeholder={field.placeholder}
         disabled={disabled}
+        className={inputClass}
       />
       {field.description ? (
-        <span className="text-[11px] text-muted-foreground">{field.description}</span>
+        <span className="text-[10px] text-muted-foreground">{field.description}</span>
       ) : null}
     </div>
   )
