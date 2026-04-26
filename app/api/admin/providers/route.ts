@@ -34,6 +34,7 @@ export async function POST(req: Request) {
         name: form.name,
         display_name: form.displayName,
         description: form.description || null,
+        config: form.config ?? {},
         enabled: form.enabled ?? true,
         sort_order: form.sortOrder ?? 0,
         created_by: user?.id,

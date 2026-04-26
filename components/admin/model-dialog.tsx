@@ -24,13 +24,6 @@ import {
   type ModelConfigField,
   type ModelType,
 } from "@/lib/admin"
-import {
-  ICON_OPTIONS,
-  ACCENT_OPTIONS,
-  defaultIconNameForType,
-  defaultAccentForType,
-  resolveIcon,
-} from "@/lib/icon-map"
 import type { AdminModel } from "@/components/admin/models-manager"
 
 type Provider = {
@@ -279,12 +272,22 @@ export function ModelDialog({ open, onOpenChange, model, defaultModelType = "vid
               />
             </div>
 
-            {/* UI 展示配置 */}
-            <div className="space-y-2 rounded-lg border border-border/50 bg-secondary/20 p-3">
-              <p className="text-xs font-medium text-foreground">展示配置 · 决定首页与导航中的卡片样式</p>
-              <div className="grid gap-2 sm:grid-cols-2">
-                <UIDisplayConfig form={form} updateConfig={updateConfig} disabled={submitting} />
+            {/* 默认展示开关 */}
+            <div className="flex items-center justify-between rounded-lg border border-border/50 bg-secondary/20 px-3 py-2.5">
+              <div className="flex flex-col gap-0.5">
+                <Label htmlFor="m-default-display" className="text-sm font-medium cursor-pointer">
+                  作为该供应商在该类型下的默认展示模型
+                </Label>
+                <p className="text-[10px] text-muted-foreground">
+                  开启后，AI 工具菜单与首页 #tools 区域将以本模型名作为该供应商的代表
+                </p>
               </div>
+              <Switch
+                id="m-default-display"
+                checked={!!form.config.is_default_display}
+                onCheckedChange={(v) => updateConfig("is_default_display", v)}
+                disabled={submitting}
+              />
             </div>
 
             {/* 类型特定参数 */}
@@ -371,98 +374,6 @@ function initial(model: AdminModel | undefined, defaultModelType: ModelType): Fo
     enabled: true,
     sortOrder: 0,
   }
-}
-
-function UIDisplayConfig({
-  form,
-  updateConfig,
-  disabled,
-}: {
-  form: FormState
-  updateConfig: (key: string, value: unknown) => void
-  disabled?: boolean
-}) {
-  const iconValue = (form.config.ui_icon as string | undefined) || defaultIconNameForType(form.modelType)
-  const accentValue = (form.config.ui_accent as string | undefined) || defaultAccentForType(form.modelType)
-  const tagValue = (form.config.ui_tag as string | undefined) || ""
-  const hrefValue = (form.config.ui_href as string | undefined) || ""
-
-  const PreviewIcon = resolveIcon(iconValue)
-
-  return (
-    <>
-      <div className="flex flex-col gap-1 sm:col-span-2">
-        <Label className="text-xs font-medium">展示图标</Label>
-        <div className="flex items-center gap-2">
-          <div
-            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-gradient-to-br ${accentValue} text-foreground ring-1 ring-border`}
-          >
-            <PreviewIcon className="h-4 w-4" />
-          </div>
-          <Select value={iconValue} onValueChange={(v) => updateConfig("ui_icon", v)} disabled={disabled}>
-            <SelectTrigger className="h-7 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {ICON_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <span className="text-[10px] text-muted-foreground">显示在 AI 工具卡片左上角的图标</span>
-      </div>
-
-      <div className="flex flex-col gap-1 sm:col-span-2">
-        <Label className="text-xs font-medium">渐变色</Label>
-        <Select value={accentValue} onValueChange={(v) => updateConfig("ui_accent", v)} disabled={disabled}>
-          <SelectTrigger className="h-7 text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {ACCENT_OPTIONS.map((opt) => (
-              <SelectItem key={opt.value} value={opt.value}>
-                {opt.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <span className="text-[10px] text-muted-foreground">作为图标背景与卡片角落的光晕色</span>
-      </div>
-
-      <div className="flex flex-col gap-1">
-        <Label htmlFor="ui-tag" className="text-xs font-medium">
-          标签（可选）
-        </Label>
-        <Input
-          id="ui-tag"
-          value={tagValue}
-          onChange={(e) => updateConfig("ui_tag", e.target.value || undefined)}
-          placeholder="例如：4K / Pro / HOT / 新"
-          disabled={disabled}
-          className="h-7 text-xs"
-        />
-        <span className="text-[10px] text-muted-foreground">显示在卡片右上角的小徽章</span>
-      </div>
-
-      <div className="flex flex-col gap-1">
-        <Label htmlFor="ui-href" className="text-xs font-medium">
-          自定义跳转路径（可选）
-        </Label>
-        <Input
-          id="ui-href"
-          value={hrefValue}
-          onChange={(e) => updateConfig("ui_href", e.target.value || undefined)}
-          placeholder="例如：/veo 或 /image?model=flux"
-          disabled={disabled}
-          className="h-7 text-xs"
-        />
-        <span className="text-[10px] text-muted-foreground">不填则默认跳转到 /{form.modelType}/{`{model_id}`}</span>
-      </div>
-    </>
-  )
 }
 
 function ConfigFieldInput({

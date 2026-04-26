@@ -9,14 +9,16 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
   const form = await req.json()
 
+  const updates: Record<string, unknown> = {}
+  if (form.displayName !== undefined) updates.display_name = form.displayName
+  if (form.description !== undefined) updates.description = form.description || null
+  if (form.config !== undefined) updates.config = form.config
+  if (form.enabled !== undefined) updates.enabled = form.enabled
+  if (form.sortOrder !== undefined) updates.sort_order = form.sortOrder
+
   const { data, error } = await admin
     .from("admin_providers")
-    .update({
-      display_name: form.displayName,
-      description: form.description || null,
-      enabled: form.enabled,
-      sort_order: form.sortOrder,
-    })
+    .update(updates)
     .eq("id", params.id)
     .select()
     .single()
