@@ -12,17 +12,30 @@ export type AIProviderConfig = {
 
 /**
  * 根据模型 provider 和配置选择对应的 AI 模型实例
- * modelId 应该是实际的 AI SDK 模型标识（如 gpt-4-vision、claude-3-opus-20240229）
+ * modelId 应该是实际的 AI SDK 模型标识（如 gpt-4-turbo、claude-3-opus-20240229）
+ * API Key 可以从环境变量或数据库网关配置中读取
  * 目前支持 openai 和 anthropic；如需扩展，在此追加分支
  */
 export function resolveModel(config: AIProviderConfig): LanguageModel {
-  const { provider, modelId } = config
+  const { provider, modelId, apiKey, baseURL } = config
+
+  // 如果没有传 apiKey，从环境变量读取
+  const effectiveApiKey = apiKey || process.env[`${provider.toUpperCase()}_API_KEY`]
+
+  if (!effectiveApiKey) {
+    throw new Error(`Missing API key for provider: ${provider}`)
+  }
 
   switch (provider.toLowerCase()) {
     case "openai":
-      return openai(modelId || "gpt-4-turbo")
+      return openai(modelId || "gpt-4-turbo", {
+        apiKey: effectiveApiKey,
+        baseURL,
+      })
     case "anthropic":
-      return anthropic(modelId || "claude-3-opus-20240229")
+      return anthropic(modelId || "claude-3-opus-20240229", {
+        apiKey: effectiveApiKey,
+      })
     default:
       throw new Error(`Unsupported AI provider: ${provider}`)
   }
