@@ -2,7 +2,8 @@
  * 把 admin_providers + admin_models 转换为前端 AI 工具菜单 / #tools 需要的 Tool 列表。
  *
  * 维度：每个 (供应商 × 模型类型) 组合对应一个 Tool。
- * - UI 配置（图标、渐变、标签、跳转、起步消耗、描述、产品名）来自 provider.config.ui_by_type[type]
+ * - UI 配置（图标、渐变、标签、起步消耗、描述、产品名）来自 provider.config.ui_by_type[type]
+ * - 所有菜单项统一跳转到 /{modelType}?provider={providerName}，无需单独配置
  * - 默认展示模型：在该 (供应商 × 类型) 下，配置了 config.is_default_display=true 的模型；
  *   若没有则取 sort_order 最小的模型
  * - 卡片大字：ui_by_type[type].display_name 优先，否则回退到 provider.display_name
@@ -92,14 +93,14 @@ export async function getDisplayTools(supabase: SupabaseLike): Promise<Tool[]> {
     const icon = (ui.icon as string | undefined) || defaultIconNameForType(modelType)
     const accent = (ui.accent as string | undefined) || defaultAccentForType(modelType)
 
-    // 默认跳转：统一生成页 + provider 参数；ui_href 优先（管理员手动配置）
-    const defaultHref = `/${modelType}?provider=${encodeURIComponent(providerName)}`
+    // 统一生成页跳转：/video?provider=xxx、/image?provider=xxx、/music?provider=xxx
+    const href = `/${modelType}?provider=${encodeURIComponent(providerName)}`
     tools.push({
       id: `${providerName}-${modelType}`,
       name: displayName,
       brand: defaultModel.name,
       desc: (ui.description as string | undefined) ?? "",
-      href: (ui.href as string | undefined) || defaultHref,
+      href,
       category: TYPE_TO_CATEGORY[modelType],
       icon,
       accent,
