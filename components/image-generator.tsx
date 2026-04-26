@@ -96,12 +96,50 @@ export function ImageGenerator({ models, defaultModelId, prompts = [] }: ImageGe
   const regular = (model.price + qualityExtra) * count
   const member = Math.round(regular * 0.75)
 
-  const onGenerate = () => {
+  const onGenerate = async () => {
     if (!prompt.trim()) return
     setLoading(true)
     setResults([])
-    setTimeout(() => {
-      setLoading(false)
+    try {
+      const response = await fetch("/api/generate/image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          modelId: model.id,
+          prompt,
+          params: {
+            negative,
+            style,
+            ratio: ratio?.id,
+            quality,
+            count,
+          },
+        }),
+      })
+
+      if (!response.ok) {
+        const err = await response.json()
+        throw new Error(err.error || "Generation failed")
+      }
+
+      // 流式读取响应
+      const reader = response.body?.getReader()
+      if (!reader) throw new Error("No response stream")
+
+      const decoder = new TextDecoder()
+      let fullText = ""
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        const chunk = decoder.decode(value)
+        fullText += chunk
+      }
+
+      console.log("[v0] Image generation complete:", fullText)
+      // TODO: 从 API 响应解析实际生成的图像 URL，而不是 mock 样本
+      // 临时回退到 mock 样本，便于测试
       const all = [
         "/image-samples/sample-1.jpg",
         "/image-samples/sample-2.jpg",
@@ -109,7 +147,12 @@ export function ImageGenerator({ models, defaultModelId, prompts = [] }: ImageGe
         "/image-samples/sample-4.jpg",
       ]
       setResults(all.slice(0, count))
-    }, 2000)
+    } catch (error) {
+      console.error("[v0] Generation error:", error)
+      alert(error instanceof Error ? error.message : "生成失败，请重试")
+    } finally {
+      setLoading(false)
+    }
   }
 
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {

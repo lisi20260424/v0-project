@@ -117,11 +117,54 @@ export function MusicGenerator({ models, defaultModelId, prompts = [] }: MusicGe
   const regular = model.price * cap.tracksPerGeneration
   const member = Math.round(regular * 0.75)
 
-  const onGenerate = () => {
+  const onGenerate = async () => {
     if (mode === "inspire" && !desc.trim()) return
     if (mode === "custom" && !lyrics.trim()) return
+    
     setLoading(true)
-    setTimeout(() => setLoading(false), 2500)
+    try {
+      const response = await fetch("/api/generate/music", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          modelId: model.id,
+          description: mode === "inspire" ? desc : lyrics,
+          params: {
+            mode,
+            genre: mode === "custom" ? genre : undefined,
+            mood,
+            vocal,
+          },
+        }),
+      })
+
+      if (!response.ok) {
+        const err = await response.json()
+        throw new Error(err.error || "Generation failed")
+      }
+
+      // 流式读取响应
+      const reader = response.body?.getReader()
+      if (!reader) throw new Error("No response stream")
+
+      const decoder = new TextDecoder()
+      let fullText = ""
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        const chunk = decoder.decode(value)
+        fullText += chunk
+      }
+
+      console.log("[v0] Music generation complete:", fullText)
+    } catch (error) {
+      console.error("[v0] Generation error:", error)
+      alert(error instanceof Error ? error.message : "生成失败，请重试")
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (

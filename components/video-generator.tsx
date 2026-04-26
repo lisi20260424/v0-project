@@ -179,11 +179,54 @@ export function VideoGenerator({
 
   const hideRatioInImageMode = cap.imageCapability === "single" && mode === "image"
 
-  const onGenerate = () => {
+  const onGenerate = async () => {
     if (!prompt.trim()) return
     if (mode === "image" && !hasImage) return
+    
     setLoading(true)
-    setTimeout(() => setLoading(false), 2200)
+    try {
+      const response = await fetch("/api/generate/video", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          modelId: currentModel?.id,
+          prompt,
+          params: {
+            duration: duration?.seconds ?? 5,
+            aspectRatio: ratio,
+            quality,
+          },
+        }),
+      })
+
+      if (!response.ok) {
+        const err = await response.json()
+        throw new Error(err.error || "Generation failed")
+      }
+
+      // 流式读取响应
+      const reader = response.body?.getReader()
+      if (!reader) throw new Error("No response stream")
+
+      const decoder = new TextDecoder()
+      let fullText = ""
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        const chunk = decoder.decode(value)
+        fullText += chunk
+        // 可在此处实时更新 UI（例如流式显示生成结果）
+      }
+
+      console.log("[v0] Generation complete:", fullText)
+    } catch (error) {
+      console.error("[v0] Generation error:", error)
+      alert(error instanceof Error ? error.message : "生成失败，请重试")
+    } finally {
+      setLoading(false)
+    }
   }
 
   // 根据 ratio.w/h 动态计算宽高比；竖屏用窄宽度避免太高，方屏适中，横屏占满
