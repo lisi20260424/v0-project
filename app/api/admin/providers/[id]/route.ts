@@ -3,9 +3,10 @@ import { requireAdmin } from "@/lib/supabase/require-admin"
 
 export const dynamic = "force-dynamic"
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   await requireAdmin()
   const admin = createAdminClient()
+  const { id } = await params
 
   const form = await req.json()
 
@@ -19,7 +20,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const { data, error } = await admin
     .from("admin_providers")
     .update(updates)
-    .eq("id", params.id)
+    .eq("id", id)
     .select()
     .single()
 
@@ -30,11 +31,12 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   return Response.json({ provider: data })
 }
 
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   await requireAdmin()
   const admin = createAdminClient()
+  const { id } = await params
 
-  const { error } = await admin.from("admin_providers").delete().eq("id", params.id)
+  const { error } = await admin.from("admin_providers").delete().eq("id", id)
 
   if (error) {
     return Response.json({ error: error.message }, { status: 400 })
