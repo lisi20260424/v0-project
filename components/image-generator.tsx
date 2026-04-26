@@ -19,43 +19,19 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 
-type ImageModelId = "gpt-image" | "nano-banana" | "flux"
-
-const MODELS: {
-  id: ImageModelId
+export type GeneratorModel = {
+  id: string
   name: string
-  brand: string
-  icon: typeof ImageLucide
+  brand?: string
   desc: string
   price: number
   tag?: string
-}[] = [
-  {
-    id: "gpt-image",
-    name: "GPT-Image 2",
-    brand: "OpenAI",
-    icon: ImageLucide,
-    desc: "全新多模态，支持精准中文文字、海报、Logo 渲染。",
-    price: 4,
-    tag: "新",
-  },
-  {
-    id: "nano-banana",
-    name: "Nano Banana",
-    brand: "Google",
-    icon: Banana,
-    desc: "交互式编辑，多图融合、局部重绘、风格迁移。",
-    price: 5,
-  },
-  {
-    id: "flux",
-    name: "Flux 1.1",
-    brand: "Black Forest Labs",
-    icon: FluxIcon,
-    desc: "摄影级真实质感，艺术创作首选，开源顶级模型。",
-    price: 3,
-  },
-]
+}
+
+export type ImageGeneratorProps = {
+  models: GeneratorModel[]
+  defaultModelId?: string
+}
 
 const STYLES = ["自动", "写实摄影", "电影感", "赛博朋克", "动漫", "水彩", "油画", "3D 渲染", "像素艺术"]
 
@@ -79,12 +55,10 @@ const EXAMPLES = [
   "一朵正在盛开的牡丹花微距特写，花瓣上有细小水珠，柔和自然光，摄影杂志封面",
 ]
 
-type Props = {
-  defaultModelId?: ImageModelId
-}
+type ImageModelId = string
 
-export function ImageGenerator({ defaultModelId = "gpt-image" }: Props) {
-  const [modelId, setModelId] = React.useState<ImageModelId>(defaultModelId)
+export function ImageGenerator({ models, defaultModelId }: ImageGeneratorProps) {
+  const [modelId, setModelId] = React.useState<ImageModelId>(defaultModelId ?? models[0]?.id ?? "")
   const [prompt, setPrompt] = React.useState("")
   const [negative, setNegative] = React.useState("")
   const [style, setStyle] = React.useState(STYLES[0])
@@ -96,9 +70,9 @@ export function ImageGenerator({ defaultModelId = "gpt-image" }: Props) {
   const [results, setResults] = React.useState<string[]>([])
   const fileInputRef = React.useRef<HTMLInputElement>(null)
 
-  const model = MODELS.find((m) => m.id === modelId)!
+  const model = models.find((m) => m.id === modelId) || models[0]
   const qualityExtra = QUALITIES.find((q) => q.id === quality)?.extra ?? 0
-  const regular = (model.price + qualityExtra) * count
+  const regular = (model?.price ?? 0 + qualityExtra) * count
   const member = Math.round(regular * 0.75)
 
   const onGenerate = () => {
@@ -135,9 +109,7 @@ export function ImageGenerator({ defaultModelId = "gpt-image" }: Props) {
             <span className="mr-1 text-primary">◇</span> 选择模型
           </Label>
           <div className="grid gap-2 sm:grid-cols-3">
-            {MODELS.map((m) => {
-              const Icon = m.icon
-              return (
+            {models.map((m) => (
                 <button
                   key={m.id}
                   type="button"
@@ -150,12 +122,7 @@ export function ImageGenerator({ defaultModelId = "gpt-image" }: Props) {
                   )}
                 >
                   <div className="flex w-full items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="flex h-7 w-7 items-center justify-center rounded-md bg-gradient-to-br from-primary/20 to-accent/10">
-                        <Icon className="h-3.5 w-3.5" />
-                      </div>
-                      <span className="text-sm font-medium">{m.name}</span>
-                    </div>
+                    <span className="text-sm font-medium">{m.name}</span>
                     {m.tag && (
                       <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
                         {m.tag}
@@ -164,8 +131,7 @@ export function ImageGenerator({ defaultModelId = "gpt-image" }: Props) {
                   </div>
                   <p className="line-clamp-2 text-xs text-muted-foreground">{m.desc}</p>
                 </button>
-              )
-            })}
+              ))}
           </div>
         </div>
 

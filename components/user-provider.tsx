@@ -12,19 +12,29 @@ export type CurrentUser = {
   vipTier: "monthly" | "annual" | "lifetime" | null
 } | null
 
-const UserContext = createContext<{ user: CurrentUser; loading: boolean }>({
+type UserContextValue = {
+  user: CurrentUser
+  loading: boolean
+  isAdmin: boolean
+}
+
+const UserContext = createContext<UserContextValue>({
   user: null,
   loading: true,
+  isAdmin: false,
 })
 
 export function UserProvider({
   initialUser,
+  initialIsAdmin = false,
   children,
 }: {
   initialUser: CurrentUser
+  initialIsAdmin?: boolean
   children: React.ReactNode
 }) {
   const [user, setUser] = useState<CurrentUser>(initialUser)
+  const [isAdmin, setIsAdmin] = useState<boolean>(initialIsAdmin)
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
@@ -33,6 +43,7 @@ export function UserProvider({
     const { data: subscription } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (!session?.user) {
         setUser(null)
+        setIsAdmin(false)
         return
       }
       setLoading(true)
@@ -51,7 +62,8 @@ export function UserProvider({
           (session.user.email?.split("@")[0] ?? "用户"),
         avatarUrl: profile?.avatar_url ?? null,
         points: profile?.points ?? 0,
-        vipTier: (profile?.vip_tier as CurrentUser extends infer U ? U extends null ? never : U["vipTier"] : never) ?? null,
+        vipTier:
+          (profile?.vip_tier as CurrentUser extends infer U ? (U extends null ? never : U["vipTier"]) : never) ?? null,
       })
       setLoading(false)
     })
@@ -61,7 +73,7 @@ export function UserProvider({
     }
   }, [])
 
-  return <UserContext.Provider value={{ user, loading }}>{children}</UserContext.Provider>
+  return <UserContext.Provider value={{ user, loading, isAdmin }}>{children}</UserContext.Provider>
 }
 
 export function useUser() {

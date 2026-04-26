@@ -14,18 +14,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { TOOLS, CATEGORY_LABEL, type ToolCategory } from "@/lib/tools"
+import { TOOLS, CATEGORY_LABEL, type ToolCategory, type Tool } from "@/lib/tools"
 import { useMembership } from "@/components/membership-provider"
 import { useUser } from "@/components/user-provider"
 
-const navItems = [
-  { label: "作品广场", href: "/gallery" },
-  { label: "定价", href: "/pricing" },
-  { label: "API 文档", href: "/docs" },
-  { label: "帮助", href: "/help" },
-]
+export type SiteHeaderProps = {
+  models?: Tool[]
+}
 
-export function SiteHeader() {
+export function SiteHeader({ models }: SiteHeaderProps) {
+  const tools = models || TOOLS
   const membership = useMembership()
   const { user } = useUser()
   const tierLabel: Record<NonNullable<NonNullable<typeof user>["vipTier"]>, string> = {
@@ -36,8 +34,15 @@ export function SiteHeader() {
   const grouped = (["video", "image", "audio", "chat"] as ToolCategory[]).map((c) => ({
     category: c,
     label: CATEGORY_LABEL[c],
-    items: TOOLS.filter((t) => t.category === c),
+    items: tools.filter((t) => t.category === c),
   }))
+  
+  const navItems = [
+    { href: "/gallery", label: "作品广场" },
+    { href: "/pricing", label: "定价" },
+    { href: "/docs", label: "API文档" },
+    { href: "/#features", label: "帮助" },
+  ]
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/60 bg-background/80 backdrop-blur-xl">
@@ -161,7 +166,7 @@ export function SiteHeader() {
                   className="hidden h-8 w-8 overflow-hidden rounded-full ring-1 ring-border transition hover:ring-primary/40 sm:inline-flex"
                 >
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={user.avatarUrl ?? undefined} alt="用户头像" />
+                    <AvatarImage src={user.avatarUrl ?? undefined} alt="用户��像" />
                     <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-xs text-primary-foreground">
                       {user.displayName.slice(0, 1).toUpperCase()}
                     </AvatarFallback>
@@ -226,7 +231,7 @@ export function SiteHeader() {
               <DropdownMenuLabel className="text-[11px] uppercase tracking-wider text-muted-foreground">
                 AI 工具
               </DropdownMenuLabel>
-              {TOOLS.map((t) => (
+              {tools.map((t) => (
                 <DropdownMenuItem key={t.id} asChild>
                   <Link href={t.href}>{t.name}</Link>
                 </DropdownMenuItem>
