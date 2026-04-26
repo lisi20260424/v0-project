@@ -20,7 +20,7 @@ export async function POST(req: Request) {
     // 调用 New API 网关的图像生成接口
     const response = await callAIGateway(
       {
-        baseURL: gateway.base_url,
+        baseURL: gateway.gateway_url,
         apiKey: gateway.api_key,
         modelId: apiModelId,
         modelType: "image",

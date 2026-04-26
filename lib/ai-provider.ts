@@ -114,15 +114,16 @@ export async function getModelInfo(modelId: string) {
 
 /**
  * 获取 API 网关配置（包含 URL、API Key 等）
+ * 从 admin_gateway_settings 表读取，字段为 gateway_url 和 api_key
  */
 export async function getGatewayConfig() {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from("admin_gateway_settings")
-    .select("base_url, api_key, description")
-    .eq("enabled", true)
+    .select("gateway_url, api_key")
+    .eq("id", 1)
     .single()
 
-  if (error) throw new Error("Gateway settings not found")
+  if (error || !data) throw new Error("Gateway settings not found")
   return data
 }
