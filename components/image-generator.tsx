@@ -70,9 +70,9 @@ export function ImageGenerator({ models, defaultModelId }: ImageGeneratorProps) 
   const [results, setResults] = React.useState<string[]>([])
   const fileInputRef = React.useRef<HTMLInputElement>(null)
 
-  const model = MODELS.find((m) => m.id === modelId)!
+  const model = models.find((m) => m.id === modelId) || models[0]
   const qualityExtra = QUALITIES.find((q) => q.id === quality)?.extra ?? 0
-  const regular = (model.price + qualityExtra) * count
+  const regular = (model?.price ?? 0 + qualityExtra) * count
   const member = Math.round(regular * 0.75)
 
   const onGenerate = () => {
@@ -109,9 +109,7 @@ export function ImageGenerator({ models, defaultModelId }: ImageGeneratorProps) 
             <span className="mr-1 text-primary">◇</span> 选择模型
           </Label>
           <div className="grid gap-2 sm:grid-cols-3">
-            {MODELS.map((m) => {
-              const Icon = m.icon
-              return (
+            {models.map((m) => (
                 <button
                   key={m.id}
                   type="button"
@@ -124,12 +122,7 @@ export function ImageGenerator({ models, defaultModelId }: ImageGeneratorProps) 
                   )}
                 >
                   <div className="flex w-full items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="flex h-7 w-7 items-center justify-center rounded-md bg-gradient-to-br from-primary/20 to-accent/10">
-                        <Icon className="h-3.5 w-3.5" />
-                      </div>
-                      <span className="text-sm font-medium">{m.name}</span>
-                    </div>
+                    <span className="text-sm font-medium">{m.name}</span>
                     {m.tag && (
                       <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
                         {m.tag}
@@ -138,8 +131,7 @@ export function ImageGenerator({ models, defaultModelId }: ImageGeneratorProps) 
                   </div>
                   <p className="line-clamp-2 text-xs text-muted-foreground">{m.desc}</p>
                 </button>
-              )
-            })}
+              ))}
           </div>
         </div>
 
