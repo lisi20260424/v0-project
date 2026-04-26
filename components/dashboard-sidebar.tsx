@@ -12,12 +12,8 @@ import {
   Settings,
   Gift,
   HelpCircle,
-  Plug,
-  Cpu,
-  Sparkles,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { useUser } from "@/components/user-provider"
 
 type SidebarItem = {
   href: string
@@ -58,15 +54,8 @@ const sections: SidebarSection[] = [
   },
 ]
 
-const ADMIN_ITEMS: SidebarItem[] = [
-  { href: "/admin-settings/gateway", label: "API 网关", icon: Plug },
-  { href: "/admin-settings/models", label: "模型配置", icon: Cpu },
-  { href: "/admin-settings/prompts", label: "提示词配置", icon: Sparkles },
-]
-
 export function DashboardSidebar() {
   const pathname = usePathname()
-  const { isAdmin } = useUser()
 
   return (
     <nav aria-label="用户中心导航" className="rounded-2xl border border-border bg-card p-3">
@@ -82,19 +71,6 @@ export function DashboardSidebar() {
           </ul>
         </div>
       ))}
-
-      {isAdmin && (
-        <div className="border-t border-border pt-3 mt-3">
-          <div className="px-3 pb-1 pt-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-            后台设置
-          </div>
-          <ul className="space-y-0.5">
-            {ADMIN_ITEMS.map((item) => (
-              <SidebarLink key={item.href} item={item} pathname={pathname} />
-            ))}
-          </ul>
-        </div>
-      )}
     </nav>
   )
 }
