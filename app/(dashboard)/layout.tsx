@@ -1,6 +1,6 @@
 import type { ReactNode } from "react"
 import { redirect } from "next/navigation"
-import { SiteHeader } from "@/components/site-header"
+import { SiteHeaderServer } from "@/components/site-header-server"
 import { SiteFooter } from "@/components/site-footer"
 import { DashboardSidebar } from "@/components/dashboard-sidebar"
 import { DashboardUserCard } from "@/components/dashboard-user-card"
@@ -18,7 +18,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
 
   return (
     <div className="min-h-screen bg-background">
-      <SiteHeader />
+      <SiteHeaderServer />
       <div className="mx-auto max-w-7xl px-4 py-8 md:px-6">
         <div className="grid gap-8 lg:grid-cols-[260px_1fr]">
           <aside className="space-y-6">
