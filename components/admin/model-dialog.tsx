@@ -306,6 +306,28 @@ function ConfigFieldInput({
   onChange: (v: unknown) => void
   disabled?: boolean
 }) {
+  if (field.type === "boolean") {
+    const checked = value === true || value === "true"
+    return (
+      <div className="flex items-start justify-between gap-3 rounded-md border border-border bg-background px-3 py-2.5 md:col-span-2">
+        <div className="flex flex-col gap-0.5">
+          <Label htmlFor={`f-${field.key}`} className="text-sm font-medium">
+            {field.label}
+          </Label>
+          {field.description ? (
+            <span className="text-[11px] text-muted-foreground">{field.description}</span>
+          ) : null}
+        </div>
+        <Switch
+          id={`f-${field.key}`}
+          checked={checked}
+          onCheckedChange={(v) => onChange(v)}
+          disabled={disabled}
+        />
+      </div>
+    )
+  }
+
   if (field.type === "select" && field.options) {
     return (
       <div className="flex flex-col gap-1.5">
@@ -326,6 +348,9 @@ function ConfigFieldInput({
             ))}
           </SelectContent>
         </Select>
+        {field.description ? (
+          <span className="text-[11px] text-muted-foreground">{field.description}</span>
+        ) : null}
       </div>
     )
   }
@@ -342,6 +367,28 @@ function ConfigFieldInput({
           placeholder={field.placeholder}
           disabled={disabled}
         />
+        {field.description ? (
+          <span className="text-[11px] text-muted-foreground">{field.description}</span>
+        ) : null}
+      </div>
+    )
+  }
+
+  if (field.type === "list") {
+    return (
+      <div className="flex flex-col gap-1.5 md:col-span-2">
+        <Label htmlFor={`f-${field.key}`}>{field.label}</Label>
+        <Input
+          id={`f-${field.key}`}
+          type="text"
+          value={value === undefined || value === null ? "" : String(value)}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={field.placeholder}
+          disabled={disabled}
+        />
+        {field.description ? (
+          <span className="text-[11px] text-muted-foreground">{field.description}</span>
+        ) : null}
       </div>
     )
   }
@@ -357,6 +404,9 @@ function ConfigFieldInput({
         placeholder={field.placeholder}
         disabled={disabled}
       />
+      {field.description ? (
+        <span className="text-[11px] text-muted-foreground">{field.description}</span>
+      ) : null}
     </div>
   )
 }
