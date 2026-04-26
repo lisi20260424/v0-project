@@ -272,6 +272,24 @@ export function ModelDialog({ open, onOpenChange, model, defaultModelType = "vid
               />
             </div>
 
+            {/* 默认展示开关 */}
+            <div className="flex items-center justify-between rounded-lg border border-border/50 bg-secondary/20 px-3 py-2.5">
+              <div className="flex flex-col gap-0.5">
+                <Label htmlFor="m-default-display" className="text-sm font-medium cursor-pointer">
+                  作为该供应商在该类型下的默认展示模型
+                </Label>
+                <p className="text-[10px] text-muted-foreground">
+                  开启后，AI 工具菜单与首页 #tools 区域将以本模型名作为该供应商的代表
+                </p>
+              </div>
+              <Switch
+                id="m-default-display"
+                checked={!!form.config.is_default_display}
+                onCheckedChange={(v) => updateConfig("is_default_display", v)}
+                disabled={submitting}
+              />
+            </div>
+
             {/* 类型特定参数 */}
             {fields.length > 0 ? (
               <div className="space-y-2 rounded-lg border border-border/50 bg-secondary/20 p-3">

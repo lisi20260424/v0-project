@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { ArrowUpRight } from "lucide-react"
 import { TOOLS, CATEGORY_LABEL, type ToolCategory, type Tool } from "@/lib/tools"
+import { resolveIcon } from "@/lib/icon-map"
 import { cn } from "@/lib/utils"
 
 export type ToolsGridProps = {
@@ -9,7 +10,7 @@ export type ToolsGridProps = {
 
 export function ToolsGrid({ models }: ToolsGridProps) {
   const tools = models || TOOLS
-  const categories: ToolCategory[] = ["video", "image", "audio", "chat"]
+  const categories: ToolCategory[] = ["video", "image", "audio"]
 
   return (
     <section id="tools" className="border-b border-border/60 bg-muted/30">
@@ -40,7 +41,7 @@ export function ToolsGrid({ models }: ToolsGridProps) {
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {items.map((t) => {
-                    const Icon = t.icon
+                    const Icon = resolveIcon(t.icon)
                     return (
                       <Link
                         key={t.id}

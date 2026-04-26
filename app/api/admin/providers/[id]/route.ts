@@ -3,21 +3,24 @@ import { requireAdmin } from "@/lib/supabase/require-admin"
 
 export const dynamic = "force-dynamic"
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   await requireAdmin()
   const admin = createAdminClient()
+  const { id } = await params
 
   const form = await req.json()
 
+  const updates: Record<string, unknown> = {}
+  if (form.displayName !== undefined) updates.display_name = form.displayName
+  if (form.description !== undefined) updates.description = form.description || null
+  if (form.config !== undefined) updates.config = form.config
+  if (form.enabled !== undefined) updates.enabled = form.enabled
+  if (form.sortOrder !== undefined) updates.sort_order = form.sortOrder
+
   const { data, error } = await admin
     .from("admin_providers")
-    .update({
-      display_name: form.displayName,
-      description: form.description || null,
-      enabled: form.enabled,
-      sort_order: form.sortOrder,
-    })
-    .eq("id", params.id)
+    .update(updates)
+    .eq("id", id)
     .select()
     .single()
 
@@ -28,11 +31,12 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   return Response.json({ provider: data })
 }
 
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   await requireAdmin()
   const admin = createAdminClient()
+  const { id } = await params
 
-  const { error } = await admin.from("admin_providers").delete().eq("id", params.id)
+  const { error } = await admin.from("admin_providers").delete().eq("id", id)
 
   if (error) {
     return Response.json({ error: error.message }, { status: 400 })

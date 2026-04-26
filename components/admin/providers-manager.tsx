@@ -53,13 +53,37 @@ export function ProvidersManager({ initialProviders }: { initialProviders: Admin
     description: string
     enabled: boolean
     sortOrder: number
+    uiByType: Record<"video" | "image" | "music", {
+      icon: string
+      accent: string
+      tag: string
+      href: string
+      cost: string
+      description: string
+    }>
   }) {
     const isEdit = !!form.id
     const url = isEdit ? `/api/admin/providers/${form.id}` : "/api/admin/providers"
+    // 把 uiByType 编码到 config.ui_by_type，清理 undefined 值
+    const cleanUiByType: typeof form.uiByType = {}
+    for (const [type, ui] of Object.entries(form.uiByType)) {
+      cleanUiByType[type as keyof typeof form.uiByType] = {
+        icon: ui.icon || "",
+        accent: ui.accent || "",
+        tag: ui.tag || "",
+        href: ui.href || "",
+        cost: ui.cost || "",
+        description: ui.description || "",
+      }
+    }
+    const payload = {
+      ...form,
+      config: { ui_by_type: cleanUiByType },
+    }
     const res = await fetch(url, {
       method: isEdit ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
+      body: JSON.stringify(payload),
     })
     const json = await res.json()
     if (!res.ok) {
