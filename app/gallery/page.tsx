@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import { AnnouncementBar } from "@/components/announcement-bar"
-import { SiteHeader } from "@/components/site-header"
+import { SiteHeaderServer } from "@/components/site-header-server"
 import { SiteFooter } from "@/components/site-footer"
 import { VideoGallery } from "@/components/video-gallery"
 import { ImageShowcase } from "@/components/image-showcase"
@@ -15,7 +15,7 @@ export default function GalleryPage() {
   return (
     <div className="flex min-h-screen flex-col">
       <AnnouncementBar />
-      <SiteHeader />
+      <SiteHeaderServer />
 
       <section className="relative border-b border-border/60 bg-muted/30">
         <div className="pointer-events-none absolute inset-0 bg-grid opacity-20 [mask-image:radial-gradient(ellipse_at_top,black_10%,transparent_60%)]" />

@@ -1,5 +1,5 @@
 import { AnnouncementBar } from "@/components/announcement-bar"
-import { SiteHeader } from "@/components/site-header"
+import { SiteHeaderServer } from "@/components/site-header-server"
 import { HeroSection } from "@/components/hero-section"
 import { ToolsGridServer } from "@/components/tools-grid-server"
 import { VideoGallery } from "@/components/video-gallery"
@@ -11,7 +11,7 @@ export default function HomePage() {
   return (
     <div className="flex min-h-screen flex-col">
       <AnnouncementBar />
-      <SiteHeader />
+      <SiteHeaderServer />
       <main className="flex-1">
         <HeroSection />
         <ToolsGridServer />

@@ -1,5 +1,3 @@
-'use client'
-
 import { Suspense } from 'react'
 import { SiteHeader } from '@/components/site-header'
 import type { Tool } from '@/lib/tools'

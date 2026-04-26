@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { ChevronRight } from "lucide-react"
 import { AnnouncementBar } from "@/components/announcement-bar"
-import { SiteHeader } from "@/components/site-header"
+import { SiteHeaderServer } from "@/components/site-header-server"
 import { SiteFooter } from "@/components/site-footer"
 import { TOOLS, CATEGORY_LABEL } from "@/lib/tools"
 import { cn } from "@/lib/utils"
@@ -20,7 +20,7 @@ export function ToolPageShell({ toolId, children }: Props) {
   return (
     <div className="flex min-h-screen flex-col">
       <AnnouncementBar />
-      <SiteHeader />
+      <SiteHeaderServer />
 
       {/* Sub hero */}
       <section className="relative border-b border-border/60 bg-muted/30">
