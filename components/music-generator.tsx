@@ -131,7 +131,7 @@ export function MusicGenerator({ models, defaultModelId, prompts = [] }: MusicGe
           description: mode === "inspire" ? desc : lyrics,
           params: {
             mode,
-            genre: mode === "custom" ? genre : undefined,
+            genre,
             mood,
             vocal,
           },
@@ -143,7 +143,7 @@ export function MusicGenerator({ models, defaultModelId, prompts = [] }: MusicGe
         throw new Error(err.error || "Generation failed")
       }
 
-      // 流式读取响应
+      // 读取响应流
       const reader = response.body?.getReader()
       if (!reader) throw new Error("No response stream")
 
@@ -153,12 +153,27 @@ export function MusicGenerator({ models, defaultModelId, prompts = [] }: MusicGe
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
-
         const chunk = decoder.decode(value)
         fullText += chunk
       }
 
-      console.log("[v0] Music generation complete:", fullText)
+      // 解析 New API 网关返回的 JSON 响应
+      let responseData
+      try {
+        responseData = JSON.parse(fullText)
+      } catch {
+        console.error("[v0] Failed to parse response:", fullText)
+        throw new Error("无法解析生成结果")
+      }
+
+      // 提取音乐 URL
+      const musicUrls = responseData.data?.map((item: any) => item.url) || []
+      if (!musicUrls || musicUrls.length === 0) {
+        throw new Error("未获取到生成的音乐")
+      }
+
+      // TODO: 展示音乐生成结果并支持播放
+      console.log("[v0] Music generation complete, URLs:", musicUrls)
     } catch (error) {
       console.error("[v0] Generation error:", error)
       alert(error instanceof Error ? error.message : "生成失败，请重试")

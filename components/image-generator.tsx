@@ -122,7 +122,7 @@ export function ImageGenerator({ models, defaultModelId, prompts = [] }: ImageGe
         throw new Error(err.error || "Generation failed")
       }
 
-      // 流式读取响应
+      // 读取响应流
       const reader = response.body?.getReader()
       if (!reader) throw new Error("No response stream")
 
@@ -132,21 +132,26 @@ export function ImageGenerator({ models, defaultModelId, prompts = [] }: ImageGe
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
-
         const chunk = decoder.decode(value)
         fullText += chunk
       }
 
-      console.log("[v0] Image generation complete:", fullText)
-      // TODO: 从 API 响应解析实际生成的图像 URL，而不是 mock 样本
-      // 临时回退到 mock 样本，便于测试
-      const all = [
-        "/image-samples/sample-1.jpg",
-        "/image-samples/sample-2.jpg",
-        "/image-samples/sample-3.jpg",
-        "/image-samples/sample-4.jpg",
-      ]
-      setResults(all.slice(0, count))
+      // 解析 New API 网关返回的 JSON 响应
+      let responseData
+      try {
+        responseData = JSON.parse(fullText)
+      } catch {
+        console.error("[v0] Failed to parse response:", fullText)
+        throw new Error("无法解析生成结果")
+      }
+
+      // 提取图片 URL
+      const imageUrls = responseData.data?.map((item: any) => item.url) || []
+      if (!imageUrls || imageUrls.length === 0) {
+        throw new Error("未获取到生成的图片")
+      }
+
+      setResults(imageUrls.slice(0, count))
     } catch (error) {
       console.error("[v0] Generation error:", error)
       alert(error instanceof Error ? error.message : "生成失败，请重试")

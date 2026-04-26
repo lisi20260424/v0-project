@@ -189,12 +189,14 @@ export function VideoGenerator({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          modelId: currentModel?.id,
+          modelId: model.id,
           prompt,
           params: {
-            duration: duration?.seconds ?? 5,
-            aspectRatio: ratio,
-            quality,
+            negative,
+            mode,
+            ratio: ratio?.id,
+            durationId,
+            count,
           },
         }),
       })
@@ -204,7 +206,7 @@ export function VideoGenerator({
         throw new Error(err.error || "Generation failed")
       }
 
-      // 流式读取响应
+      // 读取响应流
       const reader = response.body?.getReader()
       if (!reader) throw new Error("No response stream")
 
@@ -214,13 +216,27 @@ export function VideoGenerator({
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
-
         const chunk = decoder.decode(value)
         fullText += chunk
-        // 可在此处实时更新 UI（例如流式显示生成结果）
       }
 
-      console.log("[v0] Generation complete:", fullText)
+      // 解析 New API 网关返回的 JSON 响应
+      let responseData
+      try {
+        responseData = JSON.parse(fullText)
+      } catch {
+        console.error("[v0] Failed to parse response:", fullText)
+        throw new Error("无法解析生成结果")
+      }
+
+      // 提取视频 URL
+      const videoUrls = responseData.data?.map((item: any) => item.url) || []
+      if (!videoUrls || videoUrls.length === 0) {
+        throw new Error("未获取到生成的视频")
+      }
+
+      // TODO: 展示视频生成结果
+      console.log("[v0] Video generation complete, URLs:", videoUrls)
     } catch (error) {
       console.error("[v0] Generation error:", error)
       alert(error instanceof Error ? error.message : "生成失败，请重试")
@@ -404,7 +420,7 @@ export function VideoGenerator({
         {cap.supportsNegativePrompt && (
           <div className="mt-5">
             <Label htmlFor="video-negative" className="mb-2 block text-sm font-medium">
-              <span className="mr-1 text-primary">{ACCENT_LABEL}</span> 负向提示词（可选）
+              <span className="mr-1 text-primary">{ACCENT_LABEL}</span> 负向提示词（可选���
             </Label>
             <Textarea
               id="video-negative"
