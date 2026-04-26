@@ -18,13 +18,6 @@ export const CATEGORY_LABEL: Record<ToolCategory, string> = {
   audio: "音乐生成",
 }
 
-export const CATEGORY_LABEL: Record<ToolCategory, string> = {
-  video: "视频生成",
-  image: "图像生成",
-  audio: "音乐生成",
-  chat: "智能对话",
-}
-
 export const TOOLS: Tool[] = [
   {
     id: "veo",
