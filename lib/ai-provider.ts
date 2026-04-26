@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 
 export type AIGatewayConfig = {
   baseURL: string  // API 网关 URL（如 https://api.newapi.ai）
@@ -98,9 +98,10 @@ export async function callAIGateway(config: AIGatewayConfig, params: {
 
 /**
  * 获取模型信息（名称、供应商、消耗成本）
+ * 使用服务端客户端绕过 RLS
  */
 export async function getModelInfo(modelId: string) {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
   const { data, error } = await supabase
     .from("admin_models")
     .select("id, name, provider, model_type, cost_per_use, config")
@@ -115,9 +116,10 @@ export async function getModelInfo(modelId: string) {
 /**
  * 获取 API 网关配置（包含 URL、API Key 等）
  * 从 admin_gateway_settings 表读取，字段为 gateway_url 和 api_key
+ * 使用服务端客户端绕过 RLS（gateway_settings 被限制不允许读取）
  */
 export async function getGatewayConfig() {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
   const { data, error } = await supabase
     .from("admin_gateway_settings")
     .select("gateway_url, api_key")
