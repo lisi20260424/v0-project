@@ -1,42 +1,68 @@
 'use client'
 
 import { Suspense } from 'react'
-import { getModels } from '@/lib/get-models'
 import { SiteHeader } from '@/components/site-header'
 import type { Tool } from '@/lib/tools'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 async function SiteHeaderContent() {
-  const models = await getModels()
-  
-  // 转换 models 为 TOOLS 格式
-  let tools: Tool[] | undefined = undefined
-  if (models.length > 0) {
-    tools = models.map((m) => {
-      const categoryMap: Record<string, 'video' | 'image' | 'audio' | 'chat'> = {
-        video: 'video',
-        image: 'image',
-        music: 'audio',
-      }
-      
-      return {
-        id: m.id,
-        name: m.name,
-        brand: m.provider,
-        desc: m.desc,
-        href: getCategoryHref(m.id),
-        category: categoryMap[m.modelType] || 'chat' as const,
-        icon: getIconForModel(m.modelType),
-        accent: getAccentForModel(m.modelType),
-        cost: `${m.price} 点起`,
-        tag: undefined,
-      } as Tool
-    })
-  }
+  try {
+    const admin = createAdminClient()
+    
+    // 获取所有启用的模型
+    const { data: models, error } = await admin
+      .from('admin_models')
+      .select('*')
+      .eq('enabled', true)
+      .order('sort_order', { ascending: true })
+    
+    if (error) {
+      console.error('[v0] 获取模型失败:', error)
+      return <SiteHeader />
+    }
 
-  return <SiteHeader models={tools} />
+    if (!models || models.length === 0) {
+      return <SiteHeader />
+    }
+
+    // 转换为 TOOLS 格式
+    const tools: Tool[] = []
+    const categoryMap: Record<string, 'video' | 'image' | 'audio'> = {
+      video: 'video',
+      image: 'image',
+      music: 'audio',
+    }
+    const accentMap: Record<string, string> = {
+      video: 'from-sky-500/30 to-indigo-500/10',
+      image: 'from-violet-500/30 to-fuchsia-500/10',
+      music: 'from-cyan-500/30 to-blue-500/10',
+    }
+
+    for (const model of models) {
+      const category = categoryMap[model.model_type] || 'video'
+      
+      tools.push({
+        id: model.id,
+        name: model.name,
+        brand: model.provider,
+        desc: model.description || '',
+        href: getCategoryHref(category, model.id),
+        category: category,
+        icon: getIconForModel(model.model_type),
+        accent: accentMap[model.model_type] || 'from-primary/30 to-accent/10',
+        cost: `${model.cost_per_use} 点起`,
+        tag: undefined,
+      })
+    }
+
+    return <SiteHeader models={tools} />
+  } catch (error) {
+    console.error('[v0] 加载模型数据失败:', error)
+    return <SiteHeader />
+  }
 }
 
-function getCategoryHref(modelId: string): string {
+function getCategoryHref(category: string, modelId: string): string {
   const modelPageMap: Record<string, string> = {
     'sora': '/sora',
     'kling': '/kling',
@@ -46,9 +72,8 @@ function getCategoryHref(modelId: string): string {
     'nano-banana': '/image?model=nano-banana',
     'flux': '/image?model=flux',
     'suno': '/suno',
-    'chat': '/chat',
   }
-  return modelPageMap[modelId] || `/${modelId}`
+  return modelPageMap[modelId] || `/${category}/${modelId}`
 }
 
 function getIconForModel(type: string) {
@@ -56,19 +81,8 @@ function getIconForModel(type: string) {
     video: 'Video',
     image: 'ImageIcon',
     music: 'Music2',
-    chat: 'MessageSquare',
   }
   return icons[type] || 'Sparkles'
-}
-
-function getAccentForModel(type: string): string {
-  const accents: Record<string, string> = {
-    video: 'from-sky-500/30 to-indigo-500/10',
-    image: 'from-violet-500/30 to-fuchsia-500/10',
-    music: 'from-cyan-500/30 to-blue-500/10',
-    chat: 'from-primary/30 to-accent/10',
-  }
-  return accents[type] || 'from-primary/30 to-accent/10'
 }
 
 export function SiteHeaderServer() {
