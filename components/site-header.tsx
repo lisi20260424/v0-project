@@ -38,10 +38,10 @@ export function SiteHeader({ models }: SiteHeaderProps) {
   }))
   
   const navItems = [
-    { href: "/#features", label: "功能介绍" },
     { href: "/gallery", label: "作品广场" },
-    { href: "/pricing", label: "价格方案" },
+    { href: "/pricing", label: "定价" },
     { href: "/docs", label: "API文档" },
+    { href: "/#features", label: "帮助" },
   ]
 
   return (
