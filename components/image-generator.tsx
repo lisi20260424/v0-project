@@ -55,12 +55,10 @@ const EXAMPLES = [
   "一朵正在盛开的牡丹花微距特写，花瓣上有细小水珠，柔和自然光，摄影杂志封面",
 ]
 
-type Props = {
-  defaultModelId?: ImageModelId
-}
+type ImageModelId = string
 
-export function ImageGenerator({ defaultModelId = "gpt-image" }: Props) {
-  const [modelId, setModelId] = React.useState<ImageModelId>(defaultModelId)
+export function ImageGenerator({ models, defaultModelId }: ImageGeneratorProps) {
+  const [modelId, setModelId] = React.useState<ImageModelId>(defaultModelId ?? models[0]?.id ?? "")
   const [prompt, setPrompt] = React.useState("")
   const [negative, setNegative] = React.useState("")
   const [style, setStyle] = React.useState(STYLES[0])

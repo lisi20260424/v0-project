@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export type Model = {
   id: string
@@ -11,12 +11,12 @@ export type Model = {
 }
 
 /**
- * 从数据库获取启用的模型列表
+ * 从数据库获取启用的模型列表（使用 admin client，避免 dynamic server usage）
  * @param modelType - 模型类型：video/image/music，不指定则获取所有
  */
 export async function getModels(modelType?: 'video' | 'image' | 'music'): Promise<Model[]> {
   try {
-    const supabase = await createClient()
+    const supabase = createAdminClient()
     let query = supabase
       .from('admin_models')
       .select('id, name, provider, model_type, cost_per_use, description, config')

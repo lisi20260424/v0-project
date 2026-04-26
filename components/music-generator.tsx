@@ -24,6 +24,20 @@ import { cn } from "@/lib/utils"
 
 type Mode = "inspire" | "custom"
 
+export type GeneratorModel = {
+  id: string
+  name: string
+  brand?: string
+  desc: string
+  price: number
+  tag?: string
+}
+
+export type MusicGeneratorProps = {
+  models: GeneratorModel[]
+  defaultModelId?: string
+}
+
 const GENRES = ["流行", "电子", "摇滚", "民谣", "古风", "Hip Hop", "爵士", "R&B", "放克", "Lo-fi"]
 const MOODS = ["治愈", "热血", "忧伤", "欢快", "浪漫", "神秘", "怀旧", "史诗", "冥想"]
 const VOCALS = [
@@ -71,7 +85,7 @@ const SAMPLE_TRACKS = [
   },
 ]
 
-export function MusicGenerator() {
+export function MusicGenerator({ models, defaultModelId }: MusicGeneratorProps) {
   const [mode, setMode] = React.useState<Mode>("inspire")
   const [desc, setDesc] = React.useState("")
   const [title, setTitle] = React.useState("")
@@ -79,11 +93,11 @@ export function MusicGenerator() {
   const [genre, setGenre] = React.useState("流行")
   const [mood, setMood] = React.useState("治愈")
   const [vocal, setVocal] = React.useState("female")
-  const [version, setVersion] = React.useState("v5")
+  const [version, setVersion] = React.useState(defaultModelId ?? models[0]?.id ?? "v5")
   const [loading, setLoading] = React.useState(false)
   const [playingId, setPlayingId] = React.useState<string | null>(null)
 
-  const v = VERSIONS.find((x) => x.id === version)!
+  const v = models.find((x) => x.id === version) || { price: 8 }
   const regular = v.price * 2 // two tracks per generation
   const member = Math.round(regular * 0.75)
 
@@ -130,7 +144,7 @@ export function MusicGenerator() {
             <span className="mr-1 text-primary">♫</span> 模型版本
           </Label>
           <div className="grid gap-2 sm:grid-cols-2">
-            {VERSIONS.map((x) => (
+            {models.map((x) => (
               <button
                 key={x.id}
                 type="button"
