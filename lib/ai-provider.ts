@@ -1,49 +1,57 @@
 import { createClient } from "@/lib/supabase/server"
-import { openai } from "@ai-sdk/openai"
-import { anthropic } from "@ai-sdk/anthropic"
-import type { LanguageModel } from "ai"
 
-export type AIProviderConfig = {
-  provider: string
-  modelId: string
-  apiKey?: string
-  baseURL?: string
+export type AIGatewayConfig = {
+  baseURL: string // API 网关 URL（如 https://api.newapi.ai）
+  apiKey: string  // API 密钥
+  modelId: string // 模型 ID（由网关配置决定）
 }
 
 /**
- * 根据模型 provider 和配置选择对应的 AI 模型实例
- * modelId 应该是实际的 AI SDK 模型标识（如 gpt-4-turbo、claude-3-opus-20240229）
- * API Key 可以从环境变量或数据库网关配置中读取
- * 目前支持 openai 和 anthropic；如需扩展，在此追加分支
+ * 通过 HTTP 调用 New API 网关的聊天完成接口
+ * New API 提供 OpenAI 兼容的 /v1/chat/completions 端点
  */
-export function resolveModel(config: AIProviderConfig): LanguageModel {
-  const { provider, modelId, apiKey, baseURL } = config
+export async function callAIGateway(config: AIGatewayConfig, params: {
+  prompt: string
+  system?: string
+  maxTokens?: number
+  temperature?: number
+  stream?: boolean
+}) {
+  const { baseURL, apiKey, modelId } = config
+  const { prompt, system = "", maxTokens = 1000, temperature = 0.7, stream = true } = params
 
-  // 如果没有传 apiKey，从环境变量读取
-  const effectiveApiKey = apiKey || process.env[`${provider.toUpperCase()}_API_KEY`]
+  const messages = system
+    ? [
+        { role: "system", content: system },
+        { role: "user", content: prompt },
+      ]
+    : [{ role: "user", content: prompt }]
 
-  if (!effectiveApiKey) {
-    throw new Error(`Missing API key for provider: ${provider}`)
+  const response = await fetch(`${baseURL}/v1/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: modelId,
+      messages,
+      max_tokens: maxTokens,
+      temperature,
+      stream,
+    }),
+  })
+
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(`API Gateway Error: ${error.error?.message || "Unknown error"}`)
   }
 
-  switch (provider.toLowerCase()) {
-    case "openai":
-      return openai(modelId || "gpt-4-turbo", {
-        apiKey: effectiveApiKey,
-        baseURL,
-      })
-    case "anthropic":
-      return anthropic(modelId || "claude-3-opus-20240229", {
-        apiKey: effectiveApiKey,
-      })
-    default:
-      throw new Error(`Unsupported AI provider: ${provider}`)
-  }
+  return response
 }
 
 /**
  * 获取模型信息（名称、供应商、消耗成本）
- * 用于生成 API 在调用前校验并记录成本
  */
 export async function getModelInfo(modelId: string) {
   const supabase = await createClient()
@@ -59,15 +67,14 @@ export async function getModelInfo(modelId: string) {
 }
 
 /**
- * 获取 API 网关设置（仅服务端可调用）
- * 包含 API 密钥、网关 URL 等敏感配置
+ * 获取 API 网关配置（包含 URL、API Key 等）
  */
-export async function getGatewaySettings() {
+export async function getGatewayConfig() {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from("admin_gateway_settings")
-    .select("api_key, gateway_url")
-    .eq("id", 1)
+    .select("base_url, api_key, description")
+    .eq("enabled", true)
     .single()
 
   if (error) throw new Error("Gateway settings not found")
