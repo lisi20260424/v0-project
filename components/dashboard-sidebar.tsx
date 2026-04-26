@@ -12,8 +12,10 @@ import {
   Settings,
   Gift,
   HelpCircle,
+  Cog,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useUser } from "@/components/user-provider"
 
 const sections = [
   {
@@ -42,8 +44,21 @@ const sections = [
   },
 ] as const
 
+type AdminItem = {
+  href: string
+  label: string
+  icon: typeof Cog
+}
+
+const ADMIN_ITEM: AdminItem = {
+  href: "/admin/settings/gateway",
+  label: "后台设置",
+  icon: Cog,
+}
+
 export function DashboardSidebar() {
   const pathname = usePathname()
+  const { isAdmin } = useUser()
 
   return (
     <nav aria-label="用户中心导航" className="rounded-2xl border border-border bg-card p-3">
@@ -90,6 +105,30 @@ export function DashboardSidebar() {
           </ul>
         </div>
       ))}
+
+      {isAdmin && (
+        <div className="mb-0 border-t border-border pt-3 mt-3">
+          <div className="px-3 pb-1 pt-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            管理员
+          </div>
+          <ul className="space-y-0.5">
+            <li>
+              <Link
+                href={ADMIN_ITEM.href}
+                className={cn(
+                  "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors",
+                  pathname.startsWith("/admin/settings")
+                    ? "bg-primary/10 font-medium text-primary"
+                    : "text-foreground/80 hover:bg-secondary hover:text-foreground",
+                )}
+              >
+                <ADMIN_ITEM.icon className="h-4 w-4" />
+                <span className="flex-1">{ADMIN_ITEM.label}</span>
+              </Link>
+            </li>
+          </ul>
+        </div>
+      )}
     </nav>
   )
 }

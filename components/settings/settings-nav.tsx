@@ -2,9 +2,8 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { User, ShieldCheck, SlidersHorizontal, Trash2, Settings } from "lucide-react"
+import { User, ShieldCheck, SlidersHorizontal, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { useUser } from "@/components/user-provider"
 
 type NavItem = {
   label: string
@@ -21,27 +20,15 @@ const ACCOUNT_ITEMS: NavItem[] = [
   { label: "账号注销", href: "/settings/danger", icon: Trash2, desc: "永久删除账户", danger: true },
 ]
 
-const ADMIN_ITEM = { label: "后台设置", href: "/admin/settings/gateway", icon: Settings, desc: "API、模型、提示词" }
-
 export function SettingsNav() {
   const pathname = usePathname()
-  const { isAdmin } = useUser()
 
   return (
-    <nav className="flex flex-col gap-6">
-      <div className="flex flex-col gap-1">
-        <p className="px-3 pb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">账户设置</p>
-        {ACCOUNT_ITEMS.map((item) => (
-          <NavLink key={item.href} item={item} active={pathname === item.href} />
-        ))}
-      </div>
-
-      {isAdmin ? (
-        <div className="flex flex-col gap-1">
-          <p className="px-3 pb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">其他</p>
-          <NavLink item={ADMIN_ITEM} active={pathname.startsWith("/admin/settings")} />
-        </div>
-      ) : null}
+    <nav className="flex flex-col gap-1">
+      <p className="px-3 pb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">账户设置</p>
+      {ACCOUNT_ITEMS.map((item) => (
+        <NavLink key={item.href} item={item} active={pathname === item.href} />
+      ))}
     </nav>
   )
 }
