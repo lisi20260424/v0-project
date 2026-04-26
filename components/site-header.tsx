@@ -36,6 +36,11 @@ export function SiteHeader({ models }: SiteHeaderProps) {
     label: CATEGORY_LABEL[c],
     items: tools.filter((t) => t.category === c),
   }))
+  
+  const navItems = [
+    { href: "/#features", label: "功能介绍" },
+    { href: "/#pricing", label: "价格方案" },
+  ]
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/60 bg-background/80 backdrop-blur-xl">
