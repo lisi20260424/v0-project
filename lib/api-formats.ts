@@ -196,18 +196,14 @@ function buildVideoBody(format: VideoFormat, p: VideoRequestParams) {
     return { body }
   }
 
-  // 默认 OpenAI 风格
-  // duration 是整数（秒）
+  // 默认 OpenAI 风格（统一接口）
+  // 按照 /v1/videos 的统一接口格式
   const body: Record<string, any> = {
     model: modelId,
     prompt,
-    duration,
-    width,
-    height,
-    fps,
-    n,
+    seconds: String(duration),
+    size: sizeStr,
   }
-  if (seed !== undefined) body.seed = seed
   return { body }
 }
 
