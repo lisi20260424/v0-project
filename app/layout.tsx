@@ -45,7 +45,7 @@ export default async function RootLayout({
             <MembershipProvider>{children}</MembershipProvider>
           </UserProvider>
         </ThemeProvider>
-        <Toaster />
+        <Toaster position="top-right" richColors closeButton />
         {process.env.NODE_ENV === "production" && <Analytics />}
       </body>
     </html>
