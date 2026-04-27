@@ -163,11 +163,13 @@ function buildVideoBody(format: VideoFormat, p: VideoRequestParams) {
   if (format === "sora") {
     // Sora 异步任务：POST /v1/videos
     // Sora 使用 "seconds" 而不是 "duration"，且必须是字符串
+    // 视频使用 width 和 height，不使用 size
     return {
       body: {
         model: modelId,
         prompt,
-        size: sizeStr,
+        width,
+        height,
         seconds: String(duration),
       },
     }
@@ -188,21 +190,26 @@ function buildVideoBody(format: VideoFormat, p: VideoRequestParams) {
 
   if (format === "jimeng") {
     // 即梦（字节跳动）：POST /jimeng/?Action=CVSync2AsyncSubmitTask
-    // 即梦不需要 duration 参数
+    // 视频使用 width 和 height
     const body: Record<string, any> = {
       req_key: modelId,
       prompt,
+      width,
+      height,
+      seconds: String(duration),
     }
     return { body }
   }
 
   // 默认 OpenAI 风格（统一接口）
   // 按照 /v1/videos 的统一接口格式
+  // 视频使用 width 和 height，不使用 size
   const body: Record<string, any> = {
     model: modelId,
     prompt,
+    width,
+    height,
     seconds: String(duration),
-    size: sizeStr,
   }
   return { body }
 }
