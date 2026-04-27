@@ -162,25 +162,24 @@ function buildVideoBody(format: VideoFormat, p: VideoRequestParams) {
 
   if (format === "sora") {
     // Sora 异步任务：POST /v1/videos
-    // Sora 需要 size 参数格式为 "WIDTHxHEIGHT"，如 "1920x1080"
-    // duration 需要是字符串
+    // Sora 使用 "seconds" 而不是 "duration"，且必须是字符串
     return {
       body: {
         model: modelId,
         prompt,
         size: sizeStr,
-        duration: String(duration),
+        seconds: String(duration),
       },
     }
   }
 
   if (format === "kling") {
     // 可灵：POST /kling/v1/videos/text2video
-    // duration 是整数（秒）
+    // duration 必须是字符串
     const body: Record<string, any> = {
       model_name: modelId,
       prompt,
-      duration,
+      duration: String(duration),
       aspect_ratio: ratioStr,
     }
     if (negative) body.negative_prompt = negative
@@ -188,16 +187,12 @@ function buildVideoBody(format: VideoFormat, p: VideoRequestParams) {
   }
 
   if (format === "jimeng") {
-    // 即梦（字节跳动）：POST /jimeng/...，使用 req_key + 自定义参数
-    // duration 是整数（秒）
+    // 即梦（字节跳动）：POST /jimeng/?Action=CVSync2AsyncSubmitTask
+    // 即梦不需要 duration 参数
     const body: Record<string, any> = {
       req_key: modelId,
       prompt,
-      width,
-      height,
-      duration,
     }
-    if (seed !== undefined) body.seed = seed
     return { body }
   }
 
