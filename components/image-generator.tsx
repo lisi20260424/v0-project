@@ -102,49 +102,43 @@ export function ImageGenerator({ models, defaultModelId, prompts = [] }: ImageGe
     setLoading(true)
     setResults([])
     try {
+      const imageDimension = getImageDimension(ratioId)
+      console.log("[v0] Image dimension:", imageDimension, "from ratioId:", ratioId)
+
+      const requestBody = {
+        modelId: model.id,
+        prompt,
+        size: imageDimension,
+        n: count,
+        quality,
+        style,
+        responseFormat: "url",
+      }
+      console.log("[v0] Image request body:", requestBody)
+
+      // 创建一个带超时的 controller
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 10 * 60 * 1000) // 10分钟超时
+
       const response = await fetch("/api/generate/image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          modelId: model.id,
-          prompt,
-          // 根据选择的比例转换为标准尺寸
-          size: getImageDimension(ratioId),
-          n: count,
-          quality,
-          style,
-          responseFormat: "url",
-        }),
+        body: JSON.stringify(requestBody),
+        signal: controller.signal,
       })
+
+      clearTimeout(timeoutId)
+      console.log("[v0] Response status:", response.status, response.statusText)
 
       if (!response.ok) {
         const err = await response.json()
+        console.error("[v0] Error response:", err)
         throw new Error(err.error || "Generation failed")
       }
 
-      // 读取响应流
-      const reader = response.body?.getReader()
-      if (!reader) throw new Error("No response stream")
-
-      const decoder = new TextDecoder()
-      let fullText = ""
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        const chunk = decoder.decode(value)
-        fullText += chunk
-      }
-
-      // 解析 New API 网关返回的 JSON 响应
-      let responseData
-      try {
-        responseData = JSON.parse(fullText)
-        console.log(responseData)
-      } catch {
-        console.error("[v0] Failed to parse response:", fullText)
-        throw new Error("无法解析生成结果")
-      }
+      // 直接读取 JSON 响应
+      const responseData = await response.json()
+      console.log("[v0] Response data:", responseData)
 
       // 提取图片 URL
       const imageUrls = responseData.data?.map((item: any) => item.url) || []

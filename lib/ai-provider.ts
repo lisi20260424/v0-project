@@ -141,7 +141,7 @@ export async function callAIGateway(config: AIGatewayConfig, params: {
     }
   }
 
-  console.log(JSON.stringify(body))
+  console.log("[v0] AI Gateway request body:", JSON.stringify(body, null, 2))
   const response = await fetch(url, {
     method: "POST",
     headers: {
@@ -151,9 +151,17 @@ export async function callAIGateway(config: AIGatewayConfig, params: {
     body: JSON.stringify(body),
   })
 
+  console.log("[v0] AI Gateway response status:", response.status, response.statusText)
+
   if (!response.ok) {
-    const error = await response.json()
-    throw new Error(`API Gateway Error: ${error.error?.message || "Unknown error"}`)
+    try {
+      const error = await response.json()
+      throw new Error(`API Gateway Error: ${error.error?.message || error.message || "Unknown error"}`)
+    } catch (parseError) {
+      const text = await response.text()
+      console.error("[v0] Gateway error text:", text)
+      throw new Error(`API Gateway Error: ${text || "Unknown error"}`)
+    }
   }
 
   return response
