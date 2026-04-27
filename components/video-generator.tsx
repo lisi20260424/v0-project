@@ -19,7 +19,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { getVideoDimensions } from "@/lib/ratio-dimensions-mapping"
 import type { VideoCapabilities } from "@/lib/model-capabilities"
@@ -170,8 +170,6 @@ export function VideoGenerator({
   const [progress, setProgress] = React.useState(0)
   const [statusMsg, setStatusMsg] = React.useState<string>("")
   const [results, setResults] = React.useState<string[]>([])
-  const [alertOpen, setAlertOpen] = React.useState(false)
-  const [alertMessage, setAlertMessage] = React.useState("")
   const pollAbortRef = React.useRef<{ cancelled: boolean } | null>(null)
 
   React.useEffect(() => {
@@ -252,8 +250,8 @@ export function VideoGenerator({
     } catch (error) {
       if (!abortToken.cancelled) {
         console.error("[v0] Generation error:", error)
-        setAlertMessage(error instanceof Error ? error.message : "生成失败，请重试")
-        setAlertOpen(true)
+        const msg = error instanceof Error ? error.message : "生成失败，请重试"
+        toast.error(msg)
       }
     } finally {
       if (!abortToken.cancelled) {
@@ -316,14 +314,6 @@ export function VideoGenerator({
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
-      {alertOpen && (
-        <div className="col-span-full">
-          <Alert variant="destructive">
-            <AlertTitle>生成失败</AlertTitle>
-            <AlertDescription>{alertMessage}</AlertDescription>
-          </Alert>
-        </div>
-      )}
       <div className="rounded-2xl border border-border bg-card p-5 shadow-sm md:p-6">
         {/* Primary mode switcher */}
         {cap.supportsImageToVideo && (
@@ -411,7 +401,7 @@ export function VideoGenerator({
                   <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
                   <UploadSlot label="上传尾帧" hint="选填" value={frameEnd} onChange={setFrameEnd} className="flex-1" />
                 </div>
-                <p className="mt-2 text-xs text-muted-foreground">仅上传首帧可生成自然过渡；提供尾帧将引导镜头终点画面</p>
+                <p className="mt-2 text-xs text-muted-foreground">仅上传首帧可生成自然过渡；提供尾帧将引导镜头终点画���</p>
               </div>
             )}
 

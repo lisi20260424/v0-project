@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { Inter, JetBrains_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
+import { Toaster } from "sonner"
 import { ThemeProvider } from "@/components/theme-provider"
 import { MembershipProvider } from "@/components/membership-provider"
 import { UserProvider } from "@/components/user-provider"
@@ -44,6 +45,7 @@ export default async function RootLayout({
             <MembershipProvider>{children}</MembershipProvider>
           </UserProvider>
         </ThemeProvider>
+        <Toaster />
         {process.env.NODE_ENV === "production" && <Analytics />}
       </body>
     </html>

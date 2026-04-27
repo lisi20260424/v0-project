@@ -20,7 +20,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 
 type TaskType = "video" | "image" | "music"
@@ -114,8 +114,6 @@ export function TasksList() {
   const [tasks, setTasks] = React.useState<ApiTask[]>([])
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
-  const [alertOpen, setAlertOpen] = React.useState(false)
-  const [alertMessage, setAlertMessage] = React.useState("")
 
   // 拉取任务列表
   const refresh = React.useCallback(async () => {
@@ -210,8 +208,7 @@ export function TasksList() {
       if (!res.ok) throw new Error("删除失败")
     } catch {
       setTasks(prev)
-      setAlertMessage("删除失败")
-      setAlertOpen(true)
+      toast.error("删除失败")
     }
   }
 
@@ -225,12 +222,6 @@ export function TasksList() {
 
   return (
     <div className="space-y-6">
-      {alertOpen && (
-        <Alert variant="destructive">
-          <AlertTitle>错误</AlertTitle>
-          <AlertDescription>{alertMessage}</AlertDescription>
-        </Alert>
-      )}
       <div>
         <h1 className="text-2xl font-bold tracking-tight">我的任务</h1>
         <p className="mt-1 text-sm text-muted-foreground">查看所有正在进行和历史的生成任务，失败任务会自动退回点数。</p>
