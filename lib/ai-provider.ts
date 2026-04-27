@@ -12,7 +12,7 @@ export type AIGatewayConfig = {
  */
 function getAPIEndpoint(modelType: string): string {
   const endpoints: Record<string, string> = {
-    video: "/v1/videos/generations",
+    video: "/v1/video/generations",
     image: "/v1/images/generations",
     music: "/v1/audio/generations",
   }
