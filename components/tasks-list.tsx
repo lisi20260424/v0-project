@@ -229,12 +229,6 @@ export function TasksList() {
         <Alert variant="destructive">
           <AlertTitle>错误</AlertTitle>
           <AlertDescription>{alertMessage}</AlertDescription>
-          <button
-            onClick={() => setAlertOpen(false)}
-            className="mt-2 inline-flex items-center justify-center rounded-md bg-destructive px-3 py-1.5 text-sm font-medium text-background hover:bg-destructive/90"
-          >
-            关闭
-          </button>
         </Alert>
       )}
       <div>
