@@ -1,175 +1,102 @@
 import { createAdminClient } from "@/lib/supabase/admin"
+import {
+  type AnyFormat,
+  type AnyRequestParams,
+  type EndpointConfig,
+  type GenerationType,
+  type ParsedResponse,
+  type PollResult,
+  type VideoFormat,
+  DEFAULT_ENDPOINTS,
+  buildRequestBody,
+  parseResponse,
+  buildPollUrl,
+  parsePollResponse,
+} from "@/lib/api-formats"
 
 export type AIGatewayConfig = {
-  baseURL: string  // API 网关 URL（如 https://api.newapi.ai）
-  apiKey: string   // API 密钥
-  modelId: string  // 模型 ID（由网关配置决定）
-  modelType: "video" | "image" | "music" // 生成类型
+  baseURL: string
+  apiKey: string
+  modelId: string
+  modelType: GenerationType
+  endpoint: EndpointConfig
 }
 
 /**
- * 根据生成类型获取对应的 New API 端点
+ * 调用 AI 网关创建生成请求；自动按 format 构造请求体并解析响应。
  */
-function getAPIEndpoint(modelType: string): string {
-  const endpoints: Record<string, string> = {
-    video: "/v1/video/generations",
-    image: "/v1/images/generations",
-    music: "/v1/audio/generations",
-  }
-  return endpoints[modelType] || "/v1/chat/completions"
-}
+export async function callAIGateway(
+  config: AIGatewayConfig,
+  params: AnyRequestParams,
+): Promise<ParsedResponse> {
+  const { baseURL, apiKey, modelType, endpoint } = config
+  const { body, headers: extraHeaders } = buildRequestBody(modelType, endpoint.format, params)
+  const url = `${baseURL.replace(/\/+$/, "")}${endpoint.path.startsWith("/") ? endpoint.path : `/${endpoint.path}`}`
 
-/**
- * 通过 HTTP 调用 New API 网关的对应端点
- * 根据模型类型选择不同的 API 端点（视频/图像/音乐）
- */
-export async function callAIGateway(config: AIGatewayConfig, params: {
-  prompt: string
-  system?: string
-  maxTokens?: number
-  temperature?: number
-  stream?: boolean
-  // 图像生成参数
-  imageSize?: string
-  imageN?: number
-  imageQuality?: string
-  imageStyle?: string
-  responseFormat?: string
-  background?: string
-  moderation?: string
-  // 视频生成参数
-  videoDuration?: number
-  videoWidth?: number
-  videoHeight?: number
-  videoFps?: number
-  videoSeed?: number
-  videoN?: number
-  // 音乐生成参数
-  musicDuration?: number
-  musicVoice?: string
-  musicSpeed?: number
-}) {
-  const { baseURL, apiKey, modelId, modelType } = config
-  const {
-    prompt,
-    system = "",
-    maxTokens = 1000,
-    temperature = 0.7,
-    stream = true,
-    // 图像默认参数
-    imageSize = "1024x1024",
-    imageN = 1,
-    imageQuality = "standard",
-    imageStyle = "natural",
-    responseFormat = "url",
-    background = "auto",
-    moderation = "auto",
-    // 视频默认参数
-    videoDuration = 10,
-    videoWidth = 1024,
-    videoHeight = 1024,
-    videoFps = 24,
-    videoSeed,
-    videoN = 1,
-    // 音乐默认参数
-    musicDuration = 30,
-    musicVoice = "alloy",
-    musicSpeed = 1,
-  } = params
+  console.log("[v0] AI Gateway request →", url)
+  console.log("[v0] AI Gateway body:", JSON.stringify(body).slice(0, 500))
 
-  const endpoint = getAPIEndpoint(modelType)
-  const url = `${baseURL}${endpoint}`
-
-  // 根据端点类型构建不同的请求体
-  let body: Record<string, any>
-
-  if (modelType === "image") {
-    // 图像生成接口 - 参考: https://docs.newapi.pro/zh/docs/api/ai-model/images/openai/post-v1-images-generations
-    body = {
-      model: modelId,
-      prompt,
-      n: imageN,
-      size: imageSize,
-      quality: imageQuality,
-      style: imageStyle,
-      response_format: responseFormat,
-    }
-    // gpt-image-1 特定参数
-    if (modelId === "gpt-image-1") {
-      body.background = background
-      body.moderation = moderation
-    }
-  } else if (modelType === "video") {
-    // 视频生成接口 - 参考: https://docs.newapi.pro/zh/docs/api/ai-model/videos/createvideogeneration
-    body = {
-      model: modelId,
-      prompt,
-      duration: videoDuration,
-      width: videoWidth,
-      height: videoHeight,
-      fps: videoFps,
-      n: videoN,
-    }
-    // 可选参数
-    if (videoSeed !== undefined) {
-      body.seed = videoSeed
-    }
-  } else if (modelType === "music") {
-    // 音乐生成接口（文本转语音） - 参考: https://docs.newapi.pro/zh/docs/api/ai-model/audio/openai/createspeech
-    body = {
-      model: modelId,
-      input: prompt.slice(0, 4096), // TTS API 的最大长度限制
-      voice: musicVoice,
-      response_format: responseFormat || "mp3",
-      speed: musicSpeed,
-    }
-  } else {
-    // 默认使用聊天接口
-    const messages = system
-      ? [
-        { role: "system", content: system },
-        { role: "user", content: prompt },
-      ]
-      : [{ role: "user", content: prompt }]
-
-    body = {
-      model: modelId,
-      messages,
-      max_tokens: maxTokens,
-      temperature,
-      stream,
-    }
-  }
-
-  console.log("[v0] AI Gateway request body:", JSON.stringify(body, null, 2))
   const response = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${apiKey}`,
+      ...(extraHeaders ?? {}),
     },
     body: JSON.stringify(body),
   })
 
-  console.log("[v0] AI Gateway response status:", response.status, response.statusText)
+  console.log("[v0] AI Gateway status:", response.status)
 
   if (!response.ok) {
+    let detail = ""
     try {
-      const error = await response.json()
-      throw new Error(`API Gateway Error: ${error.error?.message || error.message || "Unknown error"}`)
-    } catch (parseError) {
-      const text = await response.text()
-      console.error("[v0] Gateway error text:", text)
-      throw new Error(`API Gateway Error: ${text || "Unknown error"}`)
+      const json = await response.clone().json()
+      detail = json?.error?.message || json?.message || JSON.stringify(json)
+    } catch {
+      detail = await response.text()
     }
+    throw new Error(`API Gateway Error (${response.status}): ${detail.slice(0, 500)}`)
   }
 
-  return response
+  return parseResponse(modelType, endpoint.format, response)
 }
 
 /**
- * 获取模型信息（名称、供应商、消耗成本）
- * 使用服务端客户端绕过 RLS
+ * 轮询上游视频任务的最新状态
+ */
+export async function pollProviderTask(
+  baseURL: string,
+  apiKey: string,
+  format: VideoFormat,
+  providerTaskId: string,
+  pollPath?: string,
+): Promise<PollResult> {
+  const url = buildPollUrl(format, baseURL.replace(/\/+$/, ""), providerTaskId, pollPath)
+  console.log("[v0] Polling provider task:", url)
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      Accept: "application/json",
+    },
+  })
+
+  if (!response.ok) {
+    const text = await response.text()
+    return {
+      status: "failed",
+      error: `轮询失败 (${response.status}): ${text.slice(0, 200)}`,
+      raw: { status: response.status, text },
+    }
+  }
+
+  const json = await response.json().catch(() => ({}))
+  return parsePollResponse(format, json)
+}
+
+/**
+ * 获取模型信息（含供应商配置中的 endpoints）
  */
 export async function getModelInfo(modelId: string) {
   const supabase = createAdminClient()
@@ -185,9 +112,35 @@ export async function getModelInfo(modelId: string) {
 }
 
 /**
- * 获取 API 网关配置（包含 URL、API Key 等）
- * 从 admin_gateway_settings 表读取，字段为 gateway_url 和 api_key
- * 使用服务端客户端绕过 RLS（gateway_settings 被限制不允许读取）
+ * 根据模型查找对应供应商，并解析出该类型的端点配置
+ */
+export async function getEndpointForModel(
+  providerName: string,
+  modelType: GenerationType,
+): Promise<EndpointConfig> {
+  const supabase = createAdminClient()
+  const { data, error } = await supabase
+    .from("admin_providers")
+    .select("config")
+    .eq("name", providerName)
+    .single()
+
+  const fallback = DEFAULT_ENDPOINTS[modelType]
+  if (error || !data) return fallback
+
+  const cfg = (data.config ?? {}) as { endpoints?: Partial<Record<GenerationType, Partial<EndpointConfig>>> }
+  const ep = cfg.endpoints?.[modelType]
+  if (!ep) return fallback
+
+  return {
+    path: ep.path?.trim() || fallback.path,
+    format: (ep.format as AnyFormat) || fallback.format,
+    pollPath: ep.pollPath?.trim() || undefined,
+  }
+}
+
+/**
+ * 获取 API 网关配置
  */
 export async function getGatewayConfig() {
   const supabase = createAdminClient()
@@ -198,5 +151,6 @@ export async function getGatewayConfig() {
     .single()
 
   if (error || !data) throw new Error("Gateway settings not found")
+  if (!data.gateway_url || !data.api_key) throw new Error("Gateway settings incomplete: 请先在系统设置中配置网关 URL 与 API Key")
   return data
 }

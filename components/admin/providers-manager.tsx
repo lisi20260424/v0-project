@@ -54,31 +54,44 @@ export function ProvidersManager({ initialProviders }: { initialProviders: Admin
     enabled: boolean
     sortOrder: number
     uiByType: Record<"video" | "image" | "music", {
+      display_name?: string
       icon: string
       accent: string
       tag: string
-      href: string
       cost: string
       description: string
+    }>
+    endpointsByType: Record<"video" | "image" | "music", {
+      format: string
+      path: string
+      pollPath: string
     }>
   }) {
     const isEdit = !!form.id
     const url = isEdit ? `/api/admin/providers/${form.id}` : "/api/admin/providers"
-    // 把 uiByType 编码到 config.ui_by_type，清理 undefined 值
-    const cleanUiByType: typeof form.uiByType = {}
+    // 把 uiByType / endpointsByType 编码到 config，清理空值
+    const cleanUiByType: any = {}
     for (const [type, ui] of Object.entries(form.uiByType)) {
-      cleanUiByType[type as keyof typeof form.uiByType] = {
+      cleanUiByType[type] = {
+        display_name: ui.display_name || "",
         icon: ui.icon || "",
         accent: ui.accent || "",
         tag: ui.tag || "",
-        href: ui.href || "",
         cost: ui.cost || "",
         description: ui.description || "",
       }
     }
+    const cleanEndpoints: any = {}
+    for (const [type, ep] of Object.entries(form.endpointsByType)) {
+      cleanEndpoints[type] = {
+        format: ep.format,
+        path: ep.path,
+        ...(ep.pollPath ? { pollPath: ep.pollPath } : {}),
+      }
+    }
     const payload = {
       ...form,
-      config: { ui_by_type: cleanUiByType },
+      config: { ui_by_type: cleanUiByType, endpoints: cleanEndpoints },
     }
     const res = await fetch(url, {
       method: isEdit ? "PATCH" : "POST",

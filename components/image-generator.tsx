@@ -103,50 +103,38 @@ export function ImageGenerator({ models, defaultModelId, prompts = [] }: ImageGe
     setResults([])
     try {
       const imageDimension = getImageDimension(ratioId)
-      console.log("[v0] Image dimension:", imageDimension, "from ratioId:", ratioId)
-
-      const requestBody = {
-        modelId: model.id,
-        prompt,
-        size: imageDimension,
-        n: count,
-        quality,
-        style,
-        responseFormat: "url",
-      }
-      console.log("[v0] Image request body:", requestBody)
-
-      // 创建一个带超时的 controller
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 10 * 60 * 1000) // 10分钟超时
-
-      const response = await fetch("/api/generate/image", {
+      const response = await fetch("/api/tasks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestBody),
-        signal: controller.signal,
+        body: JSON.stringify({
+          type: "image",
+          modelId: model.id,
+          prompt,
+          params: {
+            size: imageDimension,
+            n: count,
+            quality,
+            style,
+            responseFormat: "url",
+            negative: negative || undefined,
+          },
+        }),
       })
 
-      clearTimeout(timeoutId)
-      console.log("[v0] Response status:", response.status, response.statusText)
-
       if (!response.ok) {
-        const err = await response.json()
-        console.error("[v0] Error response:", err)
-        throw new Error(err.error || "Generation failed")
+        const err = await response.json().catch(() => ({}))
+        throw new Error(err.error || "生成失败")
       }
 
-      // 直接读取 JSON 响应
-      const responseData = await response.json()
-      console.log("[v0] Response data:", responseData)
-
-      // 提取图片 URL
-      const imageUrls = responseData.data?.map((item: any) => item.url) || []
-      if (!imageUrls || imageUrls.length === 0) {
+      const { task } = await response.json()
+      if (task?.status === "failed") {
+        throw new Error(task.error_message || "生成失败")
+      }
+      const urls: string[] = task?.result_urls ?? []
+      if (urls.length === 0) {
         throw new Error("未获取到生成的图片")
       }
-
-      setResults(imageUrls.slice(0, count))
+      setResults(urls.slice(0, count))
     } catch (error) {
       console.error("[v0] Generation error:", error)
       alert(error instanceof Error ? error.message : "生成失败，请重试")
@@ -266,7 +254,7 @@ export function ImageGenerator({ models, defaultModelId, prompts = [] }: ImageGe
             id="img-prompt"
             value={prompt}
             onChange={(e) => setPrompt(e.target.value.slice(0, cap.maxPromptLength))}
-            placeholder="描述你想要的图像，包括主体、风格、光线、构���、细节等"
+            placeholder="描述你想要的图像，包括主体、风格、光线、�����、细节等"
             className="min-h-[120px] resize-none bg-background"
           />
           {promptChips.length > 0 && (

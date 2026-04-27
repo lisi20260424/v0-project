@@ -41,6 +41,25 @@ const TYPE_LABEL: Record<ProviderModelType, string> = {
   music: "音乐生成",
 }
 
+// 各类型支持的 API 格式与默认端点
+const FORMAT_OPTIONS: Record<ProviderModelType, { value: string; label: string; defaultPath: string }[]> = {
+  image: [
+    { value: "openai", label: "OpenAI 兼容", defaultPath: "/v1/images/generations" },
+    { value: "qwen-openai", label: "通义千问 OpenAI 格式", defaultPath: "/v1/images/generations" },
+    { value: "gemini", label: "Gemini 原生格式", defaultPath: "/v1beta/models/{model}:generateContent" },
+  ],
+  video: [
+    { value: "openai", label: "OpenAI 兼容", defaultPath: "/v1/video/generations" },
+    { value: "sora", label: "Sora", defaultPath: "/v1/videos" },
+    { value: "kling", label: "可灵 Kling", defaultPath: "/kling/v1/videos/text2video" },
+    { value: "jimeng", label: "字节即梦 Jimeng", defaultPath: "/jimeng/v1/videos/text2video" },
+  ],
+  music: [
+    { value: "openai", label: "OpenAI TTS", defaultPath: "/v1/audio/speech" },
+    { value: "gemini", label: "Gemini 原生格式", defaultPath: "/v1beta/models/{model}:generateContent" },
+  ],
+}
+
 type TypeUI = {
   display_name: string
   icon: string
@@ -48,6 +67,12 @@ type TypeUI = {
   tag: string
   cost: string
   description: string
+}
+
+type EndpointCfg = {
+  format: string
+  path: string
+  pollPath: string
 }
 
 type FormState = {
@@ -58,6 +83,7 @@ type FormState = {
   enabled: boolean
   sortOrder: number
   uiByType: Record<ProviderModelType, TypeUI>
+  endpointsByType: Record<ProviderModelType, EndpointCfg>
 }
 
 type Props = {
@@ -78,11 +104,21 @@ function emptyTypeUI(type: ProviderModelType): TypeUI {
   }
 }
 
+function defaultEndpoint(type: ProviderModelType): EndpointCfg {
+  const opts = FORMAT_OPTIONS[type]
+  return { format: opts[0].value, path: opts[0].defaultPath, pollPath: "" }
+}
+
 function initial(provider?: AdminProvider): FormState {
-  const defaults: Record<ProviderModelType, TypeUI> = {
+  const defaultsUI: Record<ProviderModelType, TypeUI> = {
     video: emptyTypeUI("video"),
     image: emptyTypeUI("image"),
     music: emptyTypeUI("music"),
+  }
+  const defaultsEndpoint: Record<ProviderModelType, EndpointCfg> = {
+    video: defaultEndpoint("video"),
+    image: defaultEndpoint("image"),
+    music: defaultEndpoint("music"),
   }
 
   if (!provider) {
@@ -92,21 +128,33 @@ function initial(provider?: AdminProvider): FormState {
       description: "",
       enabled: true,
       sortOrder: 0,
-      uiByType: defaults,
+      uiByType: defaultsUI,
+      endpointsByType: defaultsEndpoint,
     }
   }
 
-  const cfg = (provider.config ?? {}) as { ui_by_type?: Partial<Record<ProviderModelType, Partial<TypeUI>>> }
-  const uiByType = { ...defaults }
+  const cfg = (provider.config ?? {}) as {
+    ui_by_type?: Partial<Record<ProviderModelType, Partial<TypeUI>>>
+    endpoints?: Partial<Record<ProviderModelType, Partial<EndpointCfg>>>
+  }
+
+  const uiByType = { ...defaultsUI }
+  const endpointsByType = { ...defaultsEndpoint }
   for (const t of MODEL_TYPES) {
     const stored = cfg.ui_by_type?.[t] ?? {}
     uiByType[t] = {
       display_name: stored.display_name ?? "",
-      icon: stored.icon || defaults[t].icon,
-      accent: stored.accent || defaults[t].accent,
+      icon: stored.icon || defaultsUI[t].icon,
+      accent: stored.accent || defaultsUI[t].accent,
       tag: stored.tag ?? "",
       cost: stored.cost ?? "",
       description: stored.description ?? "",
+    }
+    const ep = cfg.endpoints?.[t] ?? {}
+    endpointsByType[t] = {
+      format: (ep.format as string) || defaultsEndpoint[t].format,
+      path: ep.path ?? defaultsEndpoint[t].path,
+      pollPath: ep.pollPath ?? "",
     }
   }
 
@@ -118,6 +166,7 @@ function initial(provider?: AdminProvider): FormState {
     enabled: provider.enabled,
     sortOrder: provider.sort_order,
     uiByType,
+    endpointsByType,
   }
 }
 
@@ -133,8 +182,6 @@ export function ProviderDialog({ open, onOpenChange, provider, onSave }: Props) 
       const initialForm = initial(provider)
       setForm(initialForm)
       setError(null)
-      
-      // 编辑现有供应商时，自动选中第一个有配置的类型
       if (isEdit) {
         const firstConfiguredType = MODEL_TYPES.find((t) => {
           const ui = initialForm.uiByType[t]
@@ -155,6 +202,35 @@ export function ProviderDialog({ open, onOpenChange, provider, onSave }: Props) 
     setForm((prev) => ({
       ...prev,
       uiByType: { ...prev.uiByType, [type]: { ...prev.uiByType[type], [key]: value } },
+    }))
+  }
+
+  function updateEndpoint(type: ProviderModelType, key: keyof EndpointCfg, value: string) {
+    setForm((prev) => ({
+      ...prev,
+      endpointsByType: {
+        ...prev.endpointsByType,
+        [type]: { ...prev.endpointsByType[type], [key]: value },
+      },
+    }))
+  }
+
+  function selectFormat(type: ProviderModelType, formatValue: string) {
+    const opt = FORMAT_OPTIONS[type].find((o) => o.value === formatValue)
+    setForm((prev) => ({
+      ...prev,
+      endpointsByType: {
+        ...prev.endpointsByType,
+        [type]: {
+          ...prev.endpointsByType[type],
+          format: formatValue,
+          // 切换格式时若路径仍是某个内置默认值，则同步成新格式的默认路径
+          path:
+            FORMAT_OPTIONS[type].some((o) => o.defaultPath === prev.endpointsByType[type].path)
+              ? opt?.defaultPath ?? prev.endpointsByType[type].path
+              : prev.endpointsByType[type].path,
+        },
+      },
     }))
   }
 
@@ -186,7 +262,7 @@ export function ProviderDialog({ open, onOpenChange, provider, onSave }: Props) 
         <DialogHeader className="flex-shrink-0">
           <DialogTitle>{isEdit ? "编辑供应商" : "新建供应商"}</DialogTitle>
           <DialogDescription>
-            配置 AI 模型供应商信息，含 AI 工具菜单中各类型的展示样式。
+            配置供应商展示样式与各类型 API 端点（路径 + 请求格式）。
           </DialogDescription>
         </DialogHeader>
 
@@ -249,10 +325,10 @@ export function ProviderDialog({ open, onOpenChange, provider, onSave }: Props) 
 
             <div className="space-y-2 rounded-lg border border-border/50 bg-secondary/20 p-3">
               <div className="flex items-center justify-between">
-                <p className="text-xs font-medium">展示配置</p>
-                <p className="text-[10px] text-muted-foreground">不同类型可独立配置图标 / 标签 / 跳转</p>
+                <p className="text-xs font-medium">类型配置</p>
+                <p className="text-[10px] text-muted-foreground">不同类型可独立配置展示样式与 API 端点</p>
               </div>
-              <Tabs value={selectedType} onValueChange={setSelectedType} className="w-full">
+              <Tabs value={selectedType} onValueChange={(v) => setSelectedType(v as ProviderModelType)} className="w-full">
                 <TabsList className="grid grid-cols-3 h-8">
                   {MODEL_TYPES.map((t) => (
                     <TabsTrigger key={t} value={t} className="text-xs">
@@ -261,13 +337,22 @@ export function ProviderDialog({ open, onOpenChange, provider, onSave }: Props) 
                   ))}
                 </TabsList>
                 {MODEL_TYPES.map((t) => (
-                  <TabsContent key={t} value={t} className="pt-3">
-                    <TypeUIFields
+                  <TabsContent key={t} value={t} className="pt-3 space-y-4">
+                    <EndpointFields
                       type={t}
-                      ui={form.uiByType[t]}
-                      onChange={(key, value) => updateTypeUI(t, key, value)}
+                      cfg={form.endpointsByType[t]}
+                      onChangeFormat={(v) => selectFormat(t, v)}
+                      onChange={(key, value) => updateEndpoint(t, key, value)}
                       disabled={submitting}
                     />
+                    <div className="border-t border-border/50 pt-3">
+                      <TypeUIFields
+                        type={t}
+                        ui={form.uiByType[t]}
+                        onChange={(key, value) => updateTypeUI(t, key, value)}
+                        disabled={submitting}
+                      />
+                    </div>
                   </TabsContent>
                 ))}
               </Tabs>
@@ -298,6 +383,75 @@ export function ProviderDialog({ open, onOpenChange, provider, onSave }: Props) 
         </form>
       </DialogContent>
     </Dialog>
+  )
+}
+
+function EndpointFields({
+  type,
+  cfg,
+  onChangeFormat,
+  onChange,
+  disabled,
+}: {
+  type: ProviderModelType
+  cfg: EndpointCfg
+  onChangeFormat: (value: string) => void
+  onChange: (key: keyof EndpointCfg, value: string) => void
+  disabled?: boolean
+}) {
+  const options = FORMAT_OPTIONS[type]
+  const isAsyncVideo = type === "video" && ["sora", "kling", "jimeng"].includes(cfg.format)
+
+  return (
+    <div className="space-y-2 rounded-md bg-background/40 p-2.5 ring-1 ring-border/40">
+      <p className="text-[11px] font-medium text-muted-foreground">API 端点</p>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <div className="flex flex-col gap-1">
+          <Label className="text-xs">请求格式</Label>
+          <Select value={cfg.format} onValueChange={onChangeFormat} disabled={disabled}>
+            <SelectTrigger className="h-7 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {options.map((o) => (
+                <SelectItem key={o.value} value={o.value}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex flex-col gap-1">
+          <Label htmlFor={`ep-path-${type}`} className="text-xs">
+            创建路径
+          </Label>
+          <Input
+            id={`ep-path-${type}`}
+            value={cfg.path}
+            onChange={(e) => onChange("path", e.target.value)}
+            disabled={disabled}
+            className="h-7 text-xs font-mono"
+            placeholder={options[0].defaultPath}
+          />
+        </div>
+      </div>
+      {isAsyncVideo && (
+        <div className="flex flex-col gap-1">
+          <Label htmlFor={`ep-poll-${type}`} className="text-xs">
+            轮询路径（可选）
+          </Label>
+          <Input
+            id={`ep-poll-${type}`}
+            value={cfg.pollPath}
+            onChange={(e) => onChange("pollPath", e.target.value)}
+            disabled={disabled}
+            className="h-7 text-xs font-mono"
+            placeholder="留空使用格式默认；支持 {taskId} 占位符"
+          />
+          <p className="text-[10px] text-muted-foreground">视频任务为异步，将定时轮询此路径以获取最新状态</p>
+        </div>
+      )}
+    </div>
   )
 }
 

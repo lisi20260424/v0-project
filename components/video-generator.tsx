@@ -166,6 +166,16 @@ export function VideoGenerator({
   const [singleImage, setSingleImage] = React.useState<string | null>(null)
 
   const [loading, setLoading] = React.useState(false)
+  const [progress, setProgress] = React.useState(0)
+  const [statusMsg, setStatusMsg] = React.useState<string>("")
+  const [results, setResults] = React.useState<string[]>([])
+  const pollAbortRef = React.useRef<{ cancelled: boolean } | null>(null)
+
+  React.useEffect(() => {
+    return () => {
+      if (pollAbortRef.current) pollAbortRef.current.cancelled = true
+    }
+  }, [])
 
   const ratio = cap.ratios.find((r) => r.id === ratioId) ?? cap.ratios[0]
   const regular = model.price * count
@@ -183,68 +193,104 @@ export function VideoGenerator({
   const onGenerate = async () => {
     if (!prompt.trim()) return
     if (mode === "image" && !hasImage) return
-    
+
+    if (pollAbortRef.current) pollAbortRef.current.cancelled = true
+    const abortToken = { cancelled: false }
+    pollAbortRef.current = abortToken
+
     setLoading(true)
+    setProgress(0)
+    setStatusMsg("提交任务中...")
+    setResults([])
     try {
-      // 根据选择的比例获取标准尺寸
       const { width, height } = getVideoDimensions(ratioId)
-      
-      const response = await fetch("/api/generate/video", {
+      const duration = durationId ? parseInt(durationId) : 5
+
+      const response = await fetch("/api/tasks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          type: "video",
           modelId: model.id,
           prompt,
-          // 根据选择的比例转换为标准尺寸，然后提取宽高参数
-          duration: durationId ? parseInt(durationId) : 10,
-          width,
-          height,
-          fps: 24,
-          n: count,
+          params: {
+            duration,
+            width,
+            height,
+            fps: 24,
+            n: count,
+            ratio: ratio?.ratio,
+            negative: negative || undefined,
+          },
         }),
       })
 
       if (!response.ok) {
-        const err = await response.json()
-        throw new Error(err.error || "Generation failed")
+        const err = await response.json().catch(() => ({}))
+        throw new Error(err.error || "生成失败")
       }
 
-      // 读取响应流
-      const reader = response.body?.getReader()
-      if (!reader) throw new Error("No response stream")
+      const { task } = await response.json()
+      if (!task) throw new Error("未获取到任务信息")
 
-      const decoder = new TextDecoder()
-      let fullText = ""
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        const chunk = decoder.decode(value)
-        fullText += chunk
+      if (task.status === "success") {
+        setResults(task.result_urls ?? [])
+        setProgress(100)
+        return
+      }
+      if (task.status === "failed") {
+        throw new Error(task.error_message || "生成失败")
       }
 
-      // 解析 New API 网关返回的 JSON 响应
-      let responseData
-      try {
-        responseData = JSON.parse(fullText)
-      } catch {
-        console.error("[v0] Failed to parse response:", fullText)
-        throw new Error("无法解析生成结果")
-      }
-
-      // 提取视频 URL
-      const videoUrls = responseData.data?.map((item: any) => item.url) || []
-      if (!videoUrls || videoUrls.length === 0) {
-        throw new Error("未获取到生成的视频")
-      }
-
-      // TODO: 展示视频生成结果
-      console.log("[v0] Video generation complete, URLs:", videoUrls)
+      // 异步任务：开始轮询
+      setStatusMsg("视频渲染中，请耐心等待...")
+      setProgress(task.progress ?? 5)
+      await pollTask(task.id, abortToken)
     } catch (error) {
-      console.error("[v0] Generation error:", error)
-      alert(error instanceof Error ? error.message : "生成失败，请重试")
+      if (!abortToken.cancelled) {
+        console.error("[v0] Generation error:", error)
+        alert(error instanceof Error ? error.message : "生成失败，请重试")
+      }
     } finally {
-      setLoading(false)
+      if (!abortToken.cancelled) {
+        setLoading(false)
+        setStatusMsg("")
+      }
+    }
+  }
+
+  async function pollTask(taskId: string, abortToken: { cancelled: boolean }) {
+    const startedAt = Date.now()
+    while (!abortToken.cancelled) {
+      await new Promise((r) => setTimeout(r, 2500))
+      if (abortToken.cancelled) return
+      let res: Response
+      try {
+        res = await fetch(`/api/tasks/${taskId}`, { cache: "no-store" })
+      } catch (e) {
+        // 网络错误时短暂等待继续
+        continue
+      }
+      if (!res.ok) {
+        throw new Error("查询任务状态失败")
+      }
+      const { task: latest } = await res.json()
+      if (!latest) throw new Error("任务不存在")
+
+      if (typeof latest.progress === "number") setProgress(latest.progress)
+
+      if (latest.status === "success") {
+        setResults(latest.result_urls ?? [])
+        setProgress(100)
+        return
+      }
+      if (latest.status === "failed") {
+        throw new Error(latest.error_message || "生成失败")
+      }
+      // 超过 30 分钟则放弃
+      if (Date.now() - startedAt > 30 * 60 * 1000) {
+        throw new Error("视频生成超时，请稍后查看「我的任务」")
+      }
     }
   }
 
@@ -605,10 +651,24 @@ export function VideoGenerator({
             style={previewAspectStyle}
           >
             {loading ? (
-              <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
+              <div className="flex flex-col items-center gap-3 px-4 text-center text-sm text-muted-foreground">
                 <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                <span>排队生成中...</span>
+                <span>{statusMsg || "排队生成中..."}</span>
+                <div className="h-1 w-3/4 overflow-hidden rounded-full bg-background">
+                  <div
+                    className="h-full rounded-full bg-primary transition-all duration-500"
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
+                <span className="tabular-nums text-[11px]">{progress}%</span>
               </div>
+            ) : results.length > 0 ? (
+              <video
+                src={results[0]}
+                controls
+                playsInline
+                className="h-full w-full object-cover"
+              />
             ) : (
               <div className="flex flex-col items-center gap-2 px-4 text-center text-sm text-muted-foreground">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
@@ -618,6 +678,13 @@ export function VideoGenerator({
               </div>
             )}
           </div>
+          {results.length > 1 && (
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              {results.slice(1).map((url, i) => (
+                <video key={i} src={url} controls playsInline className="aspect-video w-full rounded-md object-cover" />
+              ))}
+            </div>
+          )}
 
           <dl className="mt-4 grid grid-cols-2 gap-2 text-xs">
             {[
