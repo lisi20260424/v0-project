@@ -192,7 +192,7 @@ function buildVideoBody(format: VideoFormat, p: VideoRequestParams) {
       prompt,
       width,
       height,
-      duration,
+      duration: String(duration),
     }
     if (seed !== undefined) body.seed = seed
     return { body }
@@ -202,7 +202,7 @@ function buildVideoBody(format: VideoFormat, p: VideoRequestParams) {
   const body: Record<string, any> = {
     model: modelId,
     prompt,
-    duration,
+    duration: String(duration),
     width,
     height,
     fps,
