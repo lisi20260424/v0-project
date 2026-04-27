@@ -50,11 +50,11 @@ export async function callAIGateway(config: AIGatewayConfig, params: {
   musicSpeed?: number
 }) {
   const { baseURL, apiKey, modelId, modelType } = config
-  const { 
-    prompt, 
-    system = "", 
-    maxTokens = 1000, 
-    temperature = 0.7, 
+  const {
+    prompt,
+    system = "",
+    maxTokens = 1000,
+    temperature = 0.7,
     stream = true,
     // 图像默认参数
     imageSize = "1024x1024",
@@ -127,9 +127,9 @@ export async function callAIGateway(config: AIGatewayConfig, params: {
     // 默认使用聊天接口
     const messages = system
       ? [
-          { role: "system", content: system },
-          { role: "user", content: prompt },
-        ]
+        { role: "system", content: system },
+        { role: "user", content: prompt },
+      ]
       : [{ role: "user", content: prompt }]
 
     body = {
@@ -141,6 +141,7 @@ export async function callAIGateway(config: AIGatewayConfig, params: {
     }
   }
 
+  console.log(JSON.stringify(body))
   const response = await fetch(url, {
     method: "POST",
     headers: {

@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
+import { getVideoDimensions } from "@/lib/ratio-dimensions-mapping"
 import type { VideoCapabilities } from "@/lib/model-capabilities"
 
 export type VideoGeneratorModelData = {
@@ -185,16 +186,19 @@ export function VideoGenerator({
     
     setLoading(true)
     try {
+      // 根据选择的比例获取标准尺寸
+      const { width, height } = getVideoDimensions(ratioId)
+      
       const response = await fetch("/api/generate/video", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           modelId: model.id,
           prompt,
-          // 根据 API 文档支持的参数
+          // 根据选择的比例转换为标准尺寸，然后提取宽高参数
           duration: durationId ? parseInt(durationId) : 10,
-          width: ratio?.w ?? 1024,
-          height: ratio?.h ?? 1024,
+          width,
+          height,
           fps: 24,
           n: count,
         }),

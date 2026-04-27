@@ -2,8 +2,8 @@ import { callAIGateway, getModelInfo, getGatewayConfig } from "@/lib/ai-provider
 
 export async function POST(req: Request) {
   try {
-    const { 
-      modelId, 
+    const {
+      modelId,
       prompt,
       // 新增参数
       size,
@@ -16,7 +16,7 @@ export async function POST(req: Request) {
     } = await req.json()
 
     if (!modelId || !prompt) {
-      return new Response(JSON.stringify({ error: "Missing modelId or prompt" }), { 
+      return new Response(JSON.stringify({ error: "Missing modelId or prompt" }), {
         status: 400,
         headers: { "Content-Type": "application/json" }
       })
@@ -63,7 +63,7 @@ export async function POST(req: Request) {
       JSON.stringify({
         error: errorMessage,
       }),
-      { 
+      {
         status: 500,
         headers: { "Content-Type": "application/json" }
       },

@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
+import { getImageDimension } from "@/lib/ratio-dimensions-mapping"
 import type { ImageCapabilities } from "@/lib/model-capabilities"
 
 export type ImageGeneratorModelData = {
@@ -107,8 +108,8 @@ export function ImageGenerator({ models, defaultModelId, prompts = [] }: ImageGe
         body: JSON.stringify({
           modelId: model.id,
           prompt,
-          // 根据 API 文档支持的参数
-          size: ratio?.id,
+          // 根据选择的比例转换为标准尺寸
+          size: getImageDimension(ratioId),
           n: count,
           quality,
           style,
@@ -139,6 +140,7 @@ export function ImageGenerator({ models, defaultModelId, prompts = [] }: ImageGe
       let responseData
       try {
         responseData = JSON.parse(fullText)
+        console.log(responseData)
       } catch {
         console.error("[v0] Failed to parse response:", fullText)
         throw new Error("无法解析生成结果")
@@ -270,7 +272,7 @@ export function ImageGenerator({ models, defaultModelId, prompts = [] }: ImageGe
             id="img-prompt"
             value={prompt}
             onChange={(e) => setPrompt(e.target.value.slice(0, cap.maxPromptLength))}
-            placeholder="描述你想要的图像，包括主体、风格、光线、构图、细节等"
+            placeholder="描述你想要的图像，包括主体、风格、光线、构���、细节等"
             className="min-h-[120px] resize-none bg-background"
           />
           {promptChips.length > 0 && (
