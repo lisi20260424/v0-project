@@ -191,13 +191,12 @@ export function VideoGenerator({
         body: JSON.stringify({
           modelId: model.id,
           prompt,
-          params: {
-            negative,
-            mode,
-            ratio: ratio?.id,
-            durationId,
-            count,
-          },
+          // 根据 API 文档支持的参数
+          duration: durationId ? parseInt(durationId) : 10,
+          width: ratio?.w ?? 1024,
+          height: ratio?.h ?? 1024,
+          fps: 24,
+          n: count,
         }),
       })
 

@@ -2,7 +2,17 @@ import { callAIGateway, getModelInfo, getGatewayConfig } from "@/lib/ai-provider
 
 export async function POST(req: Request) {
   try {
-    const { modelId, prompt } = await req.json()
+    const { 
+      modelId, 
+      prompt,
+      // 新增参数
+      duration,
+      width,
+      height,
+      fps,
+      seed,
+      n,
+    } = await req.json()
 
     if (!modelId || !prompt) {
       return new Response(JSON.stringify({ error: "Missing modelId or prompt" }), { 
@@ -24,6 +34,7 @@ export async function POST(req: Request) {
     console.log("[v0] API Model ID:", apiModelId)
 
     // 调用 New API 网关的视频生成接口
+    // 参考文档: https://docs.newapi.pro/zh/docs/api/ai-model/videos/createvideogeneration
     const response = await callAIGateway(
       {
         baseURL: gateway.gateway_url,
@@ -33,6 +44,12 @@ export async function POST(req: Request) {
       },
       {
         prompt: prompt.slice(0, 3000),
+        videoDuration: duration,
+        videoWidth: width,
+        videoHeight: height,
+        videoFps: fps,
+        videoSeed: seed,
+        videoN: n,
       }
     )
 

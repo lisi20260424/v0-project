@@ -2,7 +2,14 @@ import { callAIGateway, getModelInfo, getGatewayConfig } from "@/lib/ai-provider
 
 export async function POST(req: Request) {
   try {
-    const { modelId, description } = await req.json()
+    const { 
+      modelId, 
+      description,
+      // 新增参数
+      voice,
+      responseFormat,
+      speed,
+    } = await req.json()
 
     if (!modelId || !description) {
       return new Response(JSON.stringify({ error: "Missing modelId or description" }), { 
@@ -23,7 +30,8 @@ export async function POST(req: Request) {
     const apiModelId = (model.config?.api_model_id as string) || model.name
     console.log("[v0] API Model ID:", apiModelId)
 
-    // 调用 New API 网关的音乐生成接口
+    // 调用 New API 网关的音乐/语音生成接口
+    // 参考文档: https://docs.newapi.pro/zh/docs/api/ai-model/audio/openai/createspeech
     const response = await callAIGateway(
       {
         baseURL: gateway.gateway_url,
@@ -32,7 +40,10 @@ export async function POST(req: Request) {
         modelType: "music",
       },
       {
-        prompt: description.slice(0, 2000),
+        prompt: description.slice(0, 4096), // TTS API 最大长度限制为 4096
+        musicVoice: voice,
+        musicSpeed: speed,
+        responseFormat: responseFormat,
       }
     )
 

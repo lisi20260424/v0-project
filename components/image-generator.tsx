@@ -107,13 +107,12 @@ export function ImageGenerator({ models, defaultModelId, prompts = [] }: ImageGe
         body: JSON.stringify({
           modelId: model.id,
           prompt,
-          params: {
-            negative,
-            style,
-            ratio: ratio?.id,
-            quality,
-            count,
-          },
+          // 根据 API 文档支持的参数
+          size: ratio?.id,
+          n: count,
+          quality,
+          style,
+          responseFormat: "url",
         }),
       })
 

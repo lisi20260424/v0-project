@@ -2,7 +2,18 @@ import { callAIGateway, getModelInfo, getGatewayConfig } from "@/lib/ai-provider
 
 export async function POST(req: Request) {
   try {
-    const { modelId, prompt } = await req.json()
+    const { 
+      modelId, 
+      prompt,
+      // 新增参数
+      size,
+      n,
+      quality,
+      style,
+      responseFormat,
+      background,
+      moderation,
+    } = await req.json()
 
     if (!modelId || !prompt) {
       return new Response(JSON.stringify({ error: "Missing modelId or prompt" }), { 
@@ -24,6 +35,7 @@ export async function POST(req: Request) {
     console.log("[v0] API Model ID:", apiModelId)
 
     // 调用 New API 网关的图像生成接口
+    // 参考文档: https://docs.newapi.pro/zh/docs/api/ai-model/images/openai/post-v1-images-generations
     const response = await callAIGateway(
       {
         baseURL: gateway.gateway_url,
@@ -32,7 +44,14 @@ export async function POST(req: Request) {
         modelType: "image",
       },
       {
-        prompt: prompt.slice(0, 2000),
+        prompt: prompt.slice(0, 4000), // dall-e-3 支持最长 4000 字符
+        imageSize: size,
+        imageN: n,
+        imageQuality: quality,
+        imageStyle: style,
+        responseFormat: responseFormat,
+        background: background,
+        moderation: moderation,
       }
     )
 

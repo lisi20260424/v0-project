@@ -129,12 +129,10 @@ export function MusicGenerator({ models, defaultModelId, prompts = [] }: MusicGe
         body: JSON.stringify({
           modelId: model.id,
           description: mode === "inspire" ? desc : lyrics,
-          params: {
-            mode,
-            genre,
-            mood,
-            vocal,
-          },
+          // 根据 API 文档支持的参数
+          voice: vocal,
+          responseFormat: "mp3",
+          speed: 1,
         }),
       })
 

@@ -29,9 +29,53 @@ export async function callAIGateway(config: AIGatewayConfig, params: {
   maxTokens?: number
   temperature?: number
   stream?: boolean
+  // 图像生成参数
+  imageSize?: string
+  imageN?: number
+  imageQuality?: string
+  imageStyle?: string
+  responseFormat?: string
+  background?: string
+  moderation?: string
+  // 视频生成参数
+  videoDuration?: number
+  videoWidth?: number
+  videoHeight?: number
+  videoFps?: number
+  videoSeed?: number
+  videoN?: number
+  // 音乐生成参数
+  musicDuration?: number
+  musicVoice?: string
+  musicSpeed?: number
 }) {
   const { baseURL, apiKey, modelId, modelType } = config
-  const { prompt, system = "", maxTokens = 1000, temperature = 0.7, stream = true } = params
+  const { 
+    prompt, 
+    system = "", 
+    maxTokens = 1000, 
+    temperature = 0.7, 
+    stream = true,
+    // 图像默认参数
+    imageSize = "1024x1024",
+    imageN = 1,
+    imageQuality = "standard",
+    imageStyle = "natural",
+    responseFormat = "url",
+    background = "auto",
+    moderation = "auto",
+    // 视频默认参数
+    videoDuration = 10,
+    videoWidth = 1024,
+    videoHeight = 1024,
+    videoFps = 24,
+    videoSeed,
+    videoN = 1,
+    // 音乐默认参数
+    musicDuration = 30,
+    musicVoice = "alloy",
+    musicSpeed = 1,
+  } = params
 
   const endpoint = getAPIEndpoint(modelType)
   const url = `${baseURL}${endpoint}`
@@ -40,26 +84,44 @@ export async function callAIGateway(config: AIGatewayConfig, params: {
   let body: Record<string, any>
 
   if (modelType === "image") {
-    // 图像生成接口
+    // 图像生成接口 - 参考: https://docs.newapi.pro/zh/docs/api/ai-model/images/openai/post-v1-images-generations
     body = {
       model: modelId,
       prompt,
-      n: 1,
-      size: "1024x1024",
+      n: imageN,
+      size: imageSize,
+      quality: imageQuality,
+      style: imageStyle,
+      response_format: responseFormat,
+    }
+    // gpt-image-1 特定参数
+    if (modelId === "gpt-image-1") {
+      body.background = background
+      body.moderation = moderation
     }
   } else if (modelType === "video") {
-    // 视频生成接口
+    // 视频生成接口 - 参考: https://docs.newapi.pro/zh/docs/api/ai-model/videos/createvideogeneration
     body = {
       model: modelId,
       prompt,
-      duration: 10,
+      duration: videoDuration,
+      width: videoWidth,
+      height: videoHeight,
+      fps: videoFps,
+      n: videoN,
+    }
+    // 可选参数
+    if (videoSeed !== undefined) {
+      body.seed = videoSeed
     }
   } else if (modelType === "music") {
-    // 音乐生成接口
+    // 音乐生成接口（文本转语音） - 参考: https://docs.newapi.pro/zh/docs/api/ai-model/audio/openai/createspeech
     body = {
       model: modelId,
-      prompt,
-      duration: 30,
+      input: prompt.slice(0, 4096), // TTS API 的最大长度限制
+      voice: musicVoice,
+      response_format: responseFormat || "mp3",
+      speed: musicSpeed,
     }
   } else {
     // 默认使用聊天接口
