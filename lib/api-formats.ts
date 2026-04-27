@@ -163,6 +163,7 @@ function buildVideoBody(format: VideoFormat, p: VideoRequestParams) {
   if (format === "sora") {
     // Sora 异步任务：POST /v1/videos
     // Sora 需要 size 参数格式为 "WIDTHxHEIGHT"，如 "1920x1080"
+    // duration 需要是字符串
     return {
       body: {
         model: modelId,
@@ -175,14 +176,44 @@ function buildVideoBody(format: VideoFormat, p: VideoRequestParams) {
 
   if (format === "kling") {
     // 可灵：POST /kling/v1/videos/text2video
+    // duration 是整数（秒）
     const body: Record<string, any> = {
       model_name: modelId,
       prompt,
-      duration: String(duration),
+      duration,
       aspect_ratio: ratioStr,
     }
     if (negative) body.negative_prompt = negative
     return { body }
+  }
+
+  if (format === "jimeng") {
+    // 即梦（字节跳动）：POST /jimeng/...，使用 req_key + 自定义参数
+    // duration 是整数（秒）
+    const body: Record<string, any> = {
+      req_key: modelId,
+      prompt,
+      width,
+      height,
+      duration,
+    }
+    if (seed !== undefined) body.seed = seed
+    return { body }
+  }
+
+  // 默认 OpenAI 风格
+  // duration 是整数（秒）
+  const body: Record<string, any> = {
+    model: modelId,
+    prompt,
+    duration,
+    width,
+    height,
+    fps,
+    n,
+  }
+  if (seed !== undefined) body.seed = seed
+  return { body }
   }
 
   if (format === "jimeng") {
