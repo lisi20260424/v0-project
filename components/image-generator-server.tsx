@@ -1,49 +1,74 @@
-import { getModels } from '@/lib/get-models'
-import { ImageGenerator } from './image-generator'
+import { createClient } from "@/lib/supabase/server"
+import { parseImageCapabilities } from "@/lib/model-capabilities"
+import { getPromptsByType } from "@/lib/get-prompts"
+import { ImageGenerator, type ImageGeneratorModelData } from "./image-generator"
+
+type Props = {
+  provider?: string
+}
 
 /**
- * Server Component - 从数据库获取启用的图像生成模型
+ * Server Component - 读取启用的图像供应商和模型，按 provider 过滤后下发给客户端。
  */
-export async function ImageGeneratorServer() {
-  const models = await getModels('image')
+export async function ImageGeneratorServer({ provider }: Props = {}) {
+  const supabase = await createClient()
 
-  // 转换为组件期望的格式（需要 icon 和 brand）
-  const generatorModels = models.map((m) => ({
+  const [providersRes, modelsRes, prompts] = await Promise.all([
+    supabase
+      .from("admin_providers")
+      .select("name, display_name, sort_order")
+      .eq("enabled", true)
+      .order("sort_order", { ascending: true }),
+    supabase
+      .from("admin_models")
+      .select("id, name, provider, model_type, cost_per_use, description, config, sort_order")
+      .eq("enabled", true)
+      .eq("model_type", "image")
+      .order("sort_order", { ascending: true }),
+    getPromptsByType("image"),
+  ])
+
+  const providers = (providersRes.data ?? []).filter((p) => p.name)
+  const allModels = modelsRes.data ?? []
+  const enabledProviderNames = new Set(providers.map((p) => p.name as string))
+  const eligibleModels = allModels.filter((m) => enabledProviderNames.has(m.provider))
+
+  const providersWithImage = providers.filter((p) =>
+    eligibleModels.some((m) => m.provider === p.name),
+  )
+  const activeProviderName =
+    (provider && providersWithImage.find((p) => p.name === provider)?.name) ||
+    providersWithImage[0]?.name ||
+    null
+
+  const myModels = activeProviderName
+    ? eligibleModels.filter((m) => m.provider === activeProviderName)
+    : []
+
+  const sortedModels = [...myModels].sort((a, b) => {
+    const ad = a.config?.is_default_display ? 1 : 0
+    const bd = b.config?.is_default_display ? 1 : 0
+    if (ad !== bd) return bd - ad
+    return (a.sort_order ?? 0) - (b.sort_order ?? 0)
+  })
+
+  const providerDisplayName = providers.find((p) => p.name === activeProviderName)?.display_name as string | undefined
+
+  const generatorModels: ImageGeneratorModelData[] = sortedModels.map((m) => ({
     id: m.id,
     name: m.name,
-    brand: m.provider,
-    desc: m.desc,
-    price: m.price,
-    tag: m.provider === 'OpenAI' ? '新' : undefined,
+    brand: providerDisplayName ?? m.provider,
+    desc: m.description ?? "",
+    price: m.cost_per_use ?? 0,
+    capabilities: parseImageCapabilities(m.config),
   }))
 
-  // 提供默认 mock 数据作为后备
-  const defaultModels = generatorModels.length
-    ? generatorModels
-    : [
-        {
-          id: 'gpt-image',
-          name: 'GPT-Image 2',
-          brand: 'OpenAI',
-          desc: '全新多模态，支持精准中文文字、海报、Logo 渲染。',
-          price: 4,
-          tag: '新',
-        },
-        {
-          id: 'nano-banana',
-          name: 'Nano Banana',
-          brand: 'Google',
-          desc: '交互式编辑，多图融合、局部重绘、风格迁移。',
-          price: 5,
-        },
-        {
-          id: 'flux',
-          name: 'Flux 1.1',
-          brand: 'Black Forest Labs',
-          desc: '摄影级真实质感，艺术创作首选，开源顶级模型。',
-          price: 3,
-        },
-      ]
-
-  return <ImageGenerator models={defaultModels} defaultModelId={defaultModels[0]?.id} />
+  return (
+    <ImageGenerator
+      models={generatorModels}
+      defaultModelId={generatorModels[0]?.id}
+      activeProviderName={activeProviderName}
+      prompts={prompts}
+    />
+  )
 }

@@ -72,6 +72,14 @@ export type ModelConfigField = {
 export const MODEL_CONFIG_SCHEMA: Record<ModelType, ModelConfigField[]> = {
   video: [
     {
+      key: "api_model_id",
+      label: "API 模型标识",
+      type: "text",
+      placeholder: "例如：gpt-4o-video, dall-e-3",
+      description: "New API 网关中对应的模型 ID，用于调用生成接口。可在网关管理后台查看可用模型列表",
+      defaultValue: "",
+    },
+    {
       key: "ratios",
       label: "支持的画面比例",
       type: "list",
@@ -204,6 +212,14 @@ export const MODEL_CONFIG_SCHEMA: Record<ModelType, ModelConfigField[]> = {
   ],
   image: [
     {
+      key: "api_model_id",
+      label: "API 模型标识",
+      type: "text",
+      placeholder: "例如：dall-e-3, flux-pro",
+      description: "New API 网关中对应的模型 ID，用于调用生成接口。可在网关管理后台查看可用模型列表",
+      defaultValue: "",
+    },
+    {
       key: "ratios",
       label: "支持的画面比例",
       type: "list",
@@ -330,6 +346,14 @@ export const MODEL_CONFIG_SCHEMA: Record<ModelType, ModelConfigField[]> = {
     },
   ],
   music: [
+    {
+      key: "api_model_id",
+      label: "API 模型标识",
+      type: "text",
+      placeholder: "例如：suno-v5, music-gen",
+      description: "New API 网关中对应的模型 ID，用于调用生成接口。可在网关管理后台查看可用模型列表",
+      defaultValue: "",
+    },
     {
       key: "genres",
       label: "支持的曲风",

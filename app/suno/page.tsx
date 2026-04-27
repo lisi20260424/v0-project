@@ -1,16 +1,5 @@
-import type { Metadata } from "next"
-import { ToolPageShell } from "@/components/tool-page-shell"
-import { MusicGeneratorServer } from "@/components/music-generator-server"
-
-export const metadata: Metadata = {
-  title: "Suno 音乐生成 · 灵境 AI",
-  description: "Suno V5 中文歌词 + 多风格伴奏生成，支持 4 分钟长曲、男女合唱、纯音乐导出。",
-}
+import { redirect } from "next/navigation"
 
 export default function SunoPage() {
-  return (
-    <ToolPageShell toolId="suno">
-      <MusicGeneratorServer />
-    </ToolPageShell>
-  )
+  redirect("/music?provider=suno")
 }

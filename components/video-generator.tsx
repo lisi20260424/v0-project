@@ -20,50 +20,32 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
+import type { VideoCapabilities } from "@/lib/model-capabilities"
 
-export type GeneratorModel = {
+export type VideoGeneratorModelData = {
   id: string
   name: string
-  tag?: string
   desc: string
   price: number
+  tag?: string
+  capabilities: VideoCapabilities
 }
 
-export type GeneratorRatio = {
+export type PromptChip = {
   id: string
-  label: string
-  ratio: string
+  title: string
+  content: string
+  category?: string | null
 }
-
-export type GeneratorOption = {
-  id: string
-  label: string
-  desc?: string
-}
-
-/**
- * Image-to-video mode capability per tool:
- *  - "frames"   Veo-style: 「首尾帧」+ 「多图参考」双子模式
- *  - "single"   Grok-style: 只支持 1 张参考图
- */
-export type ImageCapability = "frames" | "single"
 
 export type VideoGeneratorProps = {
-  models: GeneratorModel[]
+  models: VideoGeneratorModelData[]
   defaultModelId?: string
-  ratios: GeneratorRatio[]
-  durations?: GeneratorOption[]
-  channels?: GeneratorOption[]
-  counts?: number[]
+  activeProviderName?: string | null
   memberDiscount?: number
-  supportsImageToVideo?: boolean
-  imageCapability?: ImageCapability
-  multiImageSlots?: number
-  examplePrompts?: string[]
-  accentLabel?: string
+  prompts?: PromptChip[]
 }
 
-const DEFAULT_COUNTS = [1, 3, 5, 10]
 const DEFAULT_EXAMPLES = [
   "夜晚的东京街头，霓虹灯倒映在湿润的路面上，一只虎斑猫悠闲地踱步，镜头缓缓跟随",
   "一杯拿铁被缓缓倒入透明玻璃杯，奶泡形成爱心图案，微距特写，自然光",
@@ -128,69 +110,148 @@ function UploadSlot({ label, hint, value, onChange, className }: UploadSlotProps
   )
 }
 
+const ACCENT_LABEL = "◇"
+
 export function VideoGenerator({
   models,
   defaultModelId,
-  ratios,
-  durations,
-  channels,
-  counts = DEFAULT_COUNTS,
   memberDiscount = 0.75,
-  supportsImageToVideo = true,
-  imageCapability = "frames",
-  multiImageSlots = 3,
-  examplePrompts = DEFAULT_EXAMPLES,
-  accentLabel = "◇",
+  prompts = [],
 }: VideoGeneratorProps) {
+  // 没有后台配置时，回退到内置示例，保证空数据库下也能给用户灵感
+  const promptChips: PromptChip[] =
+    prompts.length > 0
+      ? prompts
+      : DEFAULT_EXAMPLES.map((p, i) => ({ id: `default-${i}`, title: `示例 ${i + 1}`, content: p }))
+  // 空状态
+  if (!models.length) {
+    return (
+      <div className="rounded-2xl border border-dashed border-border bg-card p-10 text-center text-sm text-muted-foreground">
+        当前供应商暂未启用任何视频模型，请先在系统设置中启用对应模型。
+      </div>
+    )
+  }
+
+  const [modelId, setModelId] = React.useState<string>(defaultModelId ?? models[0].id)
+  const model = models.find((m) => m.id === modelId) ?? models[0]
+  const cap = model.capabilities
+
+  // 当模型切换时，把比例/时长/参考图模式重置为该模型支持的首项
+  const [ratioId, setRatioId] = React.useState<string>(cap.ratios[0]?.id ?? "169")
+  const [durationId, setDurationId] = React.useState<string | undefined>(cap.durations[0]?.id)
+  const [count, setCount] = React.useState<number>(cap.counts[0] ?? 1)
   const [mode, setMode] = React.useState<"text" | "image">("text")
   const [imageSubMode, setImageSubMode] = React.useState<"frames" | "multi">("frames")
-  const [prompt, setPrompt] = React.useState("")
-  const [modelId, setModelId] = React.useState<string>(defaultModelId ?? models[0].id)
-  const [ratioId, setRatioId] = React.useState<string>(ratios[0].id)
-  const [durationId, setDurationId] = React.useState<string | undefined>(durations?.[0]?.id)
-  const [channelId, setChannelId] = React.useState<string | undefined>(channels?.[0]?.id)
-  const [count, setCount] = React.useState<number>(1)
 
-  // Unified image state
+  React.useEffect(() => {
+    // 切换模型时校验当前选中项是否仍在允许集中
+    if (!cap.ratios.find((r) => r.id === ratioId)) setRatioId(cap.ratios[0]?.id ?? "169")
+    if (durationId && !cap.durations.find((d) => d.id === durationId)) setDurationId(cap.durations[0]?.id)
+    if (!cap.counts.includes(count)) setCount(cap.counts[0] ?? 1)
+    if (!cap.supportsImageToVideo && mode === "image") setMode("text")
+    if (cap.imageCapability === "single" && imageSubMode !== "frames") setImageSubMode("frames")
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [model.id])
+
+  const [prompt, setPrompt] = React.useState("")
+  const [negative, setNegative] = React.useState("")
+
+  // Image mode state
   const [frameStart, setFrameStart] = React.useState<string | null>(null)
   const [frameEnd, setFrameEnd] = React.useState<string | null>(null)
-  const [multiImages, setMultiImages] = React.useState<(string | null)[]>(() => Array(multiImageSlots).fill(null))
+  const [multiImages, setMultiImages] = React.useState<(string | null)[]>(() =>
+    Array(cap.multiImageSlots).fill(null),
+  )
   const [singleImage, setSingleImage] = React.useState<string | null>(null)
 
   const [loading, setLoading] = React.useState(false)
 
-  const model = models.find((m) => m.id === modelId) ?? models[0]
-  const ratio = ratios.find((r) => r.id === ratioId) ?? ratios[0]
+  const ratio = cap.ratios.find((r) => r.id === ratioId) ?? cap.ratios[0]
   const regular = model.price * count
   const member = Math.round(regular * memberDiscount)
 
-  // Whether the user has provided any reference image in current sub-mode
   const hasImage =
-    imageCapability === "single"
+    cap.imageCapability === "single"
       ? !!singleImage
       : imageSubMode === "frames"
         ? !!frameStart
         : multiImages.some((u) => !!u)
 
-  // When using single-image mode (e.g., Grok), hide ratio picker in image-to-video
-  // because the video size follows the uploaded image.
-  const hideRatioInImageMode = imageCapability === "single" && mode === "image"
+  const hideRatioInImageMode = cap.imageCapability === "single" && mode === "image"
 
-  const onGenerate = () => {
+  const onGenerate = async () => {
     if (!prompt.trim()) return
     if (mode === "image" && !hasImage) return
+    
     setLoading(true)
-    setTimeout(() => setLoading(false), 2200)
+    try {
+      const response = await fetch("/api/generate/video", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          modelId: model.id,
+          prompt,
+          params: {
+            negative,
+            mode,
+            ratio: ratio?.id,
+            durationId,
+            count,
+          },
+        }),
+      })
+
+      if (!response.ok) {
+        const err = await response.json()
+        throw new Error(err.error || "Generation failed")
+      }
+
+      // 读取响应流
+      const reader = response.body?.getReader()
+      if (!reader) throw new Error("No response stream")
+
+      const decoder = new TextDecoder()
+      let fullText = ""
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        const chunk = decoder.decode(value)
+        fullText += chunk
+      }
+
+      // 解析 New API 网关返回的 JSON 响应
+      let responseData
+      try {
+        responseData = JSON.parse(fullText)
+      } catch {
+        console.error("[v0] Failed to parse response:", fullText)
+        throw new Error("无法解析生成结果")
+      }
+
+      // 提取视频 URL
+      const videoUrls = responseData.data?.map((item: any) => item.url) || []
+      if (!videoUrls || videoUrls.length === 0) {
+        throw new Error("未获取到生成的视频")
+      }
+
+      // TODO: 展示视频生成结果
+      console.log("[v0] Video generation complete, URLs:", videoUrls)
+    } catch (error) {
+      console.error("[v0] Generation error:", error)
+      alert(error instanceof Error ? error.message : "生成失败，请重试")
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const aspectClass =
-    ratio.ratio === "9:16"
-      ? "aspect-[9/16] w-48"
-      : ratio.ratio === "16:9"
-        ? "aspect-video w-full"
-        : ratio.ratio === "1:1"
-          ? "aspect-square w-56"
-          : "aspect-video w-full"
+  // 根据 ratio.w/h 动态计算宽高比；竖屏用窄宽度避免太高，方屏适中，横屏占满
+  const ratioW = ratio?.w ?? 16
+  const ratioH = ratio?.h ?? 9
+  const isPortrait = ratioH > ratioW
+  const isSquare = ratioW === ratioH
+  const previewWidthClass = isPortrait ? "w-48" : isSquare ? "w-56" : "w-full"
+  const previewAspectStyle = { aspectRatio: `${ratioW}/${ratioH}` } as React.CSSProperties
 
   const updateMultiAt = (i: number, v: string | null) => {
     setMultiImages((prev) => {
@@ -204,7 +265,7 @@ export function VideoGenerator({
     <div className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
       <div className="rounded-2xl border border-border bg-card p-5 shadow-sm md:p-6">
         {/* Primary mode switcher */}
-        {supportsImageToVideo && (
+        {cap.supportsImageToVideo && (
           <div className="grid grid-cols-2 gap-2 rounded-xl bg-muted p-1 sm:inline-grid sm:w-auto sm:grid-cols-[auto_auto]">
             <button
               type="button"
@@ -236,9 +297,9 @@ export function VideoGenerator({
         )}
 
         {/* Image-to-video upload section */}
-        {supportsImageToVideo && mode === "image" && (
+        {cap.supportsImageToVideo && mode === "image" && (
           <div className="mt-4">
-            {imageCapability === "frames" && (
+            {cap.imageCapability === "frames" && (
               <div className="mb-4 grid grid-cols-2 gap-2 rounded-xl bg-muted p-1 sm:inline-grid sm:w-auto sm:grid-cols-[auto_auto]">
                 <button
                   type="button"
@@ -269,20 +330,20 @@ export function VideoGenerator({
               </div>
             )}
 
-            {imageCapability === "single" && (
+            {cap.imageCapability === "single" && (
               <div>
                 <Label className="mb-1 block text-sm font-medium">
-                  <span className="mr-1 text-primary">{accentLabel}</span> 参考图片
+                  <span className="mr-1 text-primary">{ACCENT_LABEL}</span> 参考图片
                 </Label>
                 <p className="mb-3 text-xs text-primary/90">上传图片后，视频尺寸将跟随图片尺寸</p>
                 <SingleUpload value={singleImage} onChange={setSingleImage} />
               </div>
             )}
 
-            {imageCapability === "frames" && imageSubMode === "frames" && (
+            {cap.imageCapability === "frames" && imageSubMode === "frames" && (
               <div>
                 <Label className="mb-3 block text-sm font-medium">
-                  <span className="mr-1 text-primary">{accentLabel}</span> 首尾帧
+                  <span className="mr-1 text-primary">{ACCENT_LABEL}</span> 首尾帧
                 </Label>
                 <div className="flex items-center gap-2">
                   <UploadSlot label="上传首帧" value={frameStart} onChange={setFrameStart} className="flex-1" />
@@ -293,23 +354,23 @@ export function VideoGenerator({
               </div>
             )}
 
-            {imageCapability === "frames" && imageSubMode === "multi" && (
+            {cap.imageCapability === "frames" && imageSubMode === "multi" && (
               <div>
                 <Label className="mb-3 block text-sm font-medium">
-                  <span className="mr-1 text-primary">{accentLabel}</span> 参考图
+                  <span className="mr-1 text-primary">{ACCENT_LABEL}</span> 参考图
                 </Label>
                 <div className="grid grid-cols-3 gap-2">
                   {multiImages.map((img, i) => (
                     <UploadSlot
                       key={i}
-                      label={i === 0 ? "上传图片" : "上传图片"}
+                      label="上传图片"
                       hint={i === 0 ? undefined : "选填"}
                       value={img}
                       onChange={(v) => updateMultiAt(i, v)}
                     />
                   ))}
                 </div>
-                <p className="mt-2 text-xs text-muted-foreground">最多上传 {multiImageSlots} 张参考图，综合引导画面风格与主体</p>
+                <p className="mt-2 text-xs text-muted-foreground">最多上传 {cap.multiImageSlots} 张参考图，综合引导画面风格与主体</p>
               </div>
             )}
           </div>
@@ -319,15 +380,17 @@ export function VideoGenerator({
         <div className="mt-5">
           <div className="mb-2 flex items-center justify-between">
             <Label htmlFor="prompt" className="text-sm font-medium">
-              <span className="mr-1 text-primary">{accentLabel}</span>{" "}
+              <span className="mr-1 text-primary">{ACCENT_LABEL}</span>{" "}
               {mode === "image" ? "描述您的视频场景" : "提示词"}
             </Label>
-            <span className="text-xs tabular-nums text-muted-foreground">{prompt.length} / 5000</span>
+            <span className="text-xs tabular-nums text-muted-foreground">
+              {prompt.length} / {cap.maxPromptLength}
+            </span>
           </div>
           <Textarea
             id="prompt"
             value={prompt}
-            onChange={(e) => setPrompt(e.target.value.slice(0, 5000))}
+            onChange={(e) => setPrompt(e.target.value.slice(0, cap.maxPromptLength))}
             placeholder={
               mode === "image"
                 ? "结合图片，描述你想生成的画面…"
@@ -335,25 +398,44 @@ export function VideoGenerator({
             }
             className="min-h-[140px] resize-none bg-background"
           />
-          <div className="mt-3 flex flex-wrap gap-2">
-            {examplePrompts.map((p, i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={() => setPrompt(p)}
-                className="rounded-full border border-border bg-background px-3 py-1 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
-              >
-                <Sparkles className="mr-1 inline h-3 w-3 text-primary" />
-                示例 {i + 1}
-              </button>
-            ))}
-          </div>
+          {promptChips.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {promptChips.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  title={p.content}
+                  onClick={() => setPrompt(p.content.slice(0, cap.maxPromptLength))}
+                  className="rounded-full border border-border bg-background px-3 py-1 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+                >
+                  <Sparkles className="mr-1 inline h-3 w-3 text-primary" />
+                  {p.title}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
+
+        {/* Negative prompt */}
+        {cap.supportsNegativePrompt && (
+          <div className="mt-5">
+            <Label htmlFor="video-negative" className="mb-2 block text-sm font-medium">
+              <span className="mr-1 text-primary">{ACCENT_LABEL}</span> 负向提示词（可选���
+            </Label>
+            <Textarea
+              id="video-negative"
+              value={negative}
+              onChange={(e) => setNegative(e.target.value.slice(0, 500))}
+              placeholder="不希望出现的元素，例如：模糊、抖动、变形、低画质"
+              className="min-h-[60px] resize-none bg-background"
+            />
+          </div>
+        )}
 
         {/* Model */}
         <div className="mt-6">
           <Label className="mb-2 block text-sm font-medium">
-            <span className="mr-1 text-primary">{accentLabel}</span> 模型版本
+            <span className="mr-1 text-primary">{ACCENT_LABEL}</span> 模型版本
           </Label>
           <div className="grid gap-2 sm:grid-cols-3">
             {models.map((m) => (
@@ -382,41 +464,14 @@ export function VideoGenerator({
           </div>
         </div>
 
-        {/* Channel */}
-        {channels && channels.length > 0 && (
-          <div className="mt-6">
-            <Label className="mb-2 block text-sm font-medium">
-              <span className="mr-1 text-primary">{accentLabel}</span> 选择渠道
-            </Label>
-            <div className="flex flex-wrap gap-2">
-              {channels.map((c) => (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => setChannelId(c.id)}
-                  className={cn(
-                    "rounded-lg border px-3 py-2 text-sm transition-colors",
-                    channelId === c.id
-                      ? "border-primary bg-primary/5 text-foreground"
-                      : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground",
-                  )}
-                  title={c.desc}
-                >
-                  {c.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* Ratio (hidden when single-image-to-video since size follows image) */}
-        {!hideRatioInImageMode && (
+        {!hideRatioInImageMode && cap.ratios.length > 0 && (
           <div className="mt-6">
             <Label className="mb-2 block text-sm font-medium">
-              <span className="mr-1 text-primary">{accentLabel}</span> 视频比例
+              <span className="mr-1 text-primary">{ACCENT_LABEL}</span> 视频比例
             </Label>
             <div className="flex flex-wrap gap-2">
-              {ratios.map((r) => (
+              {cap.ratios.map((r) => (
                 <button
                   key={r.id}
                   type="button"
@@ -444,13 +499,13 @@ export function VideoGenerator({
         )}
 
         {/* Duration */}
-        {durations && durations.length > 0 && (
+        {cap.durations.length > 0 && (
           <div className="mt-6">
             <Label className="mb-2 block text-sm font-medium">
-              <span className="mr-1 text-primary">{accentLabel}</span> 视频时长
+              <span className="mr-1 text-primary">{ACCENT_LABEL}</span> 视频时长
             </Label>
             <div className="flex flex-wrap gap-2">
-              {durations.map((d) => (
+              {cap.durations.map((d) => (
                 <button
                   key={d.id}
                   type="button"
@@ -470,28 +525,30 @@ export function VideoGenerator({
         )}
 
         {/* Count */}
-        <div className="mt-6">
-          <Label className="mb-2 block text-sm font-medium">
-            <span className="mr-1 text-primary">{accentLabel}</span> 生成数量
-          </Label>
-          <div className="flex flex-wrap gap-2">
-            {counts.map((c) => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => setCount(c)}
-                className={cn(
-                  "h-10 min-w-10 rounded-lg border px-3 text-sm font-medium transition-colors",
-                  count === c
-                    ? "border-primary bg-primary/5 text-foreground"
-                    : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground",
-                )}
-              >
-                {c}
-              </button>
-            ))}
+        {cap.counts.length > 1 && (
+          <div className="mt-6">
+            <Label className="mb-2 block text-sm font-medium">
+              <span className="mr-1 text-primary">{ACCENT_LABEL}</span> 生成数量
+            </Label>
+            <div className="flex flex-wrap gap-2">
+              {cap.counts.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setCount(c)}
+                  className={cn(
+                    "h-10 min-w-10 rounded-lg border px-3 text-sm font-medium transition-colors",
+                    count === c
+                      ? "border-primary bg-primary/5 text-foreground"
+                      : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground",
+                  )}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Price + CTA */}
         <div className="mt-8 flex flex-col gap-3 border-t border-border pt-5 sm:flex-row sm:items-center sm:justify-between">
@@ -540,8 +597,9 @@ export function VideoGenerator({
           <div
             className={cn(
               "relative mx-auto flex items-center justify-center overflow-hidden rounded-xl border border-border bg-muted",
-              aspectClass,
+              previewWidthClass,
             )}
+            style={previewAspectStyle}
           >
             {loading ? (
               <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
@@ -564,7 +622,7 @@ export function VideoGenerator({
                 "模式",
                 mode === "text"
                   ? "文生视频"
-                  : imageCapability === "single"
+                  : cap.imageCapability === "single"
                     ? "图生视频"
                     : imageSubMode === "frames"
                       ? "图生 · 首尾帧"
@@ -572,8 +630,7 @@ export function VideoGenerator({
               ],
               ["模型", model.name],
               ...(hideRatioInImageMode ? [["比例", "跟随图片"]] : [["比例", ratio.ratio]]),
-              ...(durations && durationId ? [["时长", durations.find((d) => d.id === durationId)?.label ?? "-"]] : []),
-              ...(channels && channelId ? [["渠道", channels.find((c) => c.id === channelId)?.label ?? "-"]] : []),
+              ...(durationId ? [["时长", cap.durations.find((d) => d.id === durationId)?.label ?? "-"]] : []),
               ["数量", `${count} 条`],
             ].map(([k, v]) => (
               <div

@@ -11,84 +11,153 @@ import {
   Upload,
   X,
   ImageIcon as ImageLucide,
-  Banana,
-  Wand2 as FluxIcon,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
+import type { ImageCapabilities } from "@/lib/model-capabilities"
 
-export type GeneratorModel = {
+export type ImageGeneratorModelData = {
   id: string
   name: string
   brand?: string
   desc: string
   price: number
   tag?: string
+  capabilities: ImageCapabilities
+}
+
+export type ImagePromptChip = {
+  id: string
+  title: string
+  content: string
+  category?: string | null
 }
 
 export type ImageGeneratorProps = {
-  models: GeneratorModel[]
+  models: ImageGeneratorModelData[]
   defaultModelId?: string
+  activeProviderName?: string | null
+  prompts?: ImagePromptChip[]
 }
 
-const STYLES = ["自动", "写实摄影", "电影感", "赛博朋克", "动漫", "水彩", "油画", "3D 渲染", "像素艺术"]
-
-const RATIOS = [
-  { id: "11", label: "1:1", w: 1, h: 1 },
-  { id: "916", label: "9:16", w: 9, h: 16 },
-  { id: "169", label: "16:9", w: 16, h: 9 },
-  { id: "34", label: "3:4", w: 3, h: 4 },
-  { id: "43", label: "4:3", w: 4, h: 3 },
-]
-
-const QUALITIES = [
-  { id: "standard", label: "标准" },
-  { id: "hd", label: "高清" },
-  { id: "ultra", label: "超清 4K", extra: 2 },
-]
-
-const EXAMPLES = [
+const DEFAULT_EXAMPLES = [
   "一只戴着圆框眼镜的橘色柯基犬坐在书桌前阅读《百年孤独》，皮克斯 3D 动画风格，暖色调灯光",
   "上海外滩的赛博朋克夜景海报，中文标题「未来已来」，霓虹色调，电影海报构图",
   "一朵正在盛开的牡丹花微距特写，花瓣上有细小水珠，柔和自然光，摄影杂志封面",
 ]
 
-type ImageModelId = string
+const QUALITY_EXTRA: Record<string, number> = {
+  ultra: 2,
+  hd: 0,
+  standard: 0,
+}
 
-export function ImageGenerator({ models, defaultModelId }: ImageGeneratorProps) {
-  const [modelId, setModelId] = React.useState<ImageModelId>(defaultModelId ?? models[0]?.id ?? "")
+export function ImageGenerator({ models, defaultModelId, prompts = [] }: ImageGeneratorProps) {
+  const promptChips: ImagePromptChip[] =
+    prompts.length > 0
+      ? prompts
+      : DEFAULT_EXAMPLES.map((p, i) => ({ id: `default-${i}`, title: `示例 ${i + 1}`, content: p }))
+  if (!models.length) {
+    return (
+      <div className="rounded-2xl border border-dashed border-border bg-card p-10 text-center text-sm text-muted-foreground">
+        当前供应商暂未启用任何图像模型，请先在系统设置中启用对应模型。
+      </div>
+    )
+  }
+
+  const [modelId, setModelId] = React.useState<string>(defaultModelId ?? models[0].id)
+  const model = models.find((m) => m.id === modelId) ?? models[0]
+  const cap = model.capabilities
+
   const [prompt, setPrompt] = React.useState("")
   const [negative, setNegative] = React.useState("")
-  const [style, setStyle] = React.useState(STYLES[0])
-  const [ratioId, setRatioId] = React.useState("11")
-  const [quality, setQuality] = React.useState("hd")
-  const [count, setCount] = React.useState(1)
+  const [style, setStyle] = React.useState(cap.styles[0] ?? "自动")
+  const [ratioId, setRatioId] = React.useState(cap.ratios[0]?.id ?? "11")
+  const [quality, setQuality] = React.useState(cap.qualities[1]?.id ?? cap.qualities[0]?.id ?? "hd")
+  const [count, setCount] = React.useState(cap.counts[0] ?? 1)
   const [refImage, setRefImage] = React.useState<string | null>(null)
   const [loading, setLoading] = React.useState(false)
   const [results, setResults] = React.useState<string[]>([])
   const fileInputRef = React.useRef<HTMLInputElement>(null)
 
-  const model = models.find((m) => m.id === modelId) || models[0]
-  const qualityExtra = QUALITIES.find((q) => q.id === quality)?.extra ?? 0
-  const regular = (model?.price ?? 0 + qualityExtra) * count
+  React.useEffect(() => {
+    if (!cap.styles.includes(style)) setStyle(cap.styles[0] ?? "自动")
+    if (!cap.ratios.find((r) => r.id === ratioId)) setRatioId(cap.ratios[0]?.id ?? "11")
+    if (!cap.qualities.find((q) => q.id === quality))
+      setQuality(cap.qualities[1]?.id ?? cap.qualities[0]?.id ?? "hd")
+    if (!cap.counts.includes(count)) setCount(cap.counts[0] ?? 1)
+    if (!cap.supportsReferenceImage) setRefImage(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [model.id])
+
+  const qualityExtra = QUALITY_EXTRA[quality] ?? 0
+  const regular = (model.price + qualityExtra) * count
   const member = Math.round(regular * 0.75)
 
-  const onGenerate = () => {
+  const onGenerate = async () => {
     if (!prompt.trim()) return
     setLoading(true)
     setResults([])
-    setTimeout(() => {
+    try {
+      const response = await fetch("/api/generate/image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          modelId: model.id,
+          prompt,
+          params: {
+            negative,
+            style,
+            ratio: ratio?.id,
+            quality,
+            count,
+          },
+        }),
+      })
+
+      if (!response.ok) {
+        const err = await response.json()
+        throw new Error(err.error || "Generation failed")
+      }
+
+      // 读取响应流
+      const reader = response.body?.getReader()
+      if (!reader) throw new Error("No response stream")
+
+      const decoder = new TextDecoder()
+      let fullText = ""
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        const chunk = decoder.decode(value)
+        fullText += chunk
+      }
+
+      // 解析 New API 网关返回的 JSON 响应
+      let responseData
+      try {
+        responseData = JSON.parse(fullText)
+      } catch {
+        console.error("[v0] Failed to parse response:", fullText)
+        throw new Error("无法解析生成结果")
+      }
+
+      // 提取图片 URL
+      const imageUrls = responseData.data?.map((item: any) => item.url) || []
+      if (!imageUrls || imageUrls.length === 0) {
+        throw new Error("未获取到生成的图片")
+      }
+
+      setResults(imageUrls.slice(0, count))
+    } catch (error) {
+      console.error("[v0] Generation error:", error)
+      alert(error instanceof Error ? error.message : "生成失败，请重试")
+    } finally {
       setLoading(false)
-      const all = [
-        "/image-samples/sample-1.jpg",
-        "/image-samples/sample-2.jpg",
-        "/image-samples/sample-3.jpg",
-        "/image-samples/sample-4.jpg",
-      ]
-      setResults(all.slice(0, count))
-    }, 2000)
+    }
   }
 
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -97,7 +166,7 @@ export function ImageGenerator({ models, defaultModelId }: ImageGeneratorProps) 
     setRefImage(URL.createObjectURL(file))
   }
 
-  const ratio = RATIOS.find((r) => r.id === ratioId)!
+  const ratio = cap.ratios.find((r) => r.id === ratioId) ?? cap.ratios[0]
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1.1fr_1.1fr]">
@@ -110,36 +179,36 @@ export function ImageGenerator({ models, defaultModelId }: ImageGeneratorProps) 
           </Label>
           <div className="grid gap-2 sm:grid-cols-3">
             {models.map((m) => (
-                <button
-                  key={m.id}
-                  type="button"
-                  onClick={() => setModelId(m.id)}
-                  className={cn(
-                    "flex flex-col items-start gap-2 rounded-lg border p-3 text-left transition-colors",
-                    modelId === m.id
-                      ? "border-primary bg-primary/5"
-                      : "border-border bg-background hover:border-primary/40",
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => setModelId(m.id)}
+                className={cn(
+                  "flex flex-col items-start gap-2 rounded-lg border p-3 text-left transition-colors",
+                  modelId === m.id
+                    ? "border-primary bg-primary/5"
+                    : "border-border bg-background hover:border-primary/40",
+                )}
+              >
+                <div className="flex w-full items-center justify-between">
+                  <span className="text-sm font-medium">{m.name}</span>
+                  {m.tag && (
+                    <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                      {m.tag}
+                    </span>
                   )}
-                >
-                  <div className="flex w-full items-center justify-between">
-                    <span className="text-sm font-medium">{m.name}</span>
-                    {m.tag && (
-                      <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
-                        {m.tag}
-                      </span>
-                    )}
-                  </div>
-                  <p className="line-clamp-2 text-xs text-muted-foreground">{m.desc}</p>
-                </button>
-              ))}
+                </div>
+                <p className="line-clamp-2 text-xs text-muted-foreground">{m.desc}</p>
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* Reference image (for Nano Banana) */}
-        {modelId === "nano-banana" && (
+        {/* Reference image */}
+        {cap.supportsReferenceImage && (
           <div className="mt-5">
             <Label className="mb-2 block text-sm font-medium">
-              <span className="mr-1 text-primary">◇</span> 参考图片（可选 · 最多 3 张）
+              <span className="mr-1 text-primary">◇</span> 参考图片（可选 · 最多 {cap.maxReferenceImages} 张）
             </Label>
             <div
               onClick={() => fileInputRef.current?.click()}
@@ -194,142 +263,161 @@ export function ImageGenerator({ models, defaultModelId }: ImageGeneratorProps) 
             <Label htmlFor="img-prompt" className="text-sm font-medium">
               <span className="mr-1 text-primary">◇</span> 提示词
             </Label>
-            <span className="text-xs tabular-nums text-muted-foreground">{prompt.length} / 2000</span>
+            <span className="text-xs tabular-nums text-muted-foreground">
+              {prompt.length} / {cap.maxPromptLength}
+            </span>
           </div>
           <Textarea
             id="img-prompt"
             value={prompt}
-            onChange={(e) => setPrompt(e.target.value.slice(0, 2000))}
+            onChange={(e) => setPrompt(e.target.value.slice(0, cap.maxPromptLength))}
             placeholder="描述你想要的图像，包括主体、风格、光线、构图、细节等"
             className="min-h-[120px] resize-none bg-background"
           />
-          <div className="mt-3 flex flex-wrap gap-2">
-            {EXAMPLES.map((p, i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={() => setPrompt(p)}
-                className="rounded-full border border-border bg-background px-3 py-1 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
-              >
-                <Sparkles className="mr-1 inline h-3 w-3 text-primary" />
-                示例 {i + 1}
-              </button>
-            ))}
-          </div>
+          {promptChips.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {promptChips.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  title={p.content}
+                  onClick={() => setPrompt(p.content.slice(0, cap.maxPromptLength))}
+                  className="rounded-full border border-border bg-background px-3 py-1 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+                >
+                  <Sparkles className="mr-1 inline h-3 w-3 text-primary" />
+                  {p.title}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Negative prompt */}
-        <div className="mt-5">
-          <Label htmlFor="img-negative" className="mb-2 block text-sm font-medium">
-            <span className="mr-1 text-primary">◇</span> 负向提示词（可选）
-          </Label>
-          <Textarea
-            id="img-negative"
-            value={negative}
-            onChange={(e) => setNegative(e.target.value.slice(0, 500))}
-            placeholder="不想出现的元素，例如：模糊、低画质、变形、多余手指"
-            className="min-h-[60px] resize-none bg-background"
-          />
-        </div>
+        {cap.supportsNegativePrompt && (
+          <div className="mt-5">
+            <Label htmlFor="img-negative" className="mb-2 block text-sm font-medium">
+              <span className="mr-1 text-primary">◇</span> 负向提示词（可选）
+            </Label>
+            <Textarea
+              id="img-negative"
+              value={negative}
+              onChange={(e) => setNegative(e.target.value.slice(0, 500))}
+              placeholder="不想出现的元素，例如：模糊、低画质、变形、多余手指"
+              className="min-h-[60px] resize-none bg-background"
+            />
+          </div>
+        )}
 
         {/* Style */}
-        <div className="mt-5">
-          <Label className="mb-2 block text-sm font-medium">
-            <span className="mr-1 text-primary">◇</span> 风格
-          </Label>
-          <div className="flex flex-wrap gap-2">
-            {STYLES.map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => setStyle(s)}
-                className={cn(
-                  "rounded-full border px-3 py-1 text-xs transition-colors",
-                  style === s
-                    ? "border-primary bg-primary/10 text-foreground"
-                    : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground",
-                )}
-              >
-                {s}
-              </button>
-            ))}
+        {cap.styles.length > 0 && (
+          <div className="mt-5">
+            <Label className="mb-2 block text-sm font-medium">
+              <span className="mr-1 text-primary">◇</span> 风格
+            </Label>
+            <div className="flex flex-wrap gap-2">
+              {cap.styles.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setStyle(s)}
+                  className={cn(
+                    "rounded-full border px-3 py-1 text-xs transition-colors",
+                    style === s
+                      ? "border-primary bg-primary/10 text-foreground"
+                      : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground",
+                  )}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Ratio */}
-        <div className="mt-5">
-          <Label className="mb-2 block text-sm font-medium">
-            <span className="mr-1 text-primary">◇</span> 画面比例
-          </Label>
-          <div className="flex flex-wrap gap-2">
-            {RATIOS.map((r) => (
-              <button
-                key={r.id}
-                type="button"
-                onClick={() => setRatioId(r.id)}
-                className={cn(
-                  "flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors",
-                  ratioId === r.id
-                    ? "border-primary bg-primary/5"
-                    : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground",
-                )}
-              >
-                <span
-                  className="inline-block rounded-[2px] border-[1.5px] border-current"
-                  style={{ width: r.w * 2 + 4, height: r.h * 2 + 4 }}
-                />
-                {r.label}
-              </button>
-            ))}
+        {cap.ratios.length > 0 && (
+          <div className="mt-5">
+            <Label className="mb-2 block text-sm font-medium">
+              <span className="mr-1 text-primary">◇</span> 画面比例
+            </Label>
+            <div className="flex flex-wrap gap-2">
+              {cap.ratios.map((r) => {
+                const w = r.w ?? 1
+                const h = r.h ?? 1
+                return (
+                  <button
+                    key={r.id}
+                    type="button"
+                    onClick={() => setRatioId(r.id)}
+                    className={cn(
+                      "flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors",
+                      ratioId === r.id
+                        ? "border-primary bg-primary/5"
+                        : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground",
+                    )}
+                  >
+                    <span
+                      className="inline-block rounded-[2px] border-[1.5px] border-current"
+                      style={{ width: w * 2 + 4, height: h * 2 + 4 }}
+                    />
+                    {r.label}
+                  </button>
+                )
+              })}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Quality + count */}
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
-          <div>
-            <Label className="mb-2 block text-sm font-medium">
-              <span className="mr-1 text-primary">◇</span> 画质
-            </Label>
-            <div className="flex gap-2">
-              {QUALITIES.map((q) => (
-                <button
-                  key={q.id}
-                  type="button"
-                  onClick={() => setQuality(q.id)}
-                  className={cn(
-                    "flex-1 rounded-lg border px-3 py-2 text-sm transition-colors",
-                    quality === q.id
-                      ? "border-primary bg-primary/5"
-                      : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground",
-                  )}
-                >
-                  {q.label}
-                </button>
-              ))}
+          {cap.qualities.length > 0 && (
+            <div>
+              <Label className="mb-2 block text-sm font-medium">
+                <span className="mr-1 text-primary">◇</span> 画质
+              </Label>
+              <div className="flex gap-2">
+                {cap.qualities.map((q) => (
+                  <button
+                    key={q.id}
+                    type="button"
+                    onClick={() => setQuality(q.id)}
+                    className={cn(
+                      "flex-1 rounded-lg border px-3 py-2 text-sm transition-colors",
+                      quality === q.id
+                        ? "border-primary bg-primary/5"
+                        : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground",
+                    )}
+                  >
+                    {q.label}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-          <div>
-            <Label className="mb-2 block text-sm font-medium">
-              <span className="mr-1 text-primary">◇</span> 数量
-            </Label>
-            <div className="flex gap-2">
-              {[1, 2, 3, 4].map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setCount(c)}
-                  className={cn(
-                    "h-10 flex-1 rounded-lg border text-sm transition-colors",
-                    count === c
-                      ? "border-primary bg-primary/5"
-                      : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground",
-                  )}
-                >
-                  {c}
-                </button>
-              ))}
+          )}
+          {cap.counts.length > 1 && (
+            <div>
+              <Label className="mb-2 block text-sm font-medium">
+                <span className="mr-1 text-primary">◇</span> 数量
+              </Label>
+              <div className="flex gap-2">
+                {cap.counts.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setCount(c)}
+                    className={cn(
+                      "h-10 flex-1 rounded-lg border text-sm transition-colors",
+                      count === c
+                        ? "border-primary bg-primary/5"
+                        : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground",
+                    )}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Price + CTA */}
@@ -382,7 +470,7 @@ export function ImageGenerator({ models, defaultModelId }: ImageGeneratorProps) 
               <div
                 key={i}
                 className="flex animate-pulse items-center justify-center rounded-xl border border-border bg-muted"
-                style={{ aspectRatio: `${ratio.w}/${ratio.h}` }}
+                style={{ aspectRatio: `${ratio?.w ?? 1}/${ratio?.h ?? 1}` }}
               >
                 <Loader2 className="h-5 w-5 animate-spin text-primary" />
               </div>

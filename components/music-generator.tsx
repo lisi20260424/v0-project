@@ -21,38 +21,35 @@ import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
+import type { MusicCapabilities } from "@/lib/model-capabilities"
 
 type Mode = "inspire" | "custom"
 
-export type GeneratorModel = {
+export type MusicGeneratorModelData = {
   id: string
   name: string
   brand?: string
   desc: string
   price: number
   tag?: string
+  capabilities: MusicCapabilities
+}
+
+export type MusicPromptChip = {
+  id: string
+  title: string
+  content: string
+  category?: string | null
 }
 
 export type MusicGeneratorProps = {
-  models: GeneratorModel[]
+  models: MusicGeneratorModelData[]
   defaultModelId?: string
+  activeProviderName?: string | null
+  prompts?: MusicPromptChip[]
 }
 
-const GENRES = ["流行", "电子", "摇滚", "民谣", "古风", "Hip Hop", "爵士", "R&B", "放克", "Lo-fi"]
-const MOODS = ["治愈", "热血", "忧伤", "欢快", "浪漫", "神秘", "怀旧", "史诗", "冥想"]
-const VOCALS = [
-  { id: "female", label: "女声" },
-  { id: "male", label: "男声" },
-  { id: "duet", label: "男女合唱" },
-  { id: "instrumental", label: "纯音乐" },
-]
-
-const VERSIONS = [
-  { id: "v4", name: "Suno V4", desc: "经典稳定，速度快", price: 5 },
-  { id: "v5", name: "Suno V5", tag: "新", desc: "人声更真实，支持 4 分钟长曲", price: 8 },
-]
-
-const EXAMPLE_DESC = [
+const DEFAULT_EXAMPLE_DESC = [
   "一首温暖的中文民谣，木吉他伴奏，女声清澈，讲述夏夜海边的回忆",
   "电子舞曲，BPM 128，合成器 Lead 旋律抓耳，适合夜店氛围",
   "史诗级交响乐配乐，管弦乐编制，适合电影片头，气势磅礴",
@@ -65,7 +62,6 @@ const SAMPLE_TRACKS = [
     cover: "/suno-covers/cover-1.jpg",
     genre: "民谣 · Lo-fi",
     duration: "2:48",
-    version: "Suno V5",
   },
   {
     id: "t2",
@@ -73,7 +69,6 @@ const SAMPLE_TRACKS = [
     cover: "/suno-covers/cover-2.jpg",
     genre: "电子 · House",
     duration: "3:12",
-    version: "Suno V5",
   },
   {
     id: "t3",
@@ -81,31 +76,110 @@ const SAMPLE_TRACKS = [
     cover: "/suno-covers/cover-3.jpg",
     genre: "民谣 · 治愈",
     duration: "3:35",
-    version: "Suno V5",
   },
 ]
 
-export function MusicGenerator({ models, defaultModelId }: MusicGeneratorProps) {
-  const [mode, setMode] = React.useState<Mode>("inspire")
+export function MusicGenerator({ models, defaultModelId, prompts = [] }: MusicGeneratorProps) {
+  const promptChips: MusicPromptChip[] =
+    prompts.length > 0
+      ? prompts
+      : DEFAULT_EXAMPLE_DESC.map((p, i) => ({ id: `default-${i}`, title: `示例 ${i + 1}`, content: p }))
+  if (!models.length) {
+    return (
+      <div className="rounded-2xl border border-dashed border-border bg-card p-10 text-center text-sm text-muted-foreground">
+        当前供应商暂未启用任何音乐模型，请先在系统设置中启用对应模型。
+      </div>
+    )
+  }
+
+  const [version, setVersion] = React.useState<string>(defaultModelId ?? models[0].id)
+  const model = models.find((x) => x.id === version) ?? models[0]
+  const cap = model.capabilities
+
+  const [mode, setMode] = React.useState<Mode>(cap.supportsCustomLyrics ? "inspire" : "inspire")
   const [desc, setDesc] = React.useState("")
   const [title, setTitle] = React.useState("")
   const [lyrics, setLyrics] = React.useState("")
-  const [genre, setGenre] = React.useState("流行")
-  const [mood, setMood] = React.useState("治愈")
-  const [vocal, setVocal] = React.useState("female")
-  const [version, setVersion] = React.useState(defaultModelId ?? models[0]?.id ?? "v5")
+  const [genre, setGenre] = React.useState(cap.genres[0] ?? "流行")
+  const [mood, setMood] = React.useState(cap.moods[0] ?? "治愈")
+  const [vocal, setVocal] = React.useState(cap.vocals[0]?.id ?? "female")
   const [loading, setLoading] = React.useState(false)
   const [playingId, setPlayingId] = React.useState<string | null>(null)
 
-  const v = models.find((x) => x.id === version) || { price: 8 }
-  const regular = v.price * 2 // two tracks per generation
+  React.useEffect(() => {
+    if (!cap.genres.includes(genre)) setGenre(cap.genres[0] ?? "流行")
+    if (!cap.moods.includes(mood)) setMood(cap.moods[0] ?? "治愈")
+    if (!cap.vocals.find((v) => v.id === vocal)) setVocal(cap.vocals[0]?.id ?? "female")
+    if (!cap.supportsCustomLyrics && mode === "custom") setMode("inspire")
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [model.id])
+
+  const regular = model.price * cap.tracksPerGeneration
   const member = Math.round(regular * 0.75)
 
-  const onGenerate = () => {
+  const onGenerate = async () => {
     if (mode === "inspire" && !desc.trim()) return
     if (mode === "custom" && !lyrics.trim()) return
+    
     setLoading(true)
-    setTimeout(() => setLoading(false), 2500)
+    try {
+      const response = await fetch("/api/generate/music", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          modelId: model.id,
+          description: mode === "inspire" ? desc : lyrics,
+          params: {
+            mode,
+            genre,
+            mood,
+            vocal,
+          },
+        }),
+      })
+
+      if (!response.ok) {
+        const err = await response.json()
+        throw new Error(err.error || "Generation failed")
+      }
+
+      // 读取响应流
+      const reader = response.body?.getReader()
+      if (!reader) throw new Error("No response stream")
+
+      const decoder = new TextDecoder()
+      let fullText = ""
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        const chunk = decoder.decode(value)
+        fullText += chunk
+      }
+
+      // 解析 New API 网关返回的 JSON 响应
+      let responseData
+      try {
+        responseData = JSON.parse(fullText)
+      } catch {
+        console.error("[v0] Failed to parse response:", fullText)
+        throw new Error("无法解析生成结果")
+      }
+
+      // 提取音乐 URL
+      const musicUrls = responseData.data?.map((item: any) => item.url) || []
+      if (!musicUrls || musicUrls.length === 0) {
+        throw new Error("未获取到生成的音乐")
+      }
+
+      // TODO: 展示音乐生成结果并支持播放
+      console.log("[v0] Music generation complete, URLs:", musicUrls)
+    } catch (error) {
+      console.error("[v0] Generation error:", error)
+      alert(error instanceof Error ? error.message : "生成失败，请重试")
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -113,30 +187,32 @@ export function MusicGenerator({ models, defaultModelId }: MusicGeneratorProps) 
       {/* Left form */}
       <div className="rounded-2xl border border-border bg-card p-5 shadow-sm md:p-6">
         {/* Mode switch */}
-        <div className="inline-flex rounded-lg bg-muted p-1">
-          <button
-            type="button"
-            onClick={() => setMode("inspire")}
-            className={cn(
-              "inline-flex items-center gap-2 rounded-md px-4 py-1.5 text-sm font-medium transition-colors",
-              mode === "inspire" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            <Sparkles className="h-4 w-4" />
-            灵感模式
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode("custom")}
-            className={cn(
-              "inline-flex items-center gap-2 rounded-md px-4 py-1.5 text-sm font-medium transition-colors",
-              mode === "custom" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            <Settings2 className="h-4 w-4" />
-            自定义歌词
-          </button>
-        </div>
+        {cap.supportsCustomLyrics && (
+          <div className="inline-flex rounded-lg bg-muted p-1">
+            <button
+              type="button"
+              onClick={() => setMode("inspire")}
+              className={cn(
+                "inline-flex items-center gap-2 rounded-md px-4 py-1.5 text-sm font-medium transition-colors",
+                mode === "inspire" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <Sparkles className="h-4 w-4" />
+              灵感模式
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("custom")}
+              className={cn(
+                "inline-flex items-center gap-2 rounded-md px-4 py-1.5 text-sm font-medium transition-colors",
+                mode === "custom" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <Settings2 className="h-4 w-4" />
+              自定义歌词
+            </button>
+          </div>
+        )}
 
         {/* Version */}
         <div className="mt-5">
@@ -176,27 +252,33 @@ export function MusicGenerator({ models, defaultModelId }: MusicGeneratorProps) 
               <Label htmlFor="desc" className="text-sm font-medium">
                 <span className="mr-1 text-primary">♫</span> 歌曲描述
               </Label>
-              <span className="text-xs tabular-nums text-muted-foreground">{desc.length} / 500</span>
+              <span className="text-xs tabular-nums text-muted-foreground">
+                {desc.length} / {cap.maxDescLength}
+              </span>
             </div>
             <Textarea
               id="desc"
               value={desc}
-              onChange={(e) => setDesc(e.target.value.slice(0, 500))}
+              onChange={(e) => setDesc(e.target.value.slice(0, cap.maxDescLength))}
               placeholder="描述你想要的歌曲风格、情绪、场景、乐器等，AI 会自动写词并谱曲"
               className="min-h-[120px] resize-none bg-background"
             />
-            <div className="mt-3 flex flex-wrap gap-2">
-              {EXAMPLE_DESC.map((p, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => setDesc(p)}
-                  className="rounded-full border border-border bg-background px-3 py-1 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
-                >
-                  示例 {i + 1}
-                </button>
-              ))}
-            </div>
+            {promptChips.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {promptChips.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    title={p.content}
+                    onClick={() => setDesc(p.content.slice(0, cap.maxDescLength))}
+                    className="rounded-full border border-border bg-background px-3 py-1 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+                  >
+                    <Sparkles className="mr-1 inline h-3 w-3 text-primary" />
+                    {p.title}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         ) : (
           <div className="mt-5 space-y-4">
@@ -217,12 +299,14 @@ export function MusicGenerator({ models, defaultModelId }: MusicGeneratorProps) 
                 <Label htmlFor="lyrics" className="text-sm font-medium">
                   <span className="mr-1 text-primary">♫</span> 歌词
                 </Label>
-                <span className="text-xs tabular-nums text-muted-foreground">{lyrics.length} / 3000</span>
+                <span className="text-xs tabular-nums text-muted-foreground">
+                  {lyrics.length} / {cap.maxLyricsLength}
+                </span>
               </div>
               <Textarea
                 id="lyrics"
                 value={lyrics}
-                onChange={(e) => setLyrics(e.target.value.slice(0, 3000))}
+                onChange={(e) => setLyrics(e.target.value.slice(0, cap.maxLyricsLength))}
                 placeholder={
                   "[Verse]\n在第一句歌词...\n\n[Chorus]\n副歌部分...\n\n使用方括号标注段落：Verse / Chorus / Bridge / Outro"
                 }
@@ -240,76 +324,82 @@ export function MusicGenerator({ models, defaultModelId }: MusicGeneratorProps) 
         )}
 
         {/* Genre */}
-        <div className="mt-5">
-          <Label className="mb-2 block text-sm font-medium">
-            <span className="mr-1 text-primary">♫</span> 曲风
-          </Label>
-          <div className="flex flex-wrap gap-2">
-            {GENRES.map((g) => (
-              <button
-                key={g}
-                type="button"
-                onClick={() => setGenre(g)}
-                className={cn(
-                  "rounded-full border px-3 py-1 text-xs transition-colors",
-                  genre === g
-                    ? "border-primary bg-primary/10 text-foreground"
-                    : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground",
-                )}
-              >
-                {g}
-              </button>
-            ))}
+        {cap.genres.length > 0 && (
+          <div className="mt-5">
+            <Label className="mb-2 block text-sm font-medium">
+              <span className="mr-1 text-primary">♫</span> 曲风
+            </Label>
+            <div className="flex flex-wrap gap-2">
+              {cap.genres.map((g) => (
+                <button
+                  key={g}
+                  type="button"
+                  onClick={() => setGenre(g)}
+                  className={cn(
+                    "rounded-full border px-3 py-1 text-xs transition-colors",
+                    genre === g
+                      ? "border-primary bg-primary/10 text-foreground"
+                      : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground",
+                  )}
+                >
+                  {g}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Mood */}
-        <div className="mt-5">
-          <Label className="mb-2 block text-sm font-medium">
-            <span className="mr-1 text-primary">♫</span> 情绪
-          </Label>
-          <div className="flex flex-wrap gap-2">
-            {MOODS.map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => setMood(m)}
-                className={cn(
-                  "rounded-full border px-3 py-1 text-xs transition-colors",
-                  mood === m
-                    ? "border-primary bg-primary/10 text-foreground"
-                    : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground",
-                )}
-              >
-                {m}
-              </button>
-            ))}
+        {cap.moods.length > 0 && (
+          <div className="mt-5">
+            <Label className="mb-2 block text-sm font-medium">
+              <span className="mr-1 text-primary">♫</span> 情绪
+            </Label>
+            <div className="flex flex-wrap gap-2">
+              {cap.moods.map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setMood(m)}
+                  className={cn(
+                    "rounded-full border px-3 py-1 text-xs transition-colors",
+                    mood === m
+                      ? "border-primary bg-primary/10 text-foreground"
+                      : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground",
+                  )}
+                >
+                  {m}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Vocal */}
-        <div className="mt-5">
-          <Label className="mb-2 block text-sm font-medium">
-            <span className="mr-1 text-primary">♫</span> 人声
-          </Label>
-          <div className="flex gap-2">
-            {VOCALS.map((v) => (
-              <button
-                key={v.id}
-                type="button"
-                onClick={() => setVocal(v.id)}
-                className={cn(
-                  "flex-1 rounded-lg border px-3 py-2 text-sm transition-colors",
-                  vocal === v.id
-                    ? "border-primary bg-primary/5"
-                    : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground",
-                )}
-              >
-                {v.label}
-              </button>
-            ))}
+        {cap.vocals.length > 0 && (
+          <div className="mt-5">
+            <Label className="mb-2 block text-sm font-medium">
+              <span className="mr-1 text-primary">♫</span> 人声
+            </Label>
+            <div className="flex gap-2">
+              {cap.vocals.map((v) => (
+                <button
+                  key={v.id}
+                  type="button"
+                  onClick={() => setVocal(v.id)}
+                  className={cn(
+                    "flex-1 rounded-lg border px-3 py-2 text-sm transition-colors",
+                    vocal === v.id
+                      ? "border-primary bg-primary/5"
+                      : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground",
+                  )}
+                >
+                  {v.label}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Price + CTA */}
         <div className="mt-7 flex flex-col gap-3 border-t border-border pt-5 sm:flex-row sm:items-center sm:justify-between">
@@ -318,7 +408,7 @@ export function MusicGenerator({ models, defaultModelId }: MusicGeneratorProps) 
               <Crown className="h-3.5 w-3.5 text-accent" />
               <span className="text-muted-foreground">会员价</span>
               <span className="font-semibold tabular-nums">{member} 点</span>
-              <span className="text-xs text-muted-foreground">（每次生成 2 首）</span>
+              <span className="text-xs text-muted-foreground">（每次生成 {cap.tracksPerGeneration} 首）</span>
             </div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <span>普通价</span>
@@ -374,7 +464,7 @@ export function MusicGenerator({ models, defaultModelId }: MusicGeneratorProps) 
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <p className="truncate text-sm font-medium">{t.title}</p>
-                      <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">{t.version}</span>
+                      <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">{model.name}</span>
                     </div>
                     <p className="mt-0.5 text-xs text-muted-foreground">
                       {t.genre} · {t.duration}

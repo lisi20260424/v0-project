@@ -1,65 +1,77 @@
-import { getModels } from '@/lib/get-models'
-import { VideoGenerator } from './video-generator'
+import { createClient } from "@/lib/supabase/server"
+import { parseVideoCapabilities } from "@/lib/model-capabilities"
+import { getPromptsByType } from "@/lib/get-prompts"
+import { VideoGenerator, type VideoGeneratorModelData } from "./video-generator"
+
+type Props = {
+  /** 当前选中的供应商 name（来自 URL searchParams.provider） */
+  provider?: string
+}
 
 /**
- * Server Component - 从数据库获取启用的视频生成模型
+ * Server Component - 从数据库读取启用视频供应商及其模型，并把每个模型的能力解析后传给客户端。
  */
-export async function VideoGeneratorServer() {
-  const models = await getModels('video')
+export async function VideoGeneratorServer({ provider }: Props = {}) {
+  const supabase = await createClient()
 
-  // 转换为组件期望的格式
-  const generatorModels = models.map((m) => ({
+  const [providersRes, modelsRes, prompts] = await Promise.all([
+    supabase
+      .from("admin_providers")
+      .select("name, display_name, sort_order")
+      .eq("enabled", true)
+      .order("sort_order", { ascending: true }),
+    supabase
+      .from("admin_models")
+      .select("id, name, provider, model_type, cost_per_use, description, config, sort_order")
+      .eq("enabled", true)
+      .eq("model_type", "video")
+      .order("sort_order", { ascending: true }),
+    getPromptsByType("video"),
+  ])
+
+  const providers = (providersRes.data ?? []).filter((p) => p.name)
+  const allModels = modelsRes.data ?? []
+
+  // 仅保留属于已启用供应商的模型
+  const enabledProviderNames = new Set(providers.map((p) => p.name as string))
+  const eligibleModels = allModels.filter((m) => enabledProviderNames.has(m.provider))
+
+  // 选定 active provider：优先 URL 参数，回退到第一个有视频模型的供应商
+  const providersWithVideo = providers.filter((p) =>
+    eligibleModels.some((m) => m.provider === p.name),
+  )
+  const activeProviderName =
+    (provider && providersWithVideo.find((p) => p.name === provider)?.name) ||
+    providersWithVideo[0]?.name ||
+    null
+
+  // 仅渲染 activeProvider 下的模型
+  const myModels = activeProviderName
+    ? eligibleModels.filter((m) => m.provider === activeProviderName)
+    : []
+
+  // 选默认展示模型：is_default_display 优先，其次 sort_order
+  const sortedModels = [...myModels].sort((a, b) => {
+    const ad = a.config?.is_default_display ? 1 : 0
+    const bd = b.config?.is_default_display ? 1 : 0
+    if (ad !== bd) return bd - ad
+    return (a.sort_order ?? 0) - (b.sort_order ?? 0)
+  })
+
+  const generatorModels: VideoGeneratorModelData[] = sortedModels.map((m) => ({
     id: m.id,
     name: m.name,
-    tag: m.provider === '新' ? '新' : undefined,
-    desc: m.desc,
-    price: m.price,
+    desc: m.description ?? "",
+    price: m.cost_per_use ?? 0,
+    capabilities: parseVideoCapabilities(m.config),
   }))
-
-  // 提供默认 mock 数据作为后备
-  const defaultModels = generatorModels.length
-    ? generatorModels
-    : [
-        {
-          id: 'sora',
-          name: 'Sora',
-          tag: '新',
-          desc: '超强文生视频，业界天花板级能力',
-          price: 10,
-        },
-        {
-          id: 'kling',
-          name: 'Kling 2.0',
-          desc: '写实感强，中国团队优化，本土化友好',
-          price: 8,
-        },
-        {
-          id: 'veo',
-          name: 'Veo 2',
-          desc: '谷歌进阶版本，支持 8K 超高分辨率',
-          price: 12,
-        },
-      ]
 
   return (
     <VideoGenerator
-      models={defaultModels}
-      defaultModelId={defaultModels[0]?.id}
-      ratios={[
-        { id: '169', label: '16:9', ratio: '16:9' },
-        { id: '916', label: '9:16', ratio: '9:16' },
-        { id: '11', label: '1:1', ratio: '1:1' },
-        { id: '21', label: '21:9', ratio: '21:9' },
-      ]}
-      durations={[
-        { id: '5', label: '5 秒' },
-        { id: '10', label: '10 秒' },
-        { id: '30', label: '30 秒' },
-        { id: '60', label: '60 秒' },
-      ]}
-      supportsImageToVideo={true}
-      imageCapability="frames"
-      multiImageSlots={4}
+      models={generatorModels}
+      defaultModelId={generatorModels[0]?.id}
+      activeProviderName={activeProviderName}
+      prompts={prompts}
     />
   )
 }

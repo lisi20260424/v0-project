@@ -46,7 +46,6 @@ type TypeUI = {
   icon: string
   accent: string
   tag: string
-  href: string
   cost: string
   description: string
 }
@@ -74,7 +73,6 @@ function emptyTypeUI(type: ProviderModelType): TypeUI {
     icon: defaultIconNameForType(type),
     accent: defaultAccentForType(type),
     tag: "",
-    href: "",
     cost: "",
     description: "",
   }
@@ -107,7 +105,6 @@ function initial(provider?: AdminProvider): FormState {
       icon: stored.icon || defaults[t].icon,
       accent: stored.accent || defaults[t].accent,
       tag: stored.tag ?? "",
-      href: stored.href ?? "",
       cost: stored.cost ?? "",
       description: stored.description ?? "",
     }
@@ -394,20 +391,6 @@ function TypeUIFields({
           value={ui.cost}
           onChange={(e) => onChange("cost", e.target.value)}
           placeholder="例：30 点起"
-          disabled={disabled}
-          className="h-7 text-xs"
-        />
-      </div>
-
-      <div className="flex flex-col gap-1 sm:col-span-2">
-        <Label htmlFor={`ui-href-${type}`} className="text-xs font-medium">
-          跳转路径
-        </Label>
-        <Input
-          id={`ui-href-${type}`}
-          value={ui.href}
-          onChange={(e) => onChange("href", e.target.value)}
-          placeholder={`例：/${type === "music" ? "suno" : type}`}
           disabled={disabled}
           className="h-7 text-xs"
         />

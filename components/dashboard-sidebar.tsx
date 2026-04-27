@@ -59,7 +59,7 @@ const sections: SidebarSection[] = [
 ]
 
 const ADMIN_SECTION: SidebarSection = {
-  label: "后台设置",
+  label: "系统设置",
   items: [
     { href: "/admin-settings/gateway", label: "API 网关", icon: Plug },
     { href: "/admin-settings/gateway/providers", label: "供应商配置", icon: Sparkles },
