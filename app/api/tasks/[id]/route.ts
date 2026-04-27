@@ -21,15 +21,20 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (!user) return Response.json({ error: "未登录" }, { status: 401 })
 
   const { id } = await params
+  console.log(`[v0:task:get] taskId=${id.slice(0, 8)}... | user=${user.id.slice(0, 8)}...`)
 
   const { data: task, error } = await supabase
     .from("generation_tasks")
     .select("*")
     .eq("id", id)
     .single()
-  if (error || !task) return Response.json({ error: "任务不存在" }, { status: 404 })
+  if (error || !task) {
+    console.warn(`[v0:task:get:not-found] taskId=${id.slice(0, 8)}...`)
+    return Response.json({ error: "任务不存在" }, { status: 404 })
+  }
 
   const updated = await maybePollVideoTask(task)
+  console.log(`[v0:task:get:complete] status=${updated.status} | progress=${updated.progress}`)
   return Response.json({ task: updated })
 }
 
@@ -44,9 +49,14 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   if (!user) return Response.json({ error: "未登录" }, { status: 401 })
 
   const { id } = await params
+  console.log(`[v0:task:delete] taskId=${id.slice(0, 8)}... | user=${user.id.slice(0, 8)}...`)
 
   const { error } = await supabase.from("generation_tasks").delete().eq("id", id)
-  if (error) return Response.json({ error: error.message }, { status: 500 })
+  if (error) {
+    console.error(`[v0:task:delete:error] ${error.message}`)
+    return Response.json({ error: error.message }, { status: 500 })
+  }
+  console.log(`[v0:task:delete:complete] taskId=${id.slice(0, 8)}...`)
   return Response.json({ success: true })
 }
 
@@ -62,15 +72,20 @@ async function fetchSoraContent(
   const contentPath = contentPathTemplate.replace("{taskId}", encodeURIComponent(taskId))
   const url = contentPath.startsWith("http") ? contentPath : `${baseURL}${contentPath.startsWith("/") ? contentPath : `/${contentPath}`}`
 
+  console.log(`[v0:sora:content:fetch] url=${url}`)
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${apiKey}` },
   })
 
   if (!res.ok) {
-    throw new Error(`Sora 内容获取失败 (${res.status}): ${await res.text().catch(() => "unknown")}`)
+    const text = await res.text().catch(() => "unknown")
+    const error = `Sora 内容获取失败 (${res.status}): ${text.slice(0, 200)}`
+    console.error(`[v0:sora:content:error] ${error}`)
+    throw new Error(error)
   }
 
   const json = await res.json()
+  console.log(`[v0:sora:content:parsed] response keys=${Object.keys(json).join(", ").slice(0, 100)}`)
 
   // 尝试从多个可能的字段提取 URL
   const urls: string[] = []
@@ -90,6 +105,7 @@ async function fetchSoraContent(
     }
   }
 
+  console.log(`[v0:sora:content:extracted] urls=${urls.length}`)
   return urls.length > 0 ? urls : null
 }
 
@@ -102,14 +118,21 @@ async function maybePollVideoTask(task: any) {
   if (!task.provider_task_id) return task
 
   const lastPolledAt = task.last_polled_at ? new Date(task.last_polled_at).getTime() : 0
-  if (Date.now() - lastPolledAt < 2000) return task // 节流
+  const timeSinceLastPoll = Date.now() - lastPolledAt
+  if (timeSinceLastPoll < 2000) {
+    console.log(`[v0:poll:throttle] taskId=${task.id.slice(0, 8)}... | next poll in ${2000 - timeSinceLastPoll}ms`)
+    return task
+  }
+
+  console.log(`[v0:poll:trigger] taskId=${task.id.slice(0, 8)}... | provider=${task.provider_name}`)
 
   const admin = createAdminClient()
 
   let gateway
   try {
     gateway = await getGatewayConfig()
-  } catch {
+  } catch (err) {
+    console.warn(`[v0:poll:error:gateway] ${err instanceof Error ? err.message : "gateway not available"}`)
     return task
   }
 
@@ -125,7 +148,8 @@ async function maybePollVideoTask(task: any) {
       endpoint.pollPath,
     )
   } catch (err) {
-    console.error("[v0] pollProviderTask error", err)
+    const msg = err instanceof Error ? err.message : "poll error"
+    console.error(`[v0:poll:error:upstream] taskId=${task.id.slice(0, 8)}... | ${msg}`)
     await admin
       .from("generation_tasks")
       .update({ last_polled_at: new Date().toISOString() })
@@ -139,6 +163,7 @@ async function maybePollVideoTask(task: any) {
   }
 
   if (result.status === "success") {
+    console.log(`[v0:poll:success] taskId=${task.id.slice(0, 8)}... | urls=${result.urls?.length ?? 0}`)
     patch.status = "success"
     patch.progress = 100
     patch.result_urls = result.urls
@@ -146,6 +171,7 @@ async function maybePollVideoTask(task: any) {
     // Sora 特殊处理：若配置了 contentPath，则需要从中获取实际的视频下载 URL
     if (task.provider_name === "sora" && endpoint.contentPath) {
       try {
+        console.log(`[v0:poll:sora:fetch-content] taskId=${task.id.slice(0, 8)}...`)
         const contentUrls = await fetchSoraContent(
           gateway.gateway_url,
           gateway.api_key,
@@ -153,16 +179,19 @@ async function maybePollVideoTask(task: any) {
           task.provider_task_id,
         )
         if (contentUrls && contentUrls.length > 0) {
+          console.log(`[v0:poll:sora:content-ok] urls=${contentUrls.length}`)
           patch.result_urls = contentUrls
         }
       } catch (err) {
-        console.warn("[v0] Failed to fetch Sora content:", err)
+        const msg = err instanceof Error ? err.message : "unknown"
+        console.warn(`[v0:poll:sora:content-failed] ${msg}`)
         // 即使失败也不影响，使用轮询返回的 URL
       }
     }
 
     patch.completed_at = new Date().toISOString()
   } else if (result.status === "failed") {
+    console.log(`[v0:poll:failed] taskId=${task.id.slice(0, 8)}... | error=${result.error}`)
     patch.status = "failed"
     patch.error_message = result.error
     patch.completed_at = new Date().toISOString()
@@ -173,6 +202,7 @@ async function maybePollVideoTask(task: any) {
       // 没有进度信息时，缓慢自增以提供视觉反馈
       patch.progress = Math.min(95, (task.progress ?? 0) + 3)
     }
+    console.log(`[v0:poll:running] taskId=${task.id.slice(0, 8)}... | progress=${patch.progress}`)
   }
 
   const { data: updated } = await admin
@@ -182,5 +212,6 @@ async function maybePollVideoTask(task: any) {
     .select()
     .single()
 
+  console.log(`[v0:poll:db-update] taskId=${task.id.slice(0, 8)}... | updated=${!!updated}`)
   return updated ?? task
 }

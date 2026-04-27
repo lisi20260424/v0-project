@@ -33,8 +33,10 @@ export async function callAIGateway(
   const { body, headers: extraHeaders } = buildRequestBody(modelType, endpoint.format, params)
   const url = `${baseURL.replace(/\/+$/, "")}${endpoint.path.startsWith("/") ? endpoint.path : `/${endpoint.path}`}`
 
-  console.log("[v0] AI Gateway request →", url)
-  console.log("[v0] AI Gateway body:", JSON.stringify(body).slice(0, 500))
+  const startTime = Date.now()
+  console.log(`[v0:gateway:start] ${modelType} | format=${endpoint.format} | model=${config.modelId}`)
+  console.log(`[v0:gateway:request] POST ${url}`)
+  console.log(`[v0:gateway:body] ${JSON.stringify(body).slice(0, 800)}`)
 
   const response = await fetch(url, {
     method: "POST",
@@ -46,7 +48,8 @@ export async function callAIGateway(
     body: JSON.stringify(body),
   })
 
-  console.log("[v0] AI Gateway status:", response.status)
+  const duration = Date.now() - startTime
+  console.log(`[v0:gateway:response] status=${response.status} | duration=${duration}ms`)
 
   if (!response.ok) {
     let detail = ""
@@ -56,10 +59,21 @@ export async function callAIGateway(
     } catch {
       detail = await response.text()
     }
-    throw new Error(`API Gateway Error (${response.status}): ${detail.slice(0, 500)}`)
+    const error = `API Gateway Error (${response.status}): ${detail.slice(0, 500)}`
+    console.error(`[v0:gateway:error] ${error}`)
+    throw new Error(error)
   }
 
-  return parseResponse(modelType, endpoint.format, response)
+  const result = await parseResponse(modelType, endpoint.format, response)
+  if (result.kind === "sync") {
+    console.log(`[v0:gateway:parsed] kind=sync | urls=${result.urls.length}`)
+  } else if (result.kind === "async") {
+    console.log(`[v0:gateway:parsed] kind=async | providerTaskId=${result.providerTaskId}`)
+  } else {
+    console.log(`[v0:gateway:parsed] kind=binary`)
+  }
+  
+  return result
 }
 
 /**
@@ -73,7 +87,9 @@ export async function pollProviderTask(
   pollPath?: string,
 ): Promise<PollResult> {
   const url = buildPollUrl(format, baseURL.replace(/\/+$/, ""), providerTaskId, pollPath)
-  console.log("[v0] Polling provider task:", url)
+  const startTime = Date.now()
+  console.log(`[v0:poll:start] format=${format} | taskId=${providerTaskId} | url=${url}`)
+
   const response = await fetch(url, {
     method: "GET",
     headers: {
@@ -82,23 +98,39 @@ export async function pollProviderTask(
     },
   })
 
+  const duration = Date.now() - startTime
+  console.log(`[v0:poll:response] status=${response.status} | duration=${duration}ms`)
+
   if (!response.ok) {
     const text = await response.text()
+    const error = `轮询失败 (${response.status}): ${text.slice(0, 200)}`
+    console.warn(`[v0:poll:error] ${error}`)
     return {
       status: "failed",
-      error: `轮询失败 (${response.status}): ${text.slice(0, 200)}`,
+      error,
       raw: { status: response.status, text },
     }
   }
 
   const json = await response.json().catch(() => ({}))
-  return parsePollResponse(format, json)
+  const result = parsePollResponse(format, json)
+  
+  if (result.status === "running") {
+    console.log(`[v0:poll:parsed] status=running | progress=${result.progress ?? "N/A"}`)
+  } else if (result.status === "success") {
+    console.log(`[v0:poll:parsed] status=success | urls=${result.urls.length}`)
+  } else {
+    console.log(`[v0:poll:parsed] status=failed | error=${result.error}`)
+  }
+  
+  return result
 }
 
 /**
  * 获取模型信息（含供应商配置中的 endpoints）
  */
 export async function getModelInfo(modelId: string) {
+  console.log(`[v0:model:fetch] modelId=${modelId}`)
   const supabase = createAdminClient()
   const { data, error } = await supabase
     .from("admin_models")
@@ -107,7 +139,13 @@ export async function getModelInfo(modelId: string) {
     .eq("enabled", true)
     .single()
 
-  if (error) throw new Error(`Model not found: ${modelId}`)
+  if (error) {
+    const msg = `Model not found: ${modelId}`
+    console.error(`[v0:model:error] ${msg}`)
+    throw new Error(msg)
+  }
+  
+  console.log(`[v0:model:found] name=${data.name} | provider=${data.provider} | type=${data.model_type}`)
   return data
 }
 
@@ -118,6 +156,7 @@ export async function getEndpointForModel(
   providerName: string,
   modelType: GenerationType,
 ): Promise<EndpointConfig> {
+  console.log(`[v0:endpoint:fetch] provider=${providerName} | type=${modelType}`)
   const supabase = createAdminClient()
   const { data, error } = await supabase
     .from("admin_providers")
@@ -126,23 +165,33 @@ export async function getEndpointForModel(
     .single()
 
   const fallback = DEFAULT_ENDPOINTS[modelType]
-  if (error || !data) return fallback
+  if (error || !data) {
+    console.warn(`[v0:endpoint:fallback] ${error?.message || "provider config not found"} | using default`)
+    return fallback
+  }
 
   const cfg = (data.config ?? {}) as { endpoints?: Partial<Record<GenerationType, Partial<EndpointConfig>>> }
   const ep = cfg.endpoints?.[modelType]
-  if (!ep) return fallback
+  if (!ep) {
+    console.warn(`[v0:endpoint:fallback] no endpoint config for ${modelType}`)
+    return fallback
+  }
 
-  return {
+  const result = {
     path: ep.path?.trim() || fallback.path,
     format: (ep.format as AnyFormat) || fallback.format,
     pollPath: ep.pollPath?.trim() || undefined,
+    contentPath: (ep as any).contentPath?.trim() || undefined,
   }
+  console.log(`[v0:endpoint:resolved] path=${result.path} | format=${result.format} | pollPath=${result.pollPath ? "yes" : "no"} | contentPath=${result.contentPath ? "yes" : "no"}`)
+  return result
 }
 
 /**
  * 获取 API 网关配置
  */
 export async function getGatewayConfig() {
+  console.log(`[v0:gateway:config] fetching...`)
   const supabase = createAdminClient()
   const { data, error } = await supabase
     .from("admin_gateway_settings")
@@ -150,7 +199,16 @@ export async function getGatewayConfig() {
     .eq("id", 1)
     .single()
 
-  if (error || !data) throw new Error("Gateway settings not found")
-  if (!data.gateway_url || !data.api_key) throw new Error("Gateway settings incomplete: 请先在系统设置中配置网关 URL 与 API Key")
+  if (error || !data) {
+    const msg = "Gateway settings not found"
+    console.error(`[v0:gateway:config:error] ${msg}`)
+    throw new Error(msg)
+  }
+  if (!data.gateway_url || !data.api_key) {
+    const msg = "Gateway settings incomplete: 请先在系统设置中配置网关 URL 与 API Key"
+    console.error(`[v0:gateway:config:error] ${msg}`)
+    throw new Error(msg)
+  }
+  console.log(`[v0:gateway:config] url=${data.gateway_url.replace(/\/+$/, "")} | apiKey=${data.api_key.slice(0, 10)}***`)
   return data
 }

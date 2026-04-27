@@ -81,6 +81,8 @@ export async function POST(req: Request) {
     params?: Record<string, any>
   }
 
+  console.log(`[v0:task:create:start] user=${user.id.slice(0, 8)}... | type=${type} | modelId=${modelId} | prompt=${prompt.slice(0, 50)}...`)
+
   if (!type || !["image", "video", "music"].includes(type)) {
     return Response.json({ error: "缺少或无效的 type" }, { status: 400 })
   }
@@ -94,16 +96,21 @@ export async function POST(req: Request) {
   try {
     model = await getModelInfo(modelId)
   } catch (e) {
-    return Response.json({ error: e instanceof Error ? e.message : "模型不可用" }, { status: 400 })
+    const msg = e instanceof Error ? e.message : "模型不可用"
+    console.error(`[v0:task:create:error:model] ${msg}`)
+    return Response.json({ error: msg }, { status: 400 })
   }
 
   if (model.model_type !== type) {
-    return Response.json({ error: `模型类型不匹配：模型为 ${model.model_type}，请求为 ${type}` }, { status: 400 })
+    const msg = `模型类型不匹配：模型为 ${model.model_type}，请求为 ${type}`
+    console.warn(`[v0:task:create:warn:mismatch] ${msg}`)
+    return Response.json({ error: msg }, { status: 400 })
   }
 
   const endpoint = await getEndpointForModel(model.provider, type)
 
   // 2. 创建任务记录（先 running，便于追踪）
+  console.log(`[v0:task:create:insert] creating task...`)
   const { data: task, error: insertError } = await admin
     .from("generation_tasks")
     .insert({
@@ -123,29 +130,36 @@ export async function POST(req: Request) {
     .single()
 
   if (insertError || !task) {
-    return Response.json({ error: insertError?.message || "创建任务失败" }, { status: 500 })
+    const msg = insertError?.message || "创建任务失败"
+    console.error(`[v0:task:create:error:insert] ${msg}`)
+    return Response.json({ error: msg }, { status: 500 })
   }
+
+  console.log(`[v0:task:create:inserted] taskId=${task.id.slice(0, 8)}...`)
 
   // 3. 网关配置
   let gateway
   try {
     gateway = await getGatewayConfig()
   } catch (e) {
+    const msg = e instanceof Error ? e.message : "网关未配置"
+    console.error(`[v0:task:create:error:gateway] ${msg}`)
     await admin
       .from("generation_tasks")
       .update({
         status: "failed",
-        error_message: e instanceof Error ? e.message : "网关未配置",
+        error_message: msg,
         completed_at: new Date().toISOString(),
       })
       .eq("id", task.id)
-    return Response.json({ error: e instanceof Error ? e.message : "网关未配置" }, { status: 500 })
+    return Response.json({ error: msg }, { status: 500 })
   }
 
   const apiModelId = (model.config as any)?.api_model_id || model.name
 
   // 4. 调用网关
   const requestParams: AnyRequestParams = buildRequestParams(type, prompt, modelId, apiModelId, params ?? {})
+  console.log(`[v0:task:create:gateway:call] calling gateway...`)
 
   try {
     const parsed = await callAIGateway(
@@ -160,6 +174,7 @@ export async function POST(req: Request) {
     )
 
     if (parsed.kind === "sync") {
+      console.log(`[v0:task:create:sync:complete] taskId=${task.id.slice(0, 8)}... | urls=${parsed.urls?.length ?? 0}`)
       const { data: updated } = await admin
         .from("generation_tasks")
         .update({
@@ -176,6 +191,7 @@ export async function POST(req: Request) {
     }
 
     if (parsed.kind === "async") {
+      console.log(`[v0:task:create:async:submitted] taskId=${task.id.slice(0, 8)}... | providerTaskId=${parsed.providerTaskId}`)
       const { data: updated } = await admin
         .from("generation_tasks")
         .update({
@@ -191,6 +207,7 @@ export async function POST(req: Request) {
     }
 
     // binary 暂不支持
+    console.warn(`[v0:task:create:warn:binary] binary response not supported`)
     await admin
       .from("generation_tasks")
       .update({
@@ -199,19 +216,19 @@ export async function POST(req: Request) {
         completed_at: new Date().toISOString(),
       })
       .eq("id", task.id)
-    return Response.json({ error: "上游返回二进制响应，当前不支持" }, { status: 502 })
+    return Response.json({ error: "暂不支持此响应类型" }, { status: 500 })
   } catch (err) {
-    const message = err instanceof Error ? err.message : "生成失败"
-    console.error("[v0] Task generation failed:", err)
+    const msg = err instanceof Error ? err.message : "生成失败"
+    console.error(`[v0:task:create:error:generation] taskId=${task.id.slice(0, 8)}... | ${msg}`)
     await admin
       .from("generation_tasks")
       .update({
         status: "failed",
-        error_message: message,
+        error_message: msg,
         completed_at: new Date().toISOString(),
       })
       .eq("id", task.id)
-    return Response.json({ error: message }, { status: 500 })
+    return Response.json({ error: msg }, { status: 500 })
   }
 }
 
