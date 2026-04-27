@@ -73,6 +73,7 @@ type EndpointCfg = {
   format: string
   path: string
   pollPath: string
+  contentPath?: string
 }
 
 type FormState = {
@@ -401,6 +402,7 @@ function EndpointFields({
 }) {
   const options = FORMAT_OPTIONS[type]
   const isAsyncVideo = type === "video" && ["sora", "kling", "jimeng"].includes(cfg.format)
+  const isSora = type === "video" && cfg.format === "sora"
 
   return (
     <div className="space-y-2 rounded-md bg-background/40 p-2.5 ring-1 ring-border/40">
@@ -436,20 +438,38 @@ function EndpointFields({
         </div>
       </div>
       {isAsyncVideo && (
-        <div className="flex flex-col gap-1">
-          <Label htmlFor={`ep-poll-${type}`} className="text-xs">
-            轮询路径（可选）
-          </Label>
-          <Input
-            id={`ep-poll-${type}`}
-            value={cfg.pollPath}
-            onChange={(e) => onChange("pollPath", e.target.value)}
-            disabled={disabled}
-            className="h-7 text-xs font-mono"
-            placeholder="留空使用格式默认；支持 {taskId} 占位符"
-          />
-          <p className="text-[10px] text-muted-foreground">视频任务为异步，将定时轮询此路径以获取最新状态</p>
-        </div>
+        <>
+          <div className="flex flex-col gap-1">
+            <Label htmlFor={`ep-poll-${type}`} className="text-xs">
+              轮询路径（可选）
+            </Label>
+            <Input
+              id={`ep-poll-${type}`}
+              value={cfg.pollPath}
+              onChange={(e) => onChange("pollPath", e.target.value)}
+              disabled={disabled}
+              className="h-7 text-xs font-mono"
+              placeholder="留空使用格式默认；支持 {taskId} 占位符"
+            />
+            <p className="text-[10px] text-muted-foreground">视频任务为异步，将定时轮询此路径以获取最新状态</p>
+          </div>
+          {isSora && (
+            <div className="flex flex-col gap-1">
+              <Label htmlFor={`ep-content-${type}`} className="text-xs">
+                获取内容路径（Sora 特定）
+              </Label>
+              <Input
+                id={`ep-content-${type}`}
+                value={cfg.contentPath ?? ""}
+                onChange={(e) => onChange("contentPath", e.target.value)}
+                disabled={disabled}
+                className="h-7 text-xs font-mono"
+                placeholder="例：/v1/videos/{taskId}/content 或 /videos/{taskId}/download"
+              />
+              <p className="text-[10px] text-muted-foreground">Sora 获取视频文件的 API 路径，支持 {'{taskId}'} 占位符</p>
+            </div>
+          )}
+        </>
       )}
     </div>
   )

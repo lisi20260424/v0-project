@@ -19,6 +19,8 @@ export type EndpointConfig = {
   format: AnyFormat
   // 视频异步任务的查询路径模板，可包含 {taskId} 占位符
   pollPath?: string
+  // Sora 特有：获取视频内容的 API 路径模板，可包含 {taskId} 占位符
+  contentPath?: string
 }
 
 /** 默认端点（未配置时回退） */
@@ -160,12 +162,13 @@ function buildVideoBody(format: VideoFormat, p: VideoRequestParams) {
 
   if (format === "sora") {
     // Sora 异步任务：POST /v1/videos
+    // Sora 需要 size 参数格式为 "WIDTHxHEIGHT"，如 "1920x1080"
     return {
       body: {
         model: modelId,
         prompt,
         size: sizeStr,
-        seconds: String(duration),
+        duration: String(duration),
       },
     }
   }

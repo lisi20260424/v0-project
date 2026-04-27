@@ -51,6 +51,49 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
 }
 
 /**
+ * 从 Sora 获取实际的视频内容 URL
+ */
+async function fetchSoraContent(
+  baseURL: string,
+  apiKey: string,
+  contentPathTemplate: string,
+  taskId: string,
+): Promise<string[] | null> {
+  const contentPath = contentPathTemplate.replace("{taskId}", encodeURIComponent(taskId))
+  const url = contentPath.startsWith("http") ? contentPath : `${baseURL}${contentPath.startsWith("/") ? contentPath : `/${contentPath}`}`
+
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${apiKey}` },
+  })
+
+  if (!res.ok) {
+    throw new Error(`Sora 内容获取失败 (${res.status}): ${await res.text().catch(() => "unknown")}`)
+  }
+
+  const json = await res.json()
+
+  // 尝试从多个可能的字段提取 URL
+  const urls: string[] = []
+  if (typeof json?.url === "string") urls.push(json.url)
+  else if (typeof json?.video_url === "string") urls.push(json.video_url)
+  else if (typeof json?.data?.url === "string") urls.push(json.data.url)
+  else if (typeof json?.data?.video_url === "string") urls.push(json.data.video_url)
+  else if (Array.isArray(json?.data)) {
+    for (const d of json.data) {
+      if (typeof d?.url === "string") urls.push(d.url)
+      else if (typeof d?.video_url === "string") urls.push(d.video_url)
+    }
+  } else if (Array.isArray(json?.videos)) {
+    for (const v of json.videos) {
+      if (typeof v?.url === "string") urls.push(v.url)
+      else if (typeof v?.video_url === "string") urls.push(v.video_url)
+    }
+  }
+
+  return urls.length > 0 ? urls : null
+}
+
+/**
  * 当任务是「running 状态的异步视频任务」时，触发上游轮询并写回 DB；否则原样返回
  */
 async function maybePollVideoTask(task: any) {
@@ -99,6 +142,25 @@ async function maybePollVideoTask(task: any) {
     patch.status = "success"
     patch.progress = 100
     patch.result_urls = result.urls
+
+    // Sora 特殊处理：若配置了 contentPath，则需要从中获取实际的视频下载 URL
+    if (task.provider_name === "sora" && endpoint.contentPath) {
+      try {
+        const contentUrls = await fetchSoraContent(
+          gateway.gateway_url,
+          gateway.api_key,
+          endpoint.contentPath,
+          task.provider_task_id,
+        )
+        if (contentUrls && contentUrls.length > 0) {
+          patch.result_urls = contentUrls
+        }
+      } catch (err) {
+        console.warn("[v0] Failed to fetch Sora content:", err)
+        // 即使失败也不影响，使用轮询返回的 URL
+      }
+    }
+
     patch.completed_at = new Date().toISOString()
   } else if (result.status === "failed") {
     patch.status = "failed"
