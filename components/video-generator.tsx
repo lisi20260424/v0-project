@@ -19,6 +19,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { cn } from "@/lib/utils"
 import { getVideoDimensions } from "@/lib/ratio-dimensions-mapping"
 import type { VideoCapabilities } from "@/lib/model-capabilities"
@@ -169,6 +170,8 @@ export function VideoGenerator({
   const [progress, setProgress] = React.useState(0)
   const [statusMsg, setStatusMsg] = React.useState<string>("")
   const [results, setResults] = React.useState<string[]>([])
+  const [alertOpen, setAlertOpen] = React.useState(false)
+  const [alertMessage, setAlertMessage] = React.useState("")
   const pollAbortRef = React.useRef<{ cancelled: boolean } | null>(null)
 
   React.useEffect(() => {
@@ -249,7 +252,8 @@ export function VideoGenerator({
     } catch (error) {
       if (!abortToken.cancelled) {
         console.error("[v0] Generation error:", error)
-        alert(error instanceof Error ? error.message : "生成失败，请重试")
+        setAlertMessage(error instanceof Error ? error.message : "生成失败，请重试")
+        setAlertOpen(true)
       }
     } finally {
       if (!abortToken.cancelled) {
@@ -312,6 +316,20 @@ export function VideoGenerator({
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
+      {alertOpen && (
+        <div className="col-span-full">
+          <Alert variant="destructive">
+            <AlertTitle>生成失败</AlertTitle>
+            <AlertDescription>{alertMessage}</AlertDescription>
+            <button
+              onClick={() => setAlertOpen(false)}
+              className="mt-2 inline-flex items-center justify-center rounded-md bg-destructive px-3 py-1.5 text-sm font-medium text-background hover:bg-destructive/90"
+            >
+              关闭
+            </button>
+          </Alert>
+        </div>
+      )}
       <div className="rounded-2xl border border-border bg-card p-5 shadow-sm md:p-6">
         {/* Primary mode switcher */}
         {cap.supportsImageToVideo && (
