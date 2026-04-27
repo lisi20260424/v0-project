@@ -214,33 +214,6 @@ function buildVideoBody(format: VideoFormat, p: VideoRequestParams) {
   }
   if (seed !== undefined) body.seed = seed
   return { body }
-  }
-
-  if (format === "jimeng") {
-    // 即梦（字节跳动）：POST /jimeng/...，使用 req_key + 自定义参数
-    const body: Record<string, any> = {
-      req_key: modelId,
-      prompt,
-      width,
-      height,
-      duration: String(duration),
-    }
-    if (seed !== undefined) body.seed = seed
-    return { body }
-  }
-
-  // 默认 OpenAI 风格
-  const body: Record<string, any> = {
-    model: modelId,
-    prompt,
-    duration: String(duration),
-    width,
-    height,
-    fps,
-    n,
-  }
-  if (seed !== undefined) body.seed = seed
-  return { body }
 }
 
 function buildMusicBody(format: MusicFormat, p: MusicRequestParams) {
