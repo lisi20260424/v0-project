@@ -7,7 +7,6 @@ import {
   Clock,
   CheckCircle2,
   XCircle,
-  RotateCcw,
   Download,
   Copy,
   Trash2,
@@ -15,21 +14,44 @@ import {
   Video,
   ImageIcon,
   Music2,
-  MessageSquare,
   Search,
 } from "lucide-react"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { MOCK_TASKS, type Task, type TaskStatus, type TaskType } from "@/lib/mock-data"
 import { cn } from "@/lib/utils"
+
+type TaskType = "video" | "image" | "music"
+type TaskStatus = "queued" | "running" | "success" | "failed"
+
+type ApiTask = {
+  id: string
+  type: TaskType
+  model_name: string
+  provider_name: string | null
+  tool_label: string | null
+  prompt: string
+  params: Record<string, any>
+  status: TaskStatus
+  progress: number
+  result_urls: string[]
+  cost: number
+  error_message: string | null
+  created_at: string
+  completed_at: string | null
+}
 
 const TYPE_ICON: Record<TaskType, typeof Video> = {
   video: Video,
   image: ImageIcon,
-  audio: Music2,
-  chat: MessageSquare,
+  music: Music2,
+}
+
+const TYPE_LABEL: Record<TaskType, string> = {
+  video: "视频",
+  image: "图像",
+  music: "音乐",
 }
 
 const STATUS_META: Record<
@@ -69,32 +91,133 @@ const FILTERS: { value: TaskStatus | "all"; label: string }[] = [
   { value: "failed", label: "失败" },
 ]
 
+function formatDateTime(iso: string): string {
+  try {
+    const d = new Date(iso)
+    const pad = (n: number) => String(n).padStart(2, "0")
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(
+      d.getMinutes(),
+    )}:${pad(d.getSeconds())}`
+  } catch {
+    return iso
+  }
+}
+
+function shortId(id: string): string {
+  return id.slice(0, 8).toUpperCase()
+}
+
 export function TasksList() {
   const [filter, setFilter] = React.useState<TaskStatus | "all">("all")
   const [query, setQuery] = React.useState("")
+  const [tasks, setTasks] = React.useState<ApiTask[]>([])
+  const [loading, setLoading] = React.useState(true)
+  const [error, setError] = React.useState<string | null>(null)
+
+  // 拉取任务列表
+  const refresh = React.useCallback(async () => {
+    try {
+      const res = await fetch("/api/tasks?limit=100", { cache: "no-store" })
+      if (!res.ok) {
+        throw new Error("加载任务失败")
+      }
+      const data = await res.json()
+      setTasks(data.tasks ?? [])
+      setError(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "加载失败")
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  React.useEffect(() => {
+    refresh()
+  }, [refresh])
+
+  // 当存在 running/queued 任务时，每 5 秒刷新一次
+  const hasPending = React.useMemo(
+    () => tasks.some((t) => t.status === "running" || t.status === "queued"),
+    [tasks],
+  )
+
+  React.useEffect(() => {
+    if (!hasPending) return
+    const timer = setInterval(refresh, 5000)
+    return () => clearInterval(timer)
+  }, [hasPending, refresh])
+
+  // 对每个 running 任务单独触发一次轮询，让服务端去查上游
+  React.useEffect(() => {
+    const running = tasks.filter((t) => t.status === "running")
+    if (running.length === 0) return
+    const ids = running.map((t) => t.id)
+    let cancelled = false
+    ;(async () => {
+      for (const id of ids) {
+        if (cancelled) break
+        try {
+          const res = await fetch(`/api/tasks/${id}`, { cache: "no-store" })
+          if (!res.ok) continue
+          const { task } = await res.json()
+          if (cancelled) break
+          if (task) {
+            setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, ...task } : t)))
+          }
+        } catch {
+          // ignore
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [tasks])
 
   const filtered = React.useMemo(() => {
-    return MOCK_TASKS.filter((t) => {
+    return tasks.filter((t) => {
       if (filter !== "all") {
         if (filter === "running" && !["running", "queued"].includes(t.status)) return false
         if (filter !== "running" && t.status !== filter) return false
       }
-      if (query && !t.prompt.toLowerCase().includes(query.toLowerCase()) && !t.tool.includes(query)) {
+      const q = query.trim().toLowerCase()
+      if (q && !t.prompt.toLowerCase().includes(q) && !(t.tool_label ?? "").toLowerCase().includes(q)) {
         return false
       }
       return true
     })
-  }, [filter, query])
+  }, [tasks, filter, query])
 
   const stats = React.useMemo(
     () => ({
-      running: MOCK_TASKS.filter((t) => t.status === "running" || t.status === "queued").length,
-      success: MOCK_TASKS.filter((t) => t.status === "success").length,
-      failed: MOCK_TASKS.filter((t) => t.status === "failed").length,
-      spend: MOCK_TASKS.reduce((sum, t) => sum + t.cost, 0),
+      running: tasks.filter((t) => t.status === "running" || t.status === "queued").length,
+      success: tasks.filter((t) => t.status === "success").length,
+      failed: tasks.filter((t) => t.status === "failed").length,
+      spend: tasks.filter((t) => t.status === "success").reduce((sum, t) => sum + (t.cost ?? 0), 0),
     }),
-    [],
+    [tasks],
   )
+
+  async function handleDelete(id: string) {
+    if (!confirm("确认删除这条任务记录？")) return
+    const prev = tasks
+    setTasks((p) => p.filter((t) => t.id !== id))
+    try {
+      const res = await fetch(`/api/tasks/${id}`, { method: "DELETE" })
+      if (!res.ok) throw new Error("删除失败")
+    } catch {
+      setTasks(prev)
+      alert("删除失败")
+    }
+  }
+
+  async function handleCopyPrompt(prompt: string) {
+    try {
+      await navigator.clipboard.writeText(prompt)
+    } catch {
+      // ignore
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -132,12 +255,28 @@ export function TasksList() {
       </div>
 
       <div className="space-y-3">
-        {filtered.length === 0 ? (
+        {loading ? (
+          <div className="flex items-center justify-center gap-2 rounded-2xl border border-border bg-card p-12 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            加载中...
+          </div>
+        ) : error ? (
+          <div className="rounded-2xl border border-destructive/40 bg-destructive/5 p-12 text-center text-sm text-destructive">
+            {error}
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center">
-            <p className="text-sm text-muted-foreground">没有找到匹配的任务</p>
+            <p className="text-sm text-muted-foreground">{tasks.length === 0 ? "还没有任务，去试试图片或视频生成吧" : "没有找到匹配的任务"}</p>
           </div>
         ) : (
-          filtered.map((task) => <TaskRow key={task.id} task={task} />)
+          filtered.map((task) => (
+            <TaskRow
+              key={task.id}
+              task={task}
+              onDelete={() => handleDelete(task.id)}
+              onCopyPrompt={() => handleCopyPrompt(task.prompt)}
+            />
+          ))
         )}
       </div>
     </div>
@@ -166,23 +305,38 @@ function StatCard({
   )
 }
 
-function TaskRow({ task }: { task: Task }) {
+function TaskRow({
+  task,
+  onDelete,
+  onCopyPrompt,
+}: {
+  task: ApiTask
+  onDelete: () => void
+  onCopyPrompt: () => void
+}) {
   const meta = STATUS_META[task.status]
   const StatusIcon = meta.icon
   const TypeIcon = TYPE_ICON[task.type]
+  const firstUrl = task.result_urls?.[0]
+  const isImage = task.type === "image"
+  const isVideo = task.type === "video"
+  const isMusic = task.type === "music"
 
   return (
     <article className="group overflow-hidden rounded-2xl border border-border bg-card transition-colors hover:border-primary/40">
       <div className="flex gap-4 p-4">
         <div className="relative aspect-square h-24 w-24 flex-shrink-0 overflow-hidden rounded-lg bg-gradient-to-br from-secondary to-muted">
-          {task.thumbnail ? (
+          {firstUrl && isImage ? (
             <Image
-              src={task.thumbnail || "/placeholder.svg"}
+              src={firstUrl}
               alt={task.prompt}
               fill
               sizes="96px"
               className="object-cover"
+              unoptimized
             />
+          ) : firstUrl && isVideo ? (
+            <video src={firstUrl} className="h-full w-full object-cover" muted playsInline />
           ) : (
             <div className="flex h-full w-full items-center justify-center">
               {task.status === "running" ? (
@@ -192,22 +346,34 @@ function TaskRow({ task }: { task: Task }) {
               )}
             </div>
           )}
-          {task.type === "video" && task.status === "success" && (
+          {isVideo && task.status === "success" && (
             <div className="absolute bottom-1 right-1 rounded bg-background/70 px-1.5 py-0.5 text-[10px] font-medium backdrop-blur-sm">
               VIDEO
+            </div>
+          )}
+          {isMusic && task.status === "success" && (
+            <div className="absolute bottom-1 right-1 rounded bg-background/70 px-1.5 py-0.5 text-[10px] font-medium backdrop-blur-sm">
+              AUDIO
             </div>
           )}
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="flex flex-wrap items-center gap-2">
-            <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium", meta.className)}>
+            <span
+              className={cn(
+                "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium",
+                meta.className,
+              )}
+            >
               <span className={cn("h-1.5 w-1.5 rounded-full", meta.dotClass)} />
               <StatusIcon className={cn("h-3 w-3", task.status === "running" && "animate-spin")} />
               {meta.label}
             </span>
-            <span className="text-xs font-medium text-foreground">{task.tool}</span>
-            <span className="text-xs text-muted-foreground">#{task.id}</span>
+            <span className="text-xs font-medium text-foreground">
+              {task.tool_label || `${task.model_name} · ${TYPE_LABEL[task.type]}`}
+            </span>
+            <span className="text-xs text-muted-foreground">#{shortId(task.id)}</span>
             <span className="ml-auto flex items-center gap-1 text-xs text-muted-foreground">
               <Zap className="h-3 w-3 text-accent" fill="currentColor" />
               {task.cost} 点
@@ -216,49 +382,57 @@ function TaskRow({ task }: { task: Task }) {
 
           <p className="mt-2 line-clamp-2 text-sm text-foreground/85">{task.prompt}</p>
 
+          {/* 音乐结果在行内提供播放器 */}
+          {isMusic && firstUrl && task.status === "success" && (
+            <audio src={firstUrl} controls className="mt-2 h-8 w-full max-w-md" />
+          )}
+
           <div className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-3">
             <div className="text-xs text-muted-foreground">
-              {task.createdAt}
-              {task.duration && <span className="ml-2">· {task.duration}</span>}
-              {task.errorMsg && <span className="ml-2 text-destructive">· {task.errorMsg}</span>}
+              {formatDateTime(task.created_at)}
+              {task.completed_at && task.status === "success" && (
+                <span className="ml-2">· 完成 {formatDateTime(task.completed_at)}</span>
+              )}
+              {task.error_message && <span className="ml-2 text-destructive">· {task.error_message}</span>}
             </div>
 
             <div className="flex items-center gap-1">
-              {task.status === "success" && (
+              {task.status === "success" && firstUrl && (
                 <>
-                  <Button size="sm" variant="ghost" className="h-7 gap-1 px-2 text-xs">
+                  <a
+                    href={firstUrl}
+                    download
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex h-7 items-center gap-1 rounded-md px-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+                  >
                     <Download className="h-3.5 w-3.5" />
                     下载
-                  </Button>
-                  <Button size="sm" variant="ghost" className="h-7 gap-1 px-2 text-xs">
+                  </a>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 gap-1 px-2 text-xs"
+                    onClick={onCopyPrompt}
+                  >
                     <Copy className="h-3.5 w-3.5" />
                     复制提示词
                   </Button>
                 </>
-              )}
-              {task.status === "failed" && (
-                <Button size="sm" variant="outline" className="h-7 gap-1 px-2 text-xs bg-transparent">
-                  <RotateCcw className="h-3.5 w-3.5" />
-                  重新生成
-                </Button>
-              )}
-              {(task.status === "running" || task.status === "queued") && (
-                <Button size="sm" variant="ghost" className="h-7 gap-1 px-2 text-xs text-destructive hover:text-destructive">
-                  取消任务
-                </Button>
               )}
               <Button
                 size="icon"
                 variant="ghost"
                 className="h-7 w-7 text-muted-foreground hover:text-destructive"
                 aria-label="删除"
+                onClick={onDelete}
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </Button>
             </div>
           </div>
 
-          {task.status === "running" && task.progress !== undefined && (
+          {task.status === "running" && (
             <div className="mt-3">
               <div className="flex items-center justify-between text-[11px] text-muted-foreground">
                 <span>生成进度</span>

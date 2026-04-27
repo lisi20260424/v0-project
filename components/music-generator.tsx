@@ -105,6 +105,7 @@ export function MusicGenerator({ models, defaultModelId, prompts = [] }: MusicGe
   const [vocal, setVocal] = React.useState(cap.vocals[0]?.id ?? "female")
   const [loading, setLoading] = React.useState(false)
   const [playingId, setPlayingId] = React.useState<string | null>(null)
+  const [results, setResults] = React.useState<string[]>([])
 
   React.useEffect(() => {
     if (!cap.genres.includes(genre)) setGenre(cap.genres[0] ?? "流行")
@@ -120,60 +121,38 @@ export function MusicGenerator({ models, defaultModelId, prompts = [] }: MusicGe
   const onGenerate = async () => {
     if (mode === "inspire" && !desc.trim()) return
     if (mode === "custom" && !lyrics.trim()) return
-    
+
     setLoading(true)
+    setResults([])
     try {
-      const response = await fetch("/api/generate/music", {
+      const response = await fetch("/api/tasks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          type: "music",
           modelId: model.id,
-          description: mode === "inspire" ? desc : lyrics,
+          prompt: mode === "inspire" ? desc : lyrics,
           params: {
-            mode,
+            voice: vocal,
+            responseFormat: "mp3",
+            speed: 1,
             genre,
             mood,
-            vocal,
+            title: mode === "custom" ? title : undefined,
           },
         }),
       })
 
       if (!response.ok) {
-        const err = await response.json()
-        throw new Error(err.error || "Generation failed")
+        const err = await response.json().catch(() => ({}))
+        throw new Error(err.error || "生成失败")
       }
 
-      // 读取响应流
-      const reader = response.body?.getReader()
-      if (!reader) throw new Error("No response stream")
-
-      const decoder = new TextDecoder()
-      let fullText = ""
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        const chunk = decoder.decode(value)
-        fullText += chunk
-      }
-
-      // 解析 New API 网关返回的 JSON 响应
-      let responseData
-      try {
-        responseData = JSON.parse(fullText)
-      } catch {
-        console.error("[v0] Failed to parse response:", fullText)
-        throw new Error("无法解析生成结果")
-      }
-
-      // 提取音乐 URL
-      const musicUrls = responseData.data?.map((item: any) => item.url) || []
-      if (!musicUrls || musicUrls.length === 0) {
-        throw new Error("未获取到生成的音乐")
-      }
-
-      // TODO: 展示音乐生成结果并支持播放
-      console.log("[v0] Music generation complete, URLs:", musicUrls)
+      const { task } = await response.json()
+      if (task?.status === "failed") throw new Error(task.error_message || "生成失败")
+      const urls: string[] = task?.result_urls ?? []
+      if (urls.length === 0) throw new Error("未获取到生成的音乐")
+      setResults(urls)
     } catch (error) {
       console.error("[v0] Generation error:", error)
       alert(error instanceof Error ? error.message : "生成失败，请重试")
@@ -433,11 +412,47 @@ export function MusicGenerator({ models, defaultModelId, prompts = [] }: MusicGe
 
       {/* Right: tracks preview */}
       <div className="flex flex-col gap-4">
+        {(loading || results.length > 0) && (
+          <div className="rounded-2xl border border-primary/40 bg-primary/5 p-5 shadow-sm">
+            <h3 className="mb-3 flex items-center gap-2 text-sm font-medium">
+              <Music2 className="h-4 w-4 text-primary" />
+              本次生成
+            </h3>
+            {loading ? (
+              <div className="flex items-center gap-3 rounded-xl border border-border bg-background p-4 text-sm text-muted-foreground">
+                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                正在创作中，请稍候...
+              </div>
+            ) : (
+              <ul className="space-y-3">
+                {results.map((url, i) => (
+                  <li
+                    key={i}
+                    className="flex flex-col gap-2 rounded-xl border border-border bg-background p-3"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">作品 {i + 1}</span>
+                      <a
+                        href={url}
+                        download
+                        className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                      >
+                        <Download className="h-3 w-3" />
+                        下载
+                      </a>
+                    </div>
+                    <audio src={url} controls className="w-full" />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
         <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
             <h3 className="flex items-center gap-2 text-sm font-medium">
               <Music2 className="h-4 w-4 text-primary" />
-              最近作品
+              示例作品
             </h3>
             <span className="text-xs text-muted-foreground">共 {SAMPLE_TRACKS.length} 首</span>
           </div>

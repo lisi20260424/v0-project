@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
+import { getImageDimension } from "@/lib/ratio-dimensions-mapping"
 import type { ImageCapabilities } from "@/lib/model-capabilities"
 
 export type ImageGeneratorModelData = {
@@ -101,57 +102,39 @@ export function ImageGenerator({ models, defaultModelId, prompts = [] }: ImageGe
     setLoading(true)
     setResults([])
     try {
-      const response = await fetch("/api/generate/image", {
+      const imageDimension = getImageDimension(ratioId)
+      const response = await fetch("/api/tasks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          type: "image",
           modelId: model.id,
           prompt,
           params: {
-            negative,
-            style,
-            ratio: ratio?.id,
+            size: imageDimension,
+            n: count,
             quality,
-            count,
+            style,
+            responseFormat: "url",
+            negative: negative || undefined,
           },
         }),
       })
 
       if (!response.ok) {
-        const err = await response.json()
-        throw new Error(err.error || "Generation failed")
+        const err = await response.json().catch(() => ({}))
+        throw new Error(err.error || "生成失败")
       }
 
-      // 读取响应流
-      const reader = response.body?.getReader()
-      if (!reader) throw new Error("No response stream")
-
-      const decoder = new TextDecoder()
-      let fullText = ""
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        const chunk = decoder.decode(value)
-        fullText += chunk
+      const { task } = await response.json()
+      if (task?.status === "failed") {
+        throw new Error(task.error_message || "生成失败")
       }
-
-      // 解析 New API 网关返回的 JSON 响应
-      let responseData
-      try {
-        responseData = JSON.parse(fullText)
-      } catch {
-        console.error("[v0] Failed to parse response:", fullText)
-        throw new Error("无法解析生成结果")
-      }
-
-      // 提取图片 URL
-      const imageUrls = responseData.data?.map((item: any) => item.url) || []
-      if (!imageUrls || imageUrls.length === 0) {
+      const urls: string[] = task?.result_urls ?? []
+      if (urls.length === 0) {
         throw new Error("未获取到生成的图片")
       }
-
-      setResults(imageUrls.slice(0, count))
+      setResults(urls.slice(0, count))
     } catch (error) {
       console.error("[v0] Generation error:", error)
       alert(error instanceof Error ? error.message : "生成失败，请重试")
@@ -271,7 +254,7 @@ export function ImageGenerator({ models, defaultModelId, prompts = [] }: ImageGe
             id="img-prompt"
             value={prompt}
             onChange={(e) => setPrompt(e.target.value.slice(0, cap.maxPromptLength))}
-            placeholder="描述你想要的图像，包括主体、风格、光线、构图、细节等"
+            placeholder="描述你想要的图像，包括主体、风格、光线、�����、细节等"
             className="min-h-[120px] resize-none bg-background"
           />
           {promptChips.length > 0 && (
