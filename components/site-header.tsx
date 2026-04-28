@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { Menu, Zap, ChevronDown, LayoutDashboard, ListChecks, Images, CreditCard, Settings, LogOut, Cog } from "lucide-react"
+import { Menu, Zap, ChevronDown, LayoutDashboard, ListChecks, Images, CreditCard, Settings, LogOut, Plug, Cpu, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ThemeToggle } from "@/components/theme-toggle"
@@ -214,13 +214,22 @@ export function SiteHeader({ models }: SiteHeaderProps) {
                 {isAdmin && (
                   <>
                     <DropdownMenuSeparator />
-                    <DropdownMenuLabel className="text-[11px] uppercase tracking-wider text-muted-foreground">
-                      系统管理
-                    </DropdownMenuLabel>
                     <DropdownMenuItem asChild>
-                      <Link href="/admin/system">
-                        <Cog className="mr-2 h-4 w-4" />
-                        系统设置
+                      <Link href="/admin-settings/gateway">
+                        <Plug className="mr-2 h-4 w-4" />
+                        API 网关
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/admin-settings/models">
+                        <Cpu className="mr-2 h-4 w-4" />
+                        模型配置
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/admin-settings/prompts">
+                        <Sparkles className="mr-2 h-4 w-4" />
+                        提示词配置
                       </Link>
                     </DropdownMenuItem>
                   </>
