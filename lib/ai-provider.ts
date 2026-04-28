@@ -212,3 +212,22 @@ export async function getGatewayConfig() {
   console.log(`[v0:gateway:config] url=${data.gateway_url.replace(/\/+$/, "")} | apiKey=${data.api_key.slice(0, 10)}***`)
   return data
 }
+
+/**
+ * 获取生成任务超时配置
+ */
+export async function getGenerationTimeouts() {
+  const supabase = createAdminClient()
+  const { data, error } = await supabase
+    .from("admin_generation_config")
+    .select("music_timeout, image_timeout, video_timeout")
+    .eq("id", 1)
+    .maybeSingle()
+
+  // 使用默认值：若配置不存在则返回默认值
+  return {
+    musicTimeout: data?.music_timeout ?? 600, // 10 分钟
+    imageTimeout: data?.image_timeout ?? 300, // 5 分钟
+    videoTimeout: data?.video_timeout ?? 1800, // 30 分钟
+  }
+}

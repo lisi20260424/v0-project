@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Plug, Cpu, Sparkles, ChevronRight } from "lucide-react"
+import { Plug, Cpu, Sparkles, ChevronRight, Globe } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
 
@@ -16,12 +16,16 @@ type AdminNavItem = {
 
 const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   {
-    label: "API 网关",
-    href: "/admin-settings/gateway",
+    label: "系统设置",
+    href: "/admin-settings/system-settings",
     icon: Plug,
-    desc: "网关地址与密钥",
-    children: [{ label: "供应商配置", href: "/admin-settings/gateway/providers", desc: "管理模型供应商" }],
+    desc: "网关和生成配置",
+    children: [
+      { label: "API 网关", href: "/admin-settings/system-settings/gateway", desc: "网关地址与密钥" },
+      { label: "生成配置", href: "/admin-settings/system-settings/generation", desc: "生成任务超时时间" },
+    ],
   },
+  { label: "供应商配置", href: "/admin-settings/providers", icon: Globe, desc: "管理模型供应商" },
   { label: "模型配置", href: "/admin-settings/models", icon: Cpu, desc: "管理可用模型" },
   { label: "提示词配置", href: "/admin-settings/prompts", icon: Sparkles, desc: "快捷提示词" },
 ]
