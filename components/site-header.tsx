@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { Menu, Zap, ChevronDown, LayoutDashboard, ListChecks, Images, CreditCard, Settings, LogOut } from "lucide-react"
+import { Menu, Zap, ChevronDown, LayoutDashboard, ListChecks, Images, CreditCard, Settings, LogOut, Cog } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ThemeToggle } from "@/components/theme-toggle"
@@ -26,7 +26,7 @@ export type SiteHeaderProps = {
 export function SiteHeader({ models }: SiteHeaderProps) {
   const tools = models || TOOLS
   const membership = useMembership()
-  const { user } = useUser()
+  const { user, isAdmin } = useUser()
   const tierLabel: Record<NonNullable<NonNullable<typeof user>["vipTier"]>, string> = {
     monthly: "月会员",
     annual: "年会员",
@@ -211,6 +211,20 @@ export function SiteHeader({ models }: SiteHeaderProps) {
                     账户设置
                   </Link>
                 </DropdownMenuItem>
+                {isAdmin && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                      系统管理
+                    </DropdownMenuLabel>
+                    <DropdownMenuItem asChild>
+                      <Link href="/admin/system">
+                        <Cog className="mr-2 h-4 w-4" />
+                        系统设置
+                      </Link>
+                    </DropdownMenuItem>
+                  </>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild className="text-muted-foreground">
                   <a href="/auth/sign-out">

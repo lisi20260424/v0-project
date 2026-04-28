@@ -1,11 +1,11 @@
 import Link from "next/link"
 import Image from "next/image"
-import { ArrowRight, Video, ImageIcon, Music2, Sparkles, TrendingUp } from "lucide-react"
+import { ArrowRight, Video, ImageIcon, Music2, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { TOOLS } from "@/lib/tools"
 import { MOCK_CREATIONS } from "@/lib/mock-data"
 import { getCurrentUser } from "@/lib/supabase/get-user"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { resolveIcon } from "@/lib/icon-map"
 
 export const metadata = {
   title: "工作台 · 灵境 AI",
@@ -56,6 +56,18 @@ export default async function DashboardPage() {
     .order("created_at", { ascending: false })
     .limit(3)
 
+  // 获取真实的供应商模型数据用于开始创作区块
+  const { data: providers } = await admin
+    .from("providers")
+    .select("id, name, type")
+    .eq("active", true)
+
+  const { data: models } = await admin
+    .from("models")
+    .select("id, name, provider_id, type, ui_icon, accent_color, cost_label, url_path")
+    .eq("active", true)
+    .limit(8)
+
   const recentCreations = MOCK_CREATIONS.slice(0, 6)
 
   return (
@@ -98,20 +110,22 @@ export default async function DashboardPage() {
           </Link>
         </div>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          {TOOLS.slice(0, 8).map((t) => {
-            const Icon = typeof t.icon === "string" ? Sparkles : t.icon
+          {(models || []).map((m) => {
+            const Icon = m.ui_icon ? resolveIcon(m.ui_icon) : Sparkles
+            const provider = providers?.find((p) => p.id === m.provider_id)
+            const href = m.url_path || `//${m.name.toLowerCase()}`
             return (
               <Link
-                key={t.id}
-                href={t.href}
-                className={`group flex items-center gap-3 rounded-xl border border-border bg-gradient-to-br ${t.accent} p-3 transition-all hover:border-primary/40 hover:shadow-sm`}
+                key={m.id}
+                href={href}
+                className={`group flex items-center gap-3 rounded-xl border border-border bg-gradient-to-br ${m.accent_color || "from-primary/30 to-accent/10"} p-3 transition-all hover:border-primary/40 hover:shadow-sm`}
               >
                 <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-background/60 backdrop-blur-sm">
                   <Icon className="h-4 w-4" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-medium">{t.name}</div>
-                  <div className="truncate text-[10px] text-muted-foreground">{t.cost}</div>
+                  <div className="truncate text-sm font-medium">{m.name}</div>
+                  <div className="truncate text-[10px] text-muted-foreground">{m.cost_label || "免费"}</div>
                 </div>
               </Link>
             )
