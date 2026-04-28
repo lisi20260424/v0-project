@@ -23,6 +23,8 @@ import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { getVideoDimensions } from "@/lib/ratio-dimensions-mapping"
 import type { VideoCapabilities } from "@/lib/model-capabilities"
+import { useUser } from "@/components/user-provider"
+import { useMembership } from "@/components/membership-provider"
 
 export type VideoGeneratorModelData = {
   id: string
@@ -117,9 +119,13 @@ const ACCENT_LABEL = "◇"
 export function VideoGenerator({
   models,
   defaultModelId,
+  activeProviderName,
   memberDiscount = 0.75,
   prompts = [],
 }: VideoGeneratorProps) {
+  const { user } = useUser()
+  const membership = useMembership()
+  
   // 没有后台配置时，回退到内置示例，保证空数据库下也能给用户灵感
   const promptChips: PromptChip[] =
     prompts.length > 0
@@ -194,6 +200,13 @@ export function VideoGenerator({
   const onGenerate = async () => {
     if (!prompt.trim()) return
     if (mode === "image" && !hasImage) return
+
+    // 检查用户是否登录
+    if (!user) {
+      toast.error("请先登录或注册账户")
+      membership.open("login")
+      return
+    }
 
     if (pollAbortRef.current) pollAbortRef.current.cancelled = true
     const abortToken = { cancelled: false }

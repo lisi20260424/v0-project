@@ -23,6 +23,8 @@ import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import type { MusicCapabilities } from "@/lib/model-capabilities"
+import { useUser } from "@/components/user-provider"
+import { useMembership } from "@/components/membership-provider"
 
 type Mode = "inspire" | "custom"
 
@@ -81,6 +83,9 @@ const SAMPLE_TRACKS = [
 ]
 
 export function MusicGenerator({ models, defaultModelId, prompts = [] }: MusicGeneratorProps) {
+  const { user } = useUser()
+  const membership = useMembership()
+  
   const promptChips: MusicPromptChip[] =
     prompts.length > 0
       ? prompts
@@ -122,6 +127,13 @@ export function MusicGenerator({ models, defaultModelId, prompts = [] }: MusicGe
   const onGenerate = async () => {
     if (mode === "inspire" && !desc.trim()) return
     if (mode === "custom" && !lyrics.trim()) return
+
+    // 检查用户是否登录
+    if (!user) {
+      toast.error("请先登录或注册账户")
+      membership.open("login")
+      return
+    }
 
     setLoading(true)
     setResults([])

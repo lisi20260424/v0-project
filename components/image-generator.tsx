@@ -19,6 +19,8 @@ import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { getImageDimension } from "@/lib/ratio-dimensions-mapping"
 import type { ImageCapabilities } from "@/lib/model-capabilities"
+import { useUser } from "@/components/user-provider"
+import { useMembership } from "@/components/membership-provider"
 
 export type ImageGeneratorModelData = {
   id: string
@@ -57,6 +59,9 @@ const QUALITY_EXTRA: Record<string, number> = {
 }
 
 export function ImageGenerator({ models, defaultModelId, prompts = [] }: ImageGeneratorProps) {
+  const { user } = useUser()
+  const membership = useMembership()
+  
   const promptChips: ImagePromptChip[] =
     prompts.length > 0
       ? prompts
@@ -100,6 +105,14 @@ export function ImageGenerator({ models, defaultModelId, prompts = [] }: ImageGe
 
   const onGenerate = async () => {
     if (!prompt.trim()) return
+    
+    // 检查用户是否登录
+    if (!user) {
+      toast.error("请先登录或注册账户")
+      membership.open("login")
+      return
+    }
+    
     setLoading(true)
     setResults([])
     try {
