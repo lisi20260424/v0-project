@@ -8,7 +8,6 @@ import {
   Images,
   CreditCard,
   Receipt,
-  Key,
   Settings,
   Gift,
   HelpCircle,
@@ -16,6 +15,7 @@ import {
   Cpu,
   Sparkles,
 } from "lucide-react"
+import * as React from "react"
 import { cn } from "@/lib/utils"
 import { useUser } from "@/components/user-provider"
 
@@ -36,7 +36,7 @@ const sections: SidebarSection[] = [
     label: "工作台",
     items: [
       { href: "/dashboard", label: "概览", icon: LayoutDashboard },
-      { href: "/tasks", label: "我的任务", icon: ListChecks, badge: "3" },
+      { href: "/tasks", label: "我的任务", icon: ListChecks },
       { href: "/creations", label: "我的创作", icon: Images },
     ],
   },
@@ -46,7 +46,6 @@ const sections: SidebarSection[] = [
       { href: "/billing", label: "订阅与账单", icon: CreditCard },
       { href: "/orders", label: "消费记录", icon: Receipt },
       { href: "/invite", label: "邀请好友", icon: Gift, badge: "NEW" },
-      { href: "/api-keys", label: "API 密钥", icon: Key },
     ],
   },
   {
@@ -70,7 +69,29 @@ const ADMIN_SECTION: SidebarSection = {
 
 export function DashboardSidebar() {
   const pathname = usePathname()
-  const { isAdmin } = useUser()
+  const { isAdmin, user } = useUser()
+  const [runningCount, setRunningCount] = React.useState<number | null>(null)
+
+  // 获取运行中任务数
+  React.useEffect(() => {
+    if (!user?.id) return
+    const fetchRunningCount = async () => {
+      try {
+        const res = await fetch("/api/tasks")
+        const json = await res.json()
+        const tasks = json.tasks || []
+        const count = tasks.filter((t: any) => t.status === "running" || t.status === "queued").length
+        setRunningCount(count)
+      } catch (err) {
+        console.error("[v0] Failed to fetch running tasks count:", err)
+      }
+    }
+    
+    fetchRunningCount()
+    // 每 10 秒刷新一次
+    const interval = setInterval(fetchRunningCount, 10000)
+    return () => clearInterval(interval)
+  }, [user?.id])
 
   return (
     <nav aria-label="用户中心导航" className="rounded-2xl border border-border bg-card p-3">
@@ -80,9 +101,14 @@ export function DashboardSidebar() {
             {section.label}
           </div>
           <ul className="space-y-0.5">
-            {section.items.map((item) => (
-              <SidebarLink key={item.href} item={item} pathname={pathname} />
-            ))}
+            {section.items.map((item) => {
+              // 对"我的任务"添加动态 badge
+              let badge = item.badge
+              if (item.href === "/tasks" && runningCount !== null && runningCount > 0) {
+                badge = String(runningCount)
+              }
+              return <SidebarLink key={item.href} item={{ ...item, badge }} pathname={pathname} />
+            })}
           </ul>
         </div>
       ))}

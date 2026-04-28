@@ -260,7 +260,7 @@ export async function parseResponse(
   format: AnyFormat,
   response: Response,
 ): Promise<ParsedResponse> {
-  // 二进制响应（如 OpenAI TTS 直接返回 audio）—— 当前实现仅支持上游返回 URL/JSON
+  // 二进制响应（�� OpenAI TTS 直接返回 audio）—— 当前实现仅支持上游返回 URL/JSON
   const contentType = response.headers.get("content-type") || ""
 
   if (contentType.startsWith("audio/") || contentType.startsWith("video/") || contentType.startsWith("image/")) {
@@ -448,17 +448,66 @@ export function parsePollResponse(format: VideoFormat, json: any): PollResult {
     return { status: "running", raw: json }
   }
 
-  // 默认 OpenAI 视频任务
-  const status = json?.status
-  if (status === "succeeded" || status === "completed" || status === "success") {
-    const urls = (json?.data ?? json?.outputs ?? [])
-      .map((d: any) => d?.url ?? d?.video_url)
-      .filter(Boolean)
+  // 默认 OpenAI 视频任务 / 通用网关响应
+  // 兼容多种响应格式
+  let status = json?.status
+  if (!status) status = json?.data?.status
+  if (!status) status = json?.code
+  
+  if (status === "succeeded" || status === "completed" || status === "success" || status === "SUCCESS") {
+    const urls: string[] = []
+    
+    // 尝试从多个可能的位置提取视频 URL - 逐个尝试，如果找到就直接返回
+    // 优先级：最顶层的 url → 嵌套一层 → 嵌套两层 → 数组格式
+    if (typeof json?.url === "string" && json.url.trim()) {
+      urls.push(json.url.trim())
+    } else if (typeof json?.video_url === "string" && json.video_url.trim()) {
+      urls.push(json.video_url.trim())
+    } else if (typeof json?.result_url === "string" && json.result_url.trim()) {
+      urls.push(json.result_url.trim())
+    } else if (typeof json?.data?.url === "string" && json.data.url.trim()) {
+      urls.push(json.data.url.trim())
+    } else if (typeof json?.data?.video_url === "string" && json.data.video_url.trim()) {
+      urls.push(json.data.video_url.trim())
+    } else if (typeof json?.data?.result_url === "string" && json.data.result_url.trim()) {
+      urls.push(json.data.result_url.trim())
+    } else if (typeof json?.data?.data?.url === "string" && json.data.data.url.trim()) {
+      urls.push(json.data.data.url.trim())
+    } else if (typeof json?.data?.data?.video_url === "string" && json.data.data.video_url.trim()) {
+      urls.push(json.data.data.video_url.trim())
+    } else if (typeof json?.data?.data?.result_url === "string" && json.data.data.result_url.trim()) {
+      urls.push(json.data.data.result_url.trim())
+    } else if (Array.isArray(json?.data)) {
+      // 如果是数组格式，提取所有有效的 URL
+      for (const d of json.data) {
+        if (typeof d?.url === "string" && d.url.trim()) {
+          urls.push(d.url.trim())
+        } else if (typeof d?.video_url === "string" && d.video_url.trim()) {
+          urls.push(d.video_url.trim())
+        } else if (typeof d?.result_url === "string" && d.result_url.trim()) {
+          urls.push(d.result_url.trim())
+        }
+      }
+    } else if (Array.isArray(json?.outputs)) {
+      // outputs 数组
+      for (const o of json.outputs) {
+        if (typeof o?.url === "string" && o.url.trim()) {
+          urls.push(o.url.trim())
+        } else if (typeof o?.video_url === "string" && o.video_url.trim()) {
+          urls.push(o.video_url.trim())
+        } else if (typeof o?.result_url === "string" && o.result_url.trim()) {
+          urls.push(o.result_url.trim())
+        }
+      }
+    }
+    
     return { status: "success", urls, raw: json }
   }
-  if (status === "failed" || status === "error") {
-    return { status: "failed", error: json?.error?.message || "视频生成失败", raw: json }
+  
+  if (status === "failed" || status === "error" || status === "FAILED") {
+    return { status: "failed", error: json?.error?.message || json?.fail_reason || "视频生成失败", raw: json }
   }
+  
   return { status: "running", raw: json }
 }
 

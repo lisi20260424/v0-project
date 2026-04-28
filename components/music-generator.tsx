@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import type { MusicCapabilities } from "@/lib/model-capabilities"
 
@@ -155,7 +156,8 @@ export function MusicGenerator({ models, defaultModelId, prompts = [] }: MusicGe
       setResults(urls)
     } catch (error) {
       console.error("[v0] Generation error:", error)
-      alert(error instanceof Error ? error.message : "生成失败，请重试")
+      const msg = error instanceof Error ? error.message : "生成失败，请重试"
+      toast.error(msg)
     } finally {
       setLoading(false)
     }

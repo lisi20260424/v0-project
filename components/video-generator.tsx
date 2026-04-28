@@ -19,6 +19,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
+import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { getVideoDimensions } from "@/lib/ratio-dimensions-mapping"
 import type { VideoCapabilities } from "@/lib/model-capabilities"
@@ -249,7 +250,8 @@ export function VideoGenerator({
     } catch (error) {
       if (!abortToken.cancelled) {
         console.error("[v0] Generation error:", error)
-        alert(error instanceof Error ? error.message : "生成失败，请重试")
+        const msg = error instanceof Error ? error.message : "生成失败，请重试"
+        toast.error(msg)
       }
     } finally {
       if (!abortToken.cancelled) {
@@ -399,7 +401,7 @@ export function VideoGenerator({
                   <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
                   <UploadSlot label="上传尾帧" hint="选填" value={frameEnd} onChange={setFrameEnd} className="flex-1" />
                 </div>
-                <p className="mt-2 text-xs text-muted-foreground">仅上传首帧可生成自然过渡；提供尾帧将引导镜头终点画面</p>
+                <p className="mt-2 text-xs text-muted-foreground">仅上传首帧可生成自然过渡；提供尾帧将引导镜头终点画���</p>
               </div>
             )}
 

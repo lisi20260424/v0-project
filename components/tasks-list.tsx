@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 
 type TaskType = "video" | "image" | "music"
@@ -207,7 +208,7 @@ export function TasksList() {
       if (!res.ok) throw new Error("删除失败")
     } catch {
       setTasks(prev)
-      alert("删除失败")
+      toast.error("删除失败")
     }
   }
 
