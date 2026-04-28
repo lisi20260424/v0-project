@@ -155,14 +155,7 @@ async function seedModels() {
       description: "OpenAI 最新视频生成模型，支持 4K 分辨率和高级控制",
       cost_per_use: 25,
       sort_order: 1,
-      config: {
-        is_default_display: true,
-        capabilities: {
-          max_duration: 60,
-          ratios: ["16:9", "9:16", "1:1"],
-          supports_image_to_video: true,
-        },
-      },
+      config: {},
     },
     {
       id: "650e8400-e29b-41d4-a716-446655440002",
@@ -173,14 +166,7 @@ async function seedModels() {
       description: "Google 高质量视频生成，支持 4K 和复杂场景",
       cost_per_use: 30,
       sort_order: 1,
-      config: {
-        is_default_display: true,
-        capabilities: {
-          max_duration: 60,
-          ratios: ["16:9", "9:16", "1:1"],
-          supports_image_to_video: true,
-        },
-      },
+      config: {},
     },
     {
       id: "650e8400-e29b-41d4-a716-446655440003",
@@ -191,13 +177,7 @@ async function seedModels() {
       description: "可灵视频生成，支持高分辨率输出",
       cost_per_use: 20,
       sort_order: 2,
-      config: {
-        capabilities: {
-          max_duration: 60,
-          ratios: ["16:9", "9:16"],
-          supports_image_to_video: true,
-        },
-      },
+      config: {},
     },
     {
       id: "650e8400-e29b-41d4-a716-446655440004",
@@ -208,12 +188,7 @@ async function seedModels() {
       description: "xAI Grok 视频生成功能",
       cost_per_use: 15,
       sort_order: 3,
-      config: {
-        capabilities: {
-          max_duration: 60,
-          ratios: ["16:9"],
-        },
-      },
+      config: {},
     },
     // 图像模型
     {
@@ -225,12 +200,7 @@ async function seedModels() {
       description: "OpenAI 高质量图像生成",
       cost_per_use: 15,
       sort_order: 1,
-      config: {
-        is_default_display: true,
-        capabilities: {
-          ratios: ["1:1", "16:9", "9:16"],
-        },
-      },
+      config: {},
     },
     {
       id: "650e8400-e29b-41d4-a716-446655440006",
@@ -241,11 +211,7 @@ async function seedModels() {
       description: "Google 图像生成模型",
       cost_per_use: 12,
       sort_order: 2,
-      config: {
-        capabilities: {
-          ratios: ["1:1", "16:9", "9:16"],
-        },
-      },
+      config: {},
     },
     {
       id: "650e8400-e29b-41d4-a716-446655440007",
@@ -256,11 +222,7 @@ async function seedModels() {
       description: "Stability AI Flux 图像生成",
       cost_per_use: 18,
       sort_order: 3,
-      config: {
-        capabilities: {
-          ratios: ["1:1", "16:9", "9:16"],
-        },
-      },
+      config: {},
     },
     // 音乐模型
     {
@@ -272,13 +234,7 @@ async function seedModels() {
       description: "Suno 最新音乐生成模型，支持歌词自定义",
       cost_per_use: 10,
       sort_order: 1,
-      config: {
-        is_default_display: true,
-        capabilities: {
-          supports_custom_lyrics: true,
-          max_duration: 480,
-        },
-      },
+      config: {},
     },
   ]
 
