@@ -282,15 +282,25 @@ async function seedModels() {
     },
   ]
 
-  const { error } = await supabase.from("admin_models").upsert(models, { onConflict: "name,provider" })
+  try {
+    // 先删除所有旧数据
+    console.log("  清除旧数据...")
+    await supabase.from("admin_models").delete().neq("id", "00000000-0000-0000-0000-000000000000")
 
-  if (error) {
-    console.error("❌ 插入模型失败:", error.message)
+    // 然后插入新数据
+    const { error } = await supabase.from("admin_models").insert(models)
+
+    if (error) {
+      console.error("❌ 插入模型失败:", error.message)
+      return false
+    }
+
+    console.log("✅ 模型数据插入成功")
+    return true
+  } catch (err) {
+    console.error("❌ 模型操作失败:", err.message)
     return false
   }
-
-  console.log("✅ 模型数据插入成功")
-  return true
 }
 
 async function main() {
