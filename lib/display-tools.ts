@@ -11,6 +11,7 @@
  */
 import type { Tool, ToolCategory } from "@/lib/tools"
 import { defaultIconNameForType, defaultAccentForType } from "@/lib/icon-map"
+import { convertSegmentPathToStaticExportFilename } from "next/dist/shared/lib/segment-cache/segment-value-encoding"
 
 type ProviderRow = {
   id: string
@@ -54,6 +55,8 @@ export async function getDisplayTools(supabase: SupabaseLike): Promise<Tool[]> {
     supabase.from("admin_models").select("*").eq("enabled", true).order("sort_order", { ascending: true }),
   ])
 
+  console.log(providersRes)
+  console.log(modelsRes)
   if (providersRes.error || modelsRes.error) {
     console.error("[v0] 加载供应商/模型失败:", providersRes.error, modelsRes.error)
     return []
@@ -74,6 +77,7 @@ export async function getDisplayTools(supabase: SupabaseLike): Promise<Tool[]> {
   }
 
   const tools: Tool[] = []
+  console.log(groups)
   for (const [key, list] of groups) {
     const [providerName, modelType] = key.split("|") as [string, string]
     const provider = providerMap.get(providerName)!
