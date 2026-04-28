@@ -3,18 +3,19 @@ import Image from "next/image"
 import { ArrowRight, Video, ImageIcon, Music2, Sparkles, TrendingUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { TOOLS } from "@/lib/tools"
-import { MOCK_CREATIONS, MOCK_TASKS } from "@/lib/mock-data"
+import { MOCK_CREATIONS } from "@/lib/mock-data"
 import { getCurrentUser } from "@/lib/supabase/get-user"
+import { createAdminClient } from "@/lib/supabase/admin"
 
 export const metadata = {
   title: "工作台 · 灵境 AI",
 }
 
 const quickStats = [
-  { label: "本月创作", value: 42, trend: "+18%", icon: Sparkles },
-  { label: "视频作品", value: 12, trend: "+3", icon: Video },
-  { label: "图像作品", value: 26, trend: "+12", icon: ImageIcon },
-  { label: "音乐作品", value: 4, trend: "+1", icon: Music2 },
+  { label: "本月创作", key: "total", icon: Sparkles },
+  { label: "视频作品", key: "video", icon: Video },
+  { label: "图像作品", key: "image", icon: ImageIcon },
+  { label: "音乐作品", key: "music", icon: Music2 },
 ]
 
 function greeting() {
@@ -28,7 +29,33 @@ function greeting() {
 
 export default async function DashboardPage() {
   const user = await getCurrentUser()
-  const runningTasks = MOCK_TASKS.filter((t) => t.status === "running" || t.status === "queued")
+  const admin = createAdminClient()
+
+  // 获取真实任务数据用于计算指标
+  const { data: allTasks } = await admin
+    .from("generation_tasks")
+    .select("type, status")
+    .eq("user_id", user?.id)
+
+  // 计算指标
+  const tasks = allTasks || []
+  const successTasks = tasks.filter((t) => t.status === "success")
+  const stats = {
+    total: successTasks.length,
+    video: successTasks.filter((t) => t.type === "video").length,
+    image: successTasks.filter((t) => t.type === "image").length,
+    music: successTasks.filter((t) => t.type === "music").length,
+  }
+
+  // 获取进行中的任务（最多3条）
+  const { data: runningTasks } = await admin
+    .from("generation_tasks")
+    .select("*")
+    .eq("user_id", user?.id)
+    .in("status", ["running", "queued"])
+    .order("created_at", { ascending: false })
+    .limit(3)
+
   const recentCreations = MOCK_CREATIONS.slice(0, 6)
 
   return (
@@ -46,6 +73,7 @@ export default async function DashboardPage() {
         <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
           {quickStats.map((s) => {
             const Icon = s.icon
+            const value = stats[s.key as keyof typeof stats]
             return (
               <div key={s.label} className="rounded-xl border border-border bg-card p-4">
                 <div className="flex items-center justify-between">
@@ -53,11 +81,7 @@ export default async function DashboardPage() {
                   <Icon className="h-4 w-4 text-muted-foreground" />
                 </div>
                 <div className="mt-2 flex items-baseline gap-2">
-                  <span className="text-2xl font-bold tabular-nums">{s.value}</span>
-                  <span className="inline-flex items-center gap-0.5 text-[11px] font-medium text-emerald-500">
-                    <TrendingUp className="h-3 w-3" />
-                    {s.trend}
-                  </span>
+                  <span className="text-2xl font-bold tabular-nums">{value}</span>
                 </div>
               </div>
             )
@@ -75,7 +99,7 @@ export default async function DashboardPage() {
         </div>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           {TOOLS.slice(0, 8).map((t) => {
-            const Icon = t.icon
+            const Icon = typeof t.icon === "string" ? Sparkles : t.icon
             return (
               <Link
                 key={t.id}
@@ -103,26 +127,30 @@ export default async function DashboardPage() {
             <ArrowRight className="h-3 w-3" />
           </Link>
         </div>
-        {runningTasks.length === 0 ? (
+        {!runningTasks || runningTasks.length === 0 ? (
           <div className="rounded-xl border border-dashed border-border bg-card p-8 text-center text-sm text-muted-foreground">
             暂无进行中的任务
           </div>
         ) : (
           <div className="space-y-2">
             {runningTasks.map((t) => (
-              <div key={t.id} className="flex items-center gap-3 rounded-lg border border-border bg-card p-3">
-                <div className="h-2 w-2 flex-shrink-0 animate-pulse rounded-full bg-primary" />
+              <Link
+                key={t.id}
+                href={`/tasks#${t.id}`}
+                className="flex items-center gap-3 rounded-lg border border-border bg-card p-3 transition-colors hover:bg-muted/50"
+              >
+                <div className={`h-2 w-2 flex-shrink-0 rounded-full ${t.status === "running" ? "animate-pulse bg-primary" : "bg-muted-foreground"}`} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 text-xs">
-                    <span className="font-medium">{t.tool}</span>
-                    <span className="text-muted-foreground">#{t.id}</span>
+                    <span className="font-medium">{t.tool_label || t.model_name}</span>
+                    <span className="text-muted-foreground">#{t.id.slice(0, 8)}...</span>
                   </div>
                   <p className="truncate text-xs text-muted-foreground">{t.prompt}</p>
                 </div>
                 <span className="flex-shrink-0 text-xs tabular-nums text-primary">
                   {t.status === "running" ? `${t.progress}%` : "排队中"}
                 </span>
-              </div>
+              </Link>
             ))}
           </div>
         )}
