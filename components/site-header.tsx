@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { Menu, Zap, ChevronDown, LayoutDashboard, ListChecks, Images, CreditCard, Settings, LogOut, Plug, Cpu, Sparkles } from "lucide-react"
+import { Menu, Zap, ChevronDown, LayoutDashboard, ListChecks, Images, CreditCard, Settings, LogOut, Plug, Cpu, Sparkles, Globe } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ThemeToggle } from "@/components/theme-toggle"
@@ -214,6 +214,12 @@ export function SiteHeader({ models }: SiteHeaderProps) {
                 {isAdmin && (
                   <>
                     <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link href="/admin-settings/providers">
+                        <Globe className="mr-2 h-4 w-4" />
+                        供应商配置
+                      </Link>
+                    </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <Link href="/admin-settings/gateway">
                         <Plug className="mr-2 h-4 w-4" />

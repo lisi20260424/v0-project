@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Plug, Cpu, Sparkles, ArrowRight } from "lucide-react"
+import { Plug, Cpu, Sparkles, Globe, ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
@@ -15,6 +15,13 @@ type AdminSettingItem = {
 }
 
 const ADMIN_SETTINGS: AdminSettingItem[] = [
+  {
+    title: "供应商配置",
+    description: "配置和管理平台集成的 AI 供应商",
+    icon: Globe,
+    href: "/admin-settings/providers",
+    status: "active",
+  },
   {
     title: "API 网关",
     description: "配置 API 网关地址和密钥，管理平台的 AI 模型网关",
