@@ -87,26 +87,48 @@ async function fetchSoraContent(
   const json = await res.json()
   console.log(`[v0:sora:content:parsed] response keys=${Object.keys(json).join(", ").slice(0, 100)}`)
 
-  // 尝试从多个可能的字段提取 URL
-  const urls: string[] = []
-  if (typeof json?.url === "string") urls.push(json.url)
-  else if (typeof json?.video_url === "string") urls.push(json.video_url)
-  else if (typeof json?.data?.url === "string") urls.push(json.data.url)
-  else if (typeof json?.data?.video_url === "string") urls.push(json.data.video_url)
+  // 尝试从多个可能的字段提取 URL - 优先级顺序，找到第一个有效的就返回
+  let result: string[] | null = null
+  
+  // 尝试顶层 url 字段
+  if (typeof json?.url === "string" && json.url.trim()) {
+    result = [json.url.trim()]
+  } else if (typeof json?.video_url === "string" && json.video_url.trim()) {
+    result = [json.video_url.trim()]
+  }
+  // 尝试 data.url
+  else if (typeof json?.data?.url === "string" && json.data.url.trim()) {
+    result = [json.data.url.trim()]
+  } else if (typeof json?.data?.video_url === "string" && json.data.video_url.trim()) {
+    result = [json.data.video_url.trim()]
+  }
+  // 尝试 data 数组
   else if (Array.isArray(json?.data)) {
+    const urls: string[] = []
     for (const d of json.data) {
-      if (typeof d?.url === "string") urls.push(d.url)
-      else if (typeof d?.video_url === "string") urls.push(d.video_url)
+      if (typeof d?.url === "string" && d.url.trim()) {
+        urls.push(d.url.trim())
+      } else if (typeof d?.video_url === "string" && d.video_url.trim()) {
+        urls.push(d.video_url.trim())
+      }
     }
-  } else if (Array.isArray(json?.videos)) {
+    if (urls.length > 0) result = urls
+  }
+  // 尝试 videos 数组
+  else if (Array.isArray(json?.videos)) {
+    const urls: string[] = []
     for (const v of json.videos) {
-      if (typeof v?.url === "string") urls.push(v.url)
-      else if (typeof v?.video_url === "string") urls.push(v.video_url)
+      if (typeof v?.url === "string" && v.url.trim()) {
+        urls.push(v.url.trim())
+      } else if (typeof v?.video_url === "string" && v.video_url.trim()) {
+        urls.push(v.video_url.trim())
+      }
     }
+    if (urls.length > 0) result = urls
   }
 
-  console.log(`[v0:sora:content:extracted] urls=${urls.length}`)
-  return urls.length > 0 ? urls : null
+  console.log(`[v0:sora:content:extracted] urls=${result?.length ?? 0}`)
+  return result
 }
 
 /**
