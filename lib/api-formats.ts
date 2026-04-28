@@ -448,17 +448,49 @@ export function parsePollResponse(format: VideoFormat, json: any): PollResult {
     return { status: "running", raw: json }
   }
 
-  // 默认 OpenAI 视频任务
-  const status = json?.status
-  if (status === "succeeded" || status === "completed" || status === "success") {
-    const urls = (json?.data ?? json?.outputs ?? [])
-      .map((d: any) => d?.url ?? d?.video_url)
-      .filter(Boolean)
-    return { status: "success", urls, raw: json }
+  // 默认 OpenAI 视频任务 / 通用网关响应
+  // 兼容多种响应格式
+  let status = json?.status
+  if (!status) status = json?.data?.status
+  if (!status) status = json?.code
+  
+  if (status === "succeeded" || status === "completed" || status === "success" || status === "SUCCESS") {
+    const urls: string[] = []
+    
+    // 尝试从多个可能的位置提取视频 URL
+    if (json?.url) urls.push(json.url)
+    if (json?.video_url) urls.push(json.video_url)
+    if (json?.result_url) urls.push(json.result_url)
+    
+    // 检查嵌套的 data 对象
+    if (json?.data?.url) urls.push(json.data.url)
+    if (json?.data?.video_url) urls.push(json.data.video_url)
+    if (json?.data?.result_url) urls.push(json.data.result_url)
+    
+    // 检查更深层的嵌套
+    if (json?.data?.data?.url) urls.push(json.data.data.url)
+    if (json?.data?.data?.video_url) urls.push(json.data.data.video_url)
+    if (json?.data?.data?.result_url) urls.push(json.data.data.result_url)
+    
+    // 检查数组格式的数据
+    const dataArray = json?.data ?? json?.outputs ?? []
+    if (Array.isArray(dataArray)) {
+      for (const d of dataArray) {
+        if (d?.url) urls.push(d.url)
+        if (d?.video_url) urls.push(d.video_url)
+        if (d?.result_url) urls.push(d.result_url)
+      }
+    }
+    
+    // 去重
+    const uniqueUrls = [...new Set(urls)]
+    return { status: "success", urls: uniqueUrls, raw: json }
   }
-  if (status === "failed" || status === "error") {
-    return { status: "failed", error: json?.error?.message || "视频生成失败", raw: json }
+  
+  if (status === "failed" || status === "error" || status === "FAILED") {
+    return { status: "failed", error: json?.error?.message || json?.fail_reason || "视频生成失败", raw: json }
   }
+  
   return { status: "running", raw: json }
 }
 
