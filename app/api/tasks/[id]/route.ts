@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import {
   getEndpointForModel,
   getGatewayConfig,
+  getGenerationTimeouts,
   pollProviderTask,
 } from "@/lib/ai-provider"
 import type { VideoFormat } from "@/lib/api-formats"
@@ -179,12 +180,23 @@ async function maybePollVideoTask(task: any) {
     return task
   }
 
+  // 检查是否超时
+  const timeouts = await getGenerationTimeouts()
+  const taskTimeout = timeouts.videoTimeout * 1000 // 转换为毫秒
+  const taskElapsedTime = Date.now() - new Date(task.created_at).getTime()
+
   const patch: Record<string, any> = {
     last_polled_at: new Date().toISOString(),
     provider_raw: result.raw as any,
   }
 
-  if (result.status === "success") {
+  // 检查超时
+  if (taskElapsedTime > taskTimeout) {
+    console.log(`[v0:poll:timeout] taskId=${task.id.slice(0, 8)}... | elapsed=${Math.round(taskElapsedTime / 1000)}s | timeout=${timeouts.videoTimeout}s`)
+    patch.status = "failed"
+    patch.error_message = `生成任务超时。已等待 ${Math.round(taskElapsedTime / 60000)} 分钟，超出配置的 ${timeouts.videoTimeout} 秒限制。`
+    patch.completed_at = new Date().toISOString()
+  } else if (result.status === "success") {
     console.log(`[v0:poll:success] taskId=${task.id.slice(0, 8)}... | urls=${result.urls?.length ?? 0}`)
     patch.status = "success"
     patch.progress = 100

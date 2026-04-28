@@ -214,16 +214,19 @@ export function SiteHeader({ models }: SiteHeaderProps) {
                 {isAdmin && (
                   <>
                     <DropdownMenuSeparator />
+                    <DropdownMenuLabel className="px-2 py-1 text-[11px] uppercase tracking-wider text-muted-foreground">
+                      管理员
+                    </DropdownMenuLabel>
+                    <DropdownMenuItem asChild>
+                      <Link href="/admin-settings/system-settings">
+                        <Plug className="mr-2 h-4 w-4" />
+                        系统设置
+                      </Link>
+                    </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <Link href="/admin-settings/providers">
                         <Globe className="mr-2 h-4 w-4" />
                         供应商配置
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/admin-settings/gateway">
-                        <Plug className="mr-2 h-4 w-4" />
-                        API 网关
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>

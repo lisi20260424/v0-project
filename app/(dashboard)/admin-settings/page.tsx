@@ -16,17 +16,17 @@ type AdminSettingItem = {
 
 const ADMIN_SETTINGS: AdminSettingItem[] = [
   {
+    title: "系统设置",
+    description: "配置 API 网关、API 密钥和生成任务超时参数",
+    icon: Plug,
+    href: "/admin-settings/system-settings",
+    status: "active",
+  },
+  {
     title: "供应商配置",
     description: "配置和管理平台集成的 AI 供应商",
     icon: Globe,
     href: "/admin-settings/providers",
-    status: "active",
-  },
-  {
-    title: "API 网关",
-    description: "配置 API 网关地址和密钥，管理平台的 AI 模型网关",
-    icon: Plug,
-    href: "/admin-settings/gateway",
     status: "active",
   },
   {

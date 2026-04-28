@@ -7,6 +7,7 @@ async function ToolsGridContent() {
   try {
     const supabase = await createClient()
     const tools = await getDisplayTools(supabase as any)
+    console.log(tools)
     if (tools.length === 0) return <ToolsGrid />
     return <ToolsGrid models={tools} />
   } catch (error) {
