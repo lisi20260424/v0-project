@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin"
-import type { ShouQianBaConfig } from "./shouqianba"
+import { SQB_API_DOMAIN_PROD, SQB_API_DOMAIN_TEST, type ShouQianBaConfig } from "./shouqianba"
 
 export type PaymentSettingsRow = {
   enabled: boolean
@@ -31,19 +31,21 @@ export async function loadPaymentSettings(): Promise<PaymentSettingsRow | null> 
 }
 
 /**
- * 把 DB 行转为 ShouQianBaConfig，未配置则返回 null
+ * 把 DB 行转为 ShouQianBaConfig，缺少 terminal 凭证时返回 null
  */
 export function toShouQianBaConfig(row: PaymentSettingsRow | null): ShouQianBaConfig | null {
   if (!row) return null
   if (!row.terminal_sn || !row.terminal_key) return null
-  const baseGateway = row.gateway_url?.trim() || "https://qr.shouqianba.com"
+  const customGateway = row.gateway_url?.trim()
+  const baseGateway =
+    customGateway || (row.test_mode ? SQB_API_DOMAIN_TEST : SQB_API_DOMAIN_PROD)
   return {
     terminal_sn: row.terminal_sn,
     terminal_key: row.terminal_key,
     vendor_sn: row.vendor_sn ?? undefined,
     vendor_key: row.vendor_key ?? undefined,
     app_id: row.app_id ?? undefined,
-    gateway_url: row.test_mode ? "https://qr-test4.shouqianba.com" : baseGateway,
+    gateway_url: baseGateway,
     test_mode: row.test_mode,
   }
 }
