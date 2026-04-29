@@ -8,11 +8,18 @@ export type PaymentSettingsRow = {
   app_id: string | null
   terminal_sn: string | null
   terminal_key: string | null
+  device_id: string | null
+  operator: string | null
   notify_url: string | null
   return_url: string | null
   gateway_url: string | null
+  callback_public_key: string | null
   test_mode: boolean
+  updated_at: string | null
 }
+
+const SELECT_COLUMNS =
+  "enabled, vendor_sn, vendor_key, app_id, terminal_sn, terminal_key, device_id, operator, notify_url, return_url, gateway_url, callback_public_key, test_mode, updated_at"
 
 /**
  * 服务端读取支付配置（仅在已通过权限校验的路由中调用）
@@ -21,9 +28,7 @@ export async function loadPaymentSettings(): Promise<PaymentSettingsRow | null> 
   const admin = createAdminClient()
   const { data } = await admin
     .from("admin_payment_settings")
-    .select(
-      "enabled, vendor_sn, vendor_key, app_id, terminal_sn, terminal_key, notify_url, return_url, gateway_url, test_mode",
-    )
+    .select(SELECT_COLUMNS)
     .eq("id", 1)
     .maybeSingle()
 
@@ -49,3 +54,5 @@ export function toShouQianBaConfig(row: PaymentSettingsRow | null): ShouQianBaCo
     test_mode: row.test_mode,
   }
 }
+
+export const PAYMENT_SETTINGS_SELECT = SELECT_COLUMNS

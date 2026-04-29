@@ -23,6 +23,7 @@ const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     children: [
       { label: "API 网关", href: "/admin-settings/system-settings/gateway", desc: "网关地址与密钥" },
       { label: "生成配置", href: "/admin-settings/system-settings/generation", desc: "生成任务超时时间" },
+      { label: "支付配置", href: "/admin-settings/system-settings/payment", desc: "收钱吧聚合支付" },
     ],
   },
   { label: "供应商配置", href: "/admin-settings/providers", icon: Globe, desc: "管理模型供应商" },

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { isAdminUser } from "@/lib/admin"
+import { PAYMENT_SETTINGS_SELECT } from "@/lib/payment/config"
 
 async function ensureAdmin() {
   const supabase = await createClient()
@@ -23,7 +24,7 @@ export async function GET() {
   const admin = createAdminClient()
   const { data, error } = await admin
     .from("admin_payment_settings")
-    .select("*")
+    .select(PAYMENT_SETTINGS_SELECT)
     .eq("id", 1)
     .maybeSingle()
 
@@ -52,9 +53,12 @@ export async function PUT(request: Request) {
     appId,
     terminalSn,
     terminalKey,
+    deviceId,
+    operator,
     notifyUrl,
     returnUrl,
     gatewayUrl,
+    callbackPublicKey,
     testMode,
   } = body as Record<string, unknown>
 
@@ -70,7 +74,7 @@ export async function PUT(request: Request) {
   }
 
   const admin = createAdminClient()
-  const { error } = await admin
+  const { data, error } = await admin
     .from("admin_payment_settings")
     .update({
       enabled: !!enabled,
@@ -79,18 +83,24 @@ export async function PUT(request: Request) {
       app_id: typeof appId === "string" ? appId.trim() : "",
       terminal_sn: typeof terminalSn === "string" ? terminalSn.trim() : "",
       terminal_key: typeof terminalKey === "string" ? terminalKey : "",
+      device_id: typeof deviceId === "string" ? deviceId.trim() : "",
+      operator: typeof operator === "string" ? operator.trim() : "",
       notify_url: typeof notifyUrl === "string" ? notifyUrl.trim() : "",
       return_url: typeof returnUrl === "string" ? returnUrl.trim() : "",
       gateway_url: typeof gatewayUrl === "string" ? gatewayUrl.trim() : "",
+      callback_public_key:
+        typeof callbackPublicKey === "string" ? callbackPublicKey.trim() : "",
       test_mode: !!testMode,
       updated_by: user.id,
       updated_at: new Date().toISOString(),
     })
     .eq("id", 1)
+    .select(PAYMENT_SETTINGS_SELECT)
+    .maybeSingle()
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({ ok: true, data })
 }

@@ -125,7 +125,10 @@ export async function POST(request: Request) {
   // 调用收钱吧预下单
   const clientSn = generateClientSn()
   const totalAmountFen = Math.round(Number(plan.price) * 100).toString()
-  const operator = (user.email ?? "").slice(0, 32) || user.id.slice(0, 8)
+  const operator =
+    (settings.operator ?? "").trim() ||
+    (user.email ?? "").slice(0, 32) ||
+    user.id.slice(0, 8)
 
   let qrCode: string | null = null
   let providerSn: string | null = null
