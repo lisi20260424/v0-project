@@ -17,6 +17,7 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Spinner } from "@/components/ui/spinner"
 import { UserEditDialog } from "@/components/admin/user-edit-dialog"
+import type { CurrentUser } from "@/components/user-provider"
 import {
   USER_TYPES,
   USER_TYPE_LABELS,
@@ -73,7 +74,7 @@ function formatDateTime(value: string | null): string {
   return d.toLocaleString("zh-CN", { hour12: false })
 }
 
-export function UsersManager() {
+export function UsersManager({ initialUsers = [], currentUser }: Props) {
   const [searchInput, setSearchInput] = useState("")
   const [search, setSearch] = useState("")
   const [userType, setUserType] = useState<string>("all")
@@ -122,9 +123,6 @@ export function UsersManager() {
   async function handleSave(form: {
     id: string
     displayName: string
-    bio: string
-    location: string
-    website: string
     avatarUrl: string
     userType: string
     status: string
@@ -366,6 +364,7 @@ export function UsersManager() {
         open={!!editing}
         onOpenChange={(open) => !open && setEditing(null)}
         user={editing}
+        currentUserIsAdmin={currentUser?.userType === "admin"}
         onSave={handleSave}
       />
     </div>

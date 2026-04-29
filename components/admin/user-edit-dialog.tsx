@@ -36,6 +36,7 @@ type Props = {
   open: boolean
   onOpenChange: (open: boolean) => void
   user: AdminUser | null
+  currentUserIsAdmin: boolean
   onSave: (form: {
     id: string
     displayName: string
@@ -59,7 +60,7 @@ function isoToLocalInput(iso: string | null): string {
   )}`
 }
 
-export function UserEditDialog({ open, onOpenChange, user, onSave }: Props) {
+export function UserEditDialog({ open, onOpenChange, user, currentUserIsAdmin, onSave }: Props) {
   const [displayName, setDisplayName] = useState("")
   const [avatarUrl, setAvatarUrl] = useState("")
   const [userType, setUserType] = useState<string>("normal")
@@ -153,8 +154,8 @@ export function UserEditDialog({ open, onOpenChange, user, onSave }: Props) {
           <section className="grid gap-4 md:grid-cols-2">
             <div className="flex flex-col gap-1.5">
               <Label>用户类型</Label>
-              <Select value={userType} onValueChange={setUserType}>
-                <SelectTrigger>
+              <Select value={userType} onValueChange={setUserType} disabled={!currentUserIsAdmin}>
+                <SelectTrigger className={!currentUserIsAdmin ? "opacity-50" : ""}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -165,6 +166,9 @@ export function UserEditDialog({ open, onOpenChange, user, onSave }: Props) {
                   ))}
                 </SelectContent>
               </Select>
+              {!currentUserIsAdmin && (
+                <p className="text-[11px] text-muted-foreground">仅管理员可以设置用户类型</p>
+              )}
             </div>
 
             <div className="flex flex-col gap-1.5">

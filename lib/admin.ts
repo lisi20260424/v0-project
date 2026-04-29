@@ -29,13 +29,11 @@ export function isAdminUser(user: UserLike): boolean {
 /**
  * 用户管理相关常量
  */
-export const USER_TYPES = ["normal", "internal", "enterprise", "admin"] as const
+export const USER_TYPES = ["normal", "admin"] as const
 export type UserType = (typeof USER_TYPES)[number]
 
 export const USER_TYPE_LABELS: Record<UserType, string> = {
   normal: "普通用户",
-  internal: "内部用户",
-  enterprise: "企业用户",
   admin: "管理员",
 }
 

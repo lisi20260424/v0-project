@@ -10,6 +10,8 @@ export type CurrentUser = {
   avatarUrl: string | null
   points: number
   vipTier: "monthly" | "annual" | "lifetime" | null
+  status: "active" | "suspended" | "banned"
+  userType: "normal" | "admin"
 } | null
 
 type UserContextValue = {
@@ -49,7 +51,7 @@ export function UserProvider({
       setLoading(true)
       const { data: profile } = await supabase
         .from("profiles")
-        .select("display_name, avatar_url, points, vip_tier")
+        .select("display_name, avatar_url, points, vip_tier, status, user_type")
         .eq("id", session.user.id)
         .maybeSingle()
 
@@ -64,6 +66,8 @@ export function UserProvider({
         points: profile?.points ?? 0,
         vipTier:
           (profile?.vip_tier as CurrentUser extends infer U ? (U extends null ? never : U["vipTier"]) : never) ?? null,
+        status: profile?.status ?? "active",
+        userType: profile?.user_type ?? "normal",
       })
       setLoading(false)
     })
