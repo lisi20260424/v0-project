@@ -1,5 +1,4 @@
 import { Suspense } from "react"
-import { ArrowRight } from "lucide-react"
 import Link from "next/link"
 import { ConsumptionRecords } from "@/components/consumption-records"
 

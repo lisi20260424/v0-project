@@ -24,7 +24,6 @@ type ConsumptionRecord = {
   created_at: string
   completed_at: string | null
   error_message: string | null
-  result_urls?: string[]
 }
 
 type ConsumptionResponse = {

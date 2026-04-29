@@ -56,7 +56,6 @@ export async function GET(request: Request) {
     created_at: task.created_at,
     completed_at: task.completed_at,
     error_message: task.error_message,
-    result_urls: task.result_urls,
   }))
 
   return NextResponse.json({
