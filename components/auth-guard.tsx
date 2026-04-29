@@ -18,7 +18,6 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // 如果用户已登录且 loading 已完成，跳转到目标页面
     if (user && !loading) {
-      console.log("[v0] AuthGuard: 用户已登录，跳转到", next)
       router.push(next)
       router.refresh()
     }
