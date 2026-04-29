@@ -71,7 +71,7 @@ const ADMIN_SECTION: SidebarSection = {
 
 export function DashboardSidebar() {
   const pathname = usePathname()
-  const { isAdmin, user } = useUser()
+  const { isAdmin, user, refreshUser } = useUser()
   const [runningCount, setRunningCount] = React.useState<number | null>(null)
 
   // 获取运行中任务数
@@ -94,6 +94,33 @@ export function DashboardSidebar() {
     const interval = setInterval(fetchRunningCount, 10000)
     return () => clearInterval(interval)
   }, [user?.id])
+
+  // 监听用户交互，保持会话活跃
+  React.useEffect(() => {
+    let inactivityTimeout: NodeJS.Timeout
+    
+    const resetInactivityTimer = () => {
+      clearTimeout(inactivityTimeout)
+      // 30 分钟无操作后刷新用户信息
+      inactivityTimeout = setTimeout(() => {
+        refreshUser()
+      }, 30 * 60 * 1000)
+    }
+
+    const events = ['mousedown', 'keydown', 'touchstart', 'click']
+    events.forEach(event => {
+      window.addEventListener(event, resetInactivityTimer)
+    })
+
+    resetInactivityTimer()
+
+    return () => {
+      clearTimeout(inactivityTimeout)
+      events.forEach(event => {
+        window.removeEventListener(event, resetInactivityTimer)
+      })
+    }
+  }, [refreshUser])
 
   return (
     <nav aria-label="用户中心导航" className="rounded-2xl border border-border bg-card p-3">
