@@ -186,8 +186,8 @@ export function MembershipDialog({
               <X className="h-4 w-4" />
             </button>
 
-            <div className="relative min-w-0">
-              <DialogTitle className="text-pretty pr-10 text-2xl font-bold tracking-tight text-primary sm:text-3xl">
+            <div className="relative">
+              <DialogTitle className="pr-10 text-2xl font-bold tracking-tight text-primary sm:text-3xl">
                 让创意灵感即刻成片
               </DialogTitle>
               <DialogDescription className="mt-1.5 text-xs text-muted-foreground sm:text-sm">
@@ -245,8 +245,8 @@ export function MembershipDialog({
                       >
                         {plan.badge && <BadgeTag tone={plan.badgeTone}>{plan.badge}</BadgeTag>}
 
-                        <header className="flex flex-wrap items-center gap-2">
-                          <h3 className="whitespace-nowrap text-xl font-bold">{plan.name}</h3>
+                        <header className="flex items-center gap-2">
+                          <h3 className="text-xl font-bold">{plan.name}</h3>
                           {plan.recommended && (
                             <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-orange-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-orange-500">
                               <Sparkles className="h-3 w-3" />
@@ -272,7 +272,7 @@ export function MembershipDialog({
                           {plan.features.map((f, i) => (
                             <li key={i} className="flex items-start gap-2 text-muted-foreground">
                               <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                              <span className="leading-relaxed">{f}</span>
+                              <span className="break-words leading-relaxed">{f}</span>
                             </li>
                           ))}
                         </ul>
@@ -298,7 +298,7 @@ export function MembershipDialog({
                       >
                         {pkg.badge && <BadgeTag tone="accent">{pkg.badge}</BadgeTag>}
 
-                        <h3 className="whitespace-nowrap text-xl font-bold tabular-nums">
+                        <h3 className="text-xl font-bold tabular-nums">
                           {pkg.points.toLocaleString()} 点
                         </h3>
 
@@ -319,7 +319,7 @@ export function MembershipDialog({
                           {pkg.features.map((f, i) => (
                             <li key={i} className="flex items-start gap-2 text-muted-foreground">
                               <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                              <span className="leading-relaxed">{f}</span>
+                              <span className="break-words leading-relaxed">{f}</span>
                             </li>
                           ))}
                         </ul>
