@@ -52,8 +52,10 @@ type UsersResponse = {
 type Banner = { ok: boolean; message: string } | null
 
 const fetcher = async (url: string): Promise<UsersResponse> => {
+  console.log("[v0] Fetching users from:", url)
   const res = await fetch(url)
   const json = await res.json()
+  console.log("[v0] Fetch response:", { status: res.status, data: json })
   if (!res.ok) throw new Error(json.error ?? "加载失败")
   return json
 }
@@ -109,6 +111,8 @@ export function UsersManager() {
   const { data, error, isLoading, mutate } = useSWR<UsersResponse>(queryKey, fetcher, {
     keepPreviousData: true,
   })
+
+  console.log("[v0] UsersManager SWR state:", { queryKey, data, error, isLoading })
 
   function showBanner(b: Banner) {
     setBanner(b)

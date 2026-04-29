@@ -25,6 +25,8 @@ export async function GET(request: Request) {
   const pageSize = Math.min(100, Math.max(5, Number(url.searchParams.get("pageSize") ?? "20") || 20))
   const offset = (page - 1) * pageSize
 
+  console.log("[v0] 获取用户列表: search=", search, "userType=", userType, "status=", status, "vipTier=", vipTier, "page=", page, "pageSize=", pageSize)
+
   const admin = createAdminClient()
   const { data, error } = await admin.rpc("admin_list_users", {
     p_search: search,
@@ -35,8 +37,10 @@ export async function GET(request: Request) {
     p_offset: offset,
   })
 
+  console.log("[v0] RPC 返回数据:", { data, error })
+
   if (error) {
-    console.log("[v0] admin_list_users error:", error.message)
+    console.error("[v0] admin_list_users error:", error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
@@ -56,6 +60,8 @@ export async function GET(request: Request) {
   }>
 
   const total = rows[0]?.total_count ?? 0
+
+  console.log("[v0] 返回用户数据:", { count: rows.length, total })
 
   return NextResponse.json({
     users: rows.map(({ total_count, ...rest }) => rest),
