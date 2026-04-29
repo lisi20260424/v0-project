@@ -6,7 +6,6 @@ import { MOCK_CREATIONS } from "@/lib/mock-data"
 import { getCurrentUser } from "@/lib/supabase/get-user"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { resolveIcon } from "@/lib/icon-map"
-import { CATEGORY_LABEL, type ToolCategory } from "@/lib/tools"
 import { getDisplayTools } from "@/lib/display-tools"
 import { createClient } from "@/lib/supabase/client"
 
@@ -62,13 +61,6 @@ export default async function DashboardPage() {
 
   // 按供应商维度展示工具（使用 getDisplayTools 统一逻辑）
   const tools = await getDisplayTools(supabase as any)
-  
-  // 按 model_type 分组，展示供应商维度的工具
-  const groupedTools = (["video", "image", "music"] as ToolCategory[]).map((c) => ({
-    category: c,
-    label: CATEGORY_LABEL[c],
-    items: tools.filter((t) => t.category === c),
-  }))
 
   const recentCreations = MOCK_CREATIONS.slice(0, 6)
 
@@ -104,42 +96,34 @@ export default async function DashboardPage() {
       </section>
 
       <section>
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-base font-semibold">开始创作</h2>
-          <Link href="/#tools" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+        <div className="mb-6 flex items-center justify-between">
+          <h2 className="text-lg font-semibold">开始创作</h2>
+          <Link href="/#tools" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
             全部工具
-            <ArrowRight className="h-3 w-3" />
+            <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
-        <div className="space-y-6">
-          {groupedTools.map((g) => (
-            <div key={g.category}>
-              <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                {g.label}
-              </h3>
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-                {g.items.map((t) => {
-                  const Icon = resolveIcon(t.icon)
-                  return (
-                    <Link
-                      key={t.id}
-                      href={t.href}
-                      className={`group flex flex-col gap-3 rounded-xl border border-border bg-gradient-to-br ${t.accent} p-4 transition-all hover:border-primary/40 hover:shadow-sm`}
-                    >
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-background/60 backdrop-blur-sm">
-                        <Icon className="h-5 w-5" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="font-medium text-sm">{t.name}</div>
-                        <div className="text-xs text-muted-foreground mt-0.5">{t.brand}</div>
-                        {t.cost && <div className="text-xs text-muted-foreground mt-1">{t.cost}</div>}
-                      </div>
-                    </Link>
-                  )
-                })}
-              </div>
-            </div>
-          ))}
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+          {tools.slice(0, 8).map((t) => {
+            const Icon = resolveIcon(t.icon)
+            return (
+              <Link
+                key={t.id}
+                href={t.href}
+                className={`group flex flex-col justify-between rounded-2xl border border-border/40 bg-gradient-to-br ${t.accent} px-4 py-5 transition-all hover:border-primary/50 hover:shadow-lg`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/10 backdrop-blur-sm">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                </div>
+                <div className="mt-3 space-y-1">
+                  <div className="font-semibold text-sm leading-tight">{t.name}</div>
+                  {t.cost && <div className="text-xs text-white/70">{t.cost}</div>}
+                </div>
+              </Link>
+            )
+          })}
         </div>
       </section>
 
