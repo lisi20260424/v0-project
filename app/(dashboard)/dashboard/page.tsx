@@ -110,16 +110,23 @@ export default async function DashboardPage() {
               <Link
                 key={t.id}
                 href={t.href}
-                className={`group flex flex-col justify-between rounded-2xl border border-border/40 bg-gradient-to-br ${t.accent} px-4 py-5 transition-all hover:border-primary/50 hover:shadow-lg`}
+                className={`group relative overflow-hidden rounded-2xl border border-border/20 bg-gradient-to-br ${t.accent} transition-all hover:border-white/30 hover:shadow-lg`}
               >
-                <div className="flex items-start justify-between">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/10 backdrop-blur-sm">
-                    <Icon className="h-5 w-5" />
+                {/* 底部渐变遮罩 */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
+                
+                {/* 内容 */}
+                <div className="relative flex h-32 flex-col justify-between p-4">
+                  {/* 图标 */}
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/15 backdrop-blur-sm">
+                    <Icon className="h-6 w-6 text-white" />
                   </div>
-                </div>
-                <div className="mt-3 space-y-1">
-                  <div className="font-semibold text-sm leading-tight">{t.name}</div>
-                  {t.cost && <div className="text-xs text-white/70">{t.cost}</div>}
+                  
+                  {/* 文字 */}
+                  <div className="space-y-1">
+                    <div className="font-bold text-white text-sm leading-tight">{t.name}</div>
+                    {t.cost && <div className="text-xs text-white/80">{t.cost}</div>}
+                  </div>
                 </div>
               </Link>
             )
