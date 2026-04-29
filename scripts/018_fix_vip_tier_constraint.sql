@@ -15,7 +15,7 @@ ALTER TABLE public.profiles
   CHECK (vip_tier IS NULL OR vip_tier IN ('monthly', 'annual', 'lifetime'));
 
 -- 3. 验证约束已生效
-SELECT constraint_name, constraint_definition 
+SELECT tc.constraint_name, cc.constraint_definition 
 FROM information_schema.table_constraints tc
 JOIN information_schema.check_constraints cc ON tc.constraint_name = cc.constraint_name
 WHERE tc.table_name = 'profiles' AND cc.constraint_name = 'profiles_vip_tier_check';
