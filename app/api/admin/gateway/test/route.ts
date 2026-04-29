@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import { isAdminEmail } from "@/lib/admin"
+import { isAdminUser } from "@/lib/admin"
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -8,7 +8,7 @@ export async function POST(request: Request) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  if (!user || !isAdminEmail(user.email)) {
+  if (!user || !isAdminUser(user)) {
     return NextResponse.json({ ok: false, message: "无权限" }, { status: 403 })
   }
 

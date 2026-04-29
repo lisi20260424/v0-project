@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Plug, Cpu, Sparkles, Globe, ArrowRight } from "lucide-react"
+import { Plug, Cpu, Sparkles, Globe, Users, ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
@@ -44,6 +44,13 @@ const ADMIN_SETTINGS: AdminSettingItem[] = [
     href: "/admin-settings/prompts",
     status: "active",
     count: 12,
+  },
+  {
+    title: "用户管理",
+    description: "管理用户基本信息、用户类型、会员等级、点数余额和账号状态",
+    icon: Users,
+    href: "/admin-settings/users",
+    status: "active",
   },
 ]
 
