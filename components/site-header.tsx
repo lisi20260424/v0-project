@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { Menu, Zap, ChevronDown, LayoutDashboard, ListChecks, Images, CreditCard, Settings, LogOut, Plug, Cpu, Sparkles, Globe, Users } from "lucide-react"
+import { Menu, Zap, ChevronDown, LayoutDashboard, ListChecks, Images, CreditCard, Settings, LogOut, Plug, Cpu, Sparkles, Globe, Users, Receipt } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ThemeToggle } from "@/components/theme-toggle"
@@ -210,6 +210,18 @@ export function SiteHeader({ models }: SiteHeaderProps) {
                 <DropdownMenuItem onSelect={() => membership.open("membership")}>
                   <CreditCard className="mr-2 h-4 w-4" />
                   订阅与充值
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/billing">
+                    <CreditCard className="mr-2 h-4 w-4" />
+                    订阅记录
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/billing/records">
+                    <Receipt className="mr-2 h-4 w-4" />
+                    账单记录
+                  </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link href="/settings">

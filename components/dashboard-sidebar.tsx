@@ -44,8 +44,8 @@ const sections: SidebarSection[] = [
   {
     label: "账户",
     items: [
-      { href: "/billing", label: "订阅与账单", icon: CreditCard },
-      { href: "/orders", label: "消费记录", icon: Receipt },
+      { href: "/billing", label: "订阅记录", icon: CreditCard },
+      { href: "/billing/records", label: "账单记录", icon: Receipt },
       { href: "/invite", label: "邀请好友", icon: Gift, badge: "NEW" },
     ],
   },
@@ -158,14 +158,18 @@ export function DashboardSidebar() {
   )
 }
 
+// 需要精确匹配的菜单项（避免前缀匹配高亮父级）
+const EXACT_MATCH_HREFS = new Set(["/dashboard", "/billing"])
+
 function SidebarLink({ item, pathname }: { item: SidebarItem; pathname: string }) {
   const Icon = item.icon
-  
-  // 对于后台设置的菜单项，使用精确匹配；其他菜单项支持前缀匹配
+
+  // 后台设置菜单项和 EXACT_MATCH_HREFS 中的项，使用精确匹配；其他支持前缀匹配
   const isAdminItem = item.href.startsWith("/admin-settings/")
-  const active = isAdminItem 
-    ? pathname === item.href 
-    : pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(`${item.href}/`))
+  const isExactMatch = isAdminItem || EXACT_MATCH_HREFS.has(item.href)
+  const active = isExactMatch
+    ? pathname === item.href
+    : pathname === item.href || pathname.startsWith(`${item.href}/`)
 
   return (
     <li>

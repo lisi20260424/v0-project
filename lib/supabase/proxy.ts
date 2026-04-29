@@ -1,19 +1,18 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-// 防止并发令牌锁冲突的请求锁
-const requestLocks = new Map<string, Promise<void>>()
+// 防止并发令牌锁冲突的请求锁（按会话维度串行化）
+const requestLocks = new Map<string, Promise<unknown>>()
 
-async function withLock(key: string, fn: () => Promise<void>) {
-  let resolve: () => void
-  const promise = new Promise<void>((r) => {
-    resolve = r
-  })
-
-  const existingLock = requestLocks.get(key) || Promise.resolve()
-  requestLocks.set(key, existingLock.then(fn).finally(() => resolve()))
-
-  await requestLocks.get(key)
+async function withLock<T>(key: string, fn: () => Promise<T>): Promise<T> {
+  const previous = requestLocks.get(key) ?? Promise.resolve()
+  const next = previous.then(fn, fn)
+  // 失败后也要把链解开，避免污染下一次请求
+  requestLocks.set(
+    key,
+    next.catch(() => undefined),
+  )
+  return next
 }
 
 export async function updateSession(request: NextRequest) {
@@ -25,7 +24,7 @@ export async function updateSession(request: NextRequest) {
   const sessionId = request.cookies.get('sb-access-token')?.value || 'default'
 
   try {
-    await withLock(sessionId, async () => {
+    const redirected = await withLock<NextResponse | null>(sessionId, async () => {
       // With Fluid compute, don't put this client in a global environment
       // variable. Always create a new one on each request.
       const supabase = createServerClient(
@@ -51,10 +50,6 @@ export async function updateSession(request: NextRequest) {
         },
       )
 
-      // Do not run code between createServerClient and
-      // supabase.auth.getUser(). A simple mistake could make it very hard to debug
-      // issues with users being randomly logged out.
-
       // IMPORTANT: If you remove getUser() and you use server-side rendering
       // with the Supabase client, your users may be randomly logged out.
       const {
@@ -62,16 +57,17 @@ export async function updateSession(request: NextRequest) {
       } = await supabase.auth.getUser()
 
       if (
-        // if the user is not logged in and the app path, in this case, /protected, is accessed, redirect to the login page
         request.nextUrl.pathname.startsWith('/protected') &&
         !user
       ) {
-        // no user, potentially respond by redirecting the user to the login page
         const url = request.nextUrl.clone()
         url.pathname = '/auth/login'
         return NextResponse.redirect(url)
       }
+      return null
     })
+
+    if (redirected) return redirected
   } catch (error) {
     console.error('[v0] Middleware session update error:', error)
     // 继续处理，不中断请求
