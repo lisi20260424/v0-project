@@ -174,7 +174,7 @@ export function MembershipDialog({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
           showCloseButton={false}
-          className="w-[calc(100vw-1.5rem)] max-w-5xl gap-0 overflow-hidden border-border/70 bg-card p-0 sm:w-[calc(100vw-2rem)]"
+          className="w-[calc(100vw-1.5rem)] max-w-5xl gap-0 overflow-hidden border-border/70 bg-card p-0 sm:w-[calc(100vw-2rem)] sm:max-w-5xl"
         >
           <div className="relative max-h-[90vh] overflow-y-auto p-5 sm:p-8">
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-accent/5" />
@@ -349,7 +349,7 @@ export function MembershipDialog({
       <Dialog open={pointsOpen} onOpenChange={setPointsOpen}>
         <DialogContent
           showCloseButton={false}
-          className="w-[calc(100vw-1.5rem)] max-w-3xl gap-0 overflow-hidden p-0 sm:w-[calc(100vw-2rem)]"
+          className="w-[calc(100vw-1.5rem)] max-w-3xl gap-0 overflow-hidden p-0 sm:w-[calc(100vw-2rem)] sm:max-w-3xl"
         >
           <div className="flex items-center justify-between border-b border-border px-4 py-3 sm:px-6 sm:py-4">
             <DialogTitle className="text-base font-semibold sm:text-lg">点数说明</DialogTitle>
