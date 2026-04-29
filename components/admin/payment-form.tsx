@@ -1,9 +1,8 @@
 "use client"
 
 import { useState } from "react"
+import { toast } from "sonner"
 import {
-  AlertCircle,
-  CheckCircle2,
   Eye,
   EyeOff,
   KeyRound,
@@ -47,8 +46,6 @@ type Props = {
   initialValue: PaymentSettingsValue
 }
 
-type ToastMessage = { ok: boolean; text: string }
-
 function rowToValue(row: Record<string, unknown> | null | undefined, fallback: PaymentSettingsValue): PaymentSettingsValue {
   if (!row) return fallback
   return {
@@ -74,7 +71,6 @@ export function PaymentForm({ initialValue }: Props) {
   const [showVendorKey, setShowVendorKey] = useState(false)
   const [showTerminalKey, setShowTerminalKey] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [message, setMessage] = useState<ToastMessage | null>(null)
 
   // 激活/签到状态
   const [activating, setActivating] = useState(false)
@@ -87,17 +83,9 @@ export function PaymentForm({ initialValue }: Props) {
     setValue((prev) => ({ ...prev, [key]: v }))
   }
 
-  function showMessage(toast: ToastMessage, ms = 3000) {
-    setMessage(toast)
-    if (ms > 0) {
-      window.setTimeout(() => setMessage(null), ms)
-    }
-  }
-
   async function handleSave(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setSaving(true)
-    setMessage(null)
     try {
       const res = await fetch("/api/admin/payment", {
         method: "PUT",
@@ -108,9 +96,9 @@ export function PaymentForm({ initialValue }: Props) {
       if (!res.ok) throw new Error(json.error ?? "保存失败")
       // 用后端返回的最新数据重新初始化表单状态
       setValue((prev) => rowToValue(json.data, prev))
-      showMessage({ ok: true, text: "支付配置已更新" })
+      toast.success("支付配置已更新")
     } catch (err) {
-      showMessage({ ok: false, text: err instanceof Error ? err.message : "保存失败" }, 5000)
+      toast.error(err instanceof Error ? err.message : "保存失败")
     } finally {
       setSaving(false)
     }
@@ -118,11 +106,10 @@ export function PaymentForm({ initialValue }: Props) {
 
   async function handleActivate() {
     if (!activateCode.trim()) {
-      showMessage({ ok: false, text: "请填写激活码" }, 5000)
+      toast.error("请填写激活码")
       return
     }
     setActivating(true)
-    setMessage(null)
     try {
       const res = await fetch("/api/admin/payment/activate", {
         method: "POST",
@@ -144,12 +131,9 @@ export function PaymentForm({ initialValue }: Props) {
       setActivateOpen(false)
       setActivateCode("")
       setActivateName("")
-      showMessage({ ok: true, text: "终端激活成功，已更新终端凭证" }, 4000)
+      toast.success("终端激活成功，已更新终端凭证")
     } catch (err) {
-      showMessage(
-        { ok: false, text: err instanceof Error ? err.message : "激活失败" },
-        5000,
-      )
+      toast.error(err instanceof Error ? err.message : "激活失败")
     } finally {
       setActivating(false)
     }
@@ -157,7 +141,6 @@ export function PaymentForm({ initialValue }: Props) {
 
   async function handleCheckin() {
     setCheckingIn(true)
-    setMessage(null)
     try {
       const res = await fetch("/api/admin/payment/checkin", { method: "POST" })
       const json = await res.json()
@@ -167,12 +150,9 @@ export function PaymentForm({ initialValue }: Props) {
       const latestJson = await latest.json()
       setValue((prev) => rowToValue(latestJson.data, prev))
 
-      showMessage({ ok: true, text: json.message ?? "签到成功" }, 4000)
+      toast.success(json.message ?? "签到成功")
     } catch (err) {
-      showMessage(
-        { ok: false, text: err instanceof Error ? err.message : "签到失败" },
-        5000,
-      )
+      toast.error(err instanceof Error ? err.message : "签到失败")
     } finally {
       setCheckingIn(false)
     }
@@ -470,22 +450,7 @@ export function PaymentForm({ initialValue }: Props) {
         </div>
       </section>
 
-      {message ? (
-        <div
-          className={
-            message.ok
-              ? "flex items-start gap-2 rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-xs text-primary"
-              : "flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive"
-          }
-        >
-          {message.ok ? (
-            <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          ) : (
-            <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          )}
-          <span>{message.text}</span>
-        </div>
-      ) : null}
+      {/* 消息提示已移除，使用 sonner toast 代替 */}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-xs text-muted-foreground">

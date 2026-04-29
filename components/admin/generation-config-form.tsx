@@ -1,7 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { AlertCircle, CheckCircle2, Clock } from "lucide-react"
+import { toast } from "sonner"
+import { Clock } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -25,12 +26,10 @@ export function GenerationConfigForm({
   const [imageTimeout, setImageTimeout] = useState(initialImageTimeout)
   const [videoTimeout, setVideoTimeout] = useState(initialVideoTimeout)
   const [saving, setSaving] = useState(false)
-  const [saveMessage, setSaveMessage] = useState<{ ok: boolean; message: string } | null>(null)
 
   async function handleSave(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setSaving(true)
-    setSaveMessage(null)
     try {
       const res = await fetch("/api/admin/generation-config", {
         method: "PUT",
@@ -43,13 +42,9 @@ export function GenerationConfigForm({
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error ?? "保存失败")
-      setSaveMessage({ ok: true, message: "生成配置已更新" })
-      setTimeout(() => setSaveMessage(null), 3000)
+      toast.success("生成配置已更新")
     } catch (err) {
-      setSaveMessage({
-        ok: false,
-        message: err instanceof Error ? err.message : "保存失败，请稍后重试",
-      })
+      toast.error(err instanceof Error ? err.message : "保存失败，请稍后重试")
     } finally {
       setSaving(false)
     }
@@ -137,25 +132,6 @@ export function GenerationConfigForm({
           </div>
         )}
       </section>
-
-      {/* 保存提示 */}
-      {saveMessage && (
-        <div
-          className={cn(
-            "flex items-center gap-3 rounded-lg px-4 py-3 text-sm",
-            saveMessage.ok
-              ? "bg-green-50 text-green-900 dark:bg-green-950 dark:text-green-200"
-              : "bg-red-50 text-red-900 dark:bg-red-950 dark:text-red-200",
-          )}
-        >
-          {saveMessage.ok ? (
-            <CheckCircle2 className="h-4 w-4 shrink-0 text-green-600 dark:text-green-400" />
-          ) : (
-            <AlertCircle className="h-4 w-4 shrink-0 text-red-600 dark:text-red-400" />
-          )}
-          <span className="flex-1">{saveMessage.message}</span>
-        </div>
-      )}
 
       {/* 保存按钮 */}
       <Button
