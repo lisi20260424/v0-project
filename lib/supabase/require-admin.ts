@@ -1,10 +1,12 @@
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
-import { isAdminEmail, getAdminEmails } from "@/lib/admin"
+import { isAdminUser } from "@/lib/admin"
 
 /**
  * 服务端鉴权：要求当前会话是管理员，否则重定向。
  * 用于管理员相关的 layout / page。
+ *
+ * 管理员判定：user.app_metadata.role === 'admin'
  */
 export async function requireAdmin() {
   const supabase = await createClient()
@@ -13,22 +15,10 @@ export async function requireAdmin() {
   } = await supabase.auth.getUser()
 
   if (!user) {
-    redirect("/auth/login?next=/settings")
+    redirect("/auth/login?next=/admin-settings")
   }
 
-  const adminEmails = getAdminEmails()
-  const userEmail = user.email?.trim().toLowerCase()
-  const isAdmin = isAdminEmail(user.email)
-
-  console.log("[v0] Admin check:", {
-    userEmail,
-    adminEmails,
-    isAdmin,
-    envValue: process.env.ADMIN_EMAILS,
-  })
-
-  if (!isAdmin) {
-    console.log("[v0] User not admin, redirecting from /admin/settings to /settings/profile")
+  if (!isAdminUser(user)) {
     redirect("/settings/profile")
   }
 
@@ -43,5 +33,5 @@ export async function isCurrentUserAdmin(): Promise<boolean> {
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  return isAdminEmail(user?.email)
+  return isAdminUser(user)
 }

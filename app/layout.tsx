@@ -6,7 +6,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { MembershipProvider } from "@/components/membership-provider"
 import { UserProvider } from "@/components/user-provider"
 import { getCurrentUser } from "@/lib/supabase/get-user"
-import { isAdminEmail } from "@/lib/admin"
+import { isCurrentUserAdmin } from "@/lib/supabase/require-admin"
 import "./globals.css"
 
 const inter = Inter({
@@ -35,7 +35,7 @@ export default async function RootLayout({
   children: React.ReactNode
 }>) {
   const user = await getCurrentUser().catch(() => null)
-  const isAdmin = isAdminEmail(user?.email)
+  const isAdmin = await isCurrentUserAdmin().catch(() => false)
 
   return (
     <html lang="zh-CN" suppressHydrationWarning className={`${inter.variable} ${jetbrainsMono.variable} bg-background`}>

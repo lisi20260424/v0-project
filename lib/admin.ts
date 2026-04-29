@@ -1,25 +1,29 @@
 /**
- * 管理员配置工具：通过环境变量 ADMIN_EMAILS 配置管理员邮箱白名单
+ * 管理员鉴权工具
  *
- * 配置示例（.env.local）：
- *   ADMIN_EMAILS=admin@example.com,owner@example.com
+ * 权限的唯一真相源是 Supabase 的 auth.users.raw_app_meta_data 字段
+ * （即 user.app_metadata），其约定如下：
  *
- * 命中白名单的已登录用户将获得管理员权限。
+ *   { "role": "admin" }
+ *
+ * - app_metadata 只能通过 service_role key 修改，普通用户无法自行篡改
+ * - app_metadata 会自动写入 JWT，前后端均可直接读取，无需查库
+ *
+ * 设置管理员的方式：
+ *  1) 通过本项目的「用户管理」UI 把 user_type 设为 admin（会自动同步 app_metadata）
+ *  2) 直接在 Supabase Dashboard → Authentication → Users → 编辑用户 → User App Metadata
+ *  3) 在 SQL Editor 执行：
+ *       update auth.users
+ *       set raw_app_meta_data = coalesce(raw_app_meta_data,'{}'::jsonb) || '{"role":"admin"}'::jsonb
+ *       where email = 'admin@example.com';
  */
 
-export function getAdminEmails(): string[] {
-  const raw = process.env.ADMIN_EMAILS ?? ""
-  return raw
-    .split(",")
-    .map((email) => email.trim().toLowerCase())
-    .filter(Boolean)
-}
+type AppMetadataLike = { role?: string | null } | null | undefined
+type UserLike = { app_metadata?: AppMetadataLike } | null | undefined
 
-export function isAdminEmail(email: string | null | undefined): boolean {
-  if (!email) return false
-  const normalized = email.trim().toLowerCase()
-  if (!normalized) return false
-  return getAdminEmails().includes(normalized)
+export function isAdminUser(user: UserLike): boolean {
+  const role = user?.app_metadata?.role
+  return typeof role === "string" && role.toLowerCase() === "admin"
 }
 
 /**
