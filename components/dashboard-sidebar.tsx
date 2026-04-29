@@ -14,6 +14,7 @@ import {
   Plug,
   Cpu,
   Sparkles,
+  Users,
 } from "lucide-react"
 import * as React from "react"
 import { cn } from "@/lib/utils"
@@ -64,6 +65,7 @@ const ADMIN_SECTION: SidebarSection = {
     { href: "/admin-settings/providers", label: "供应商配置", icon: Sparkles },
     { href: "/admin-settings/models", label: "模型配置", icon: Cpu },
     { href: "/admin-settings/prompts", label: "提示词配置", icon: Sparkles },
+    { href: "/admin-settings/users", label: "用户管理", icon: Users },
   ],
 }
 

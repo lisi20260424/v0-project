@@ -23,6 +23,38 @@ export function isAdminEmail(email: string | null | undefined): boolean {
 }
 
 /**
+ * 用户管理相关常量
+ */
+export const USER_TYPES = ["normal", "internal", "enterprise", "admin"] as const
+export type UserType = (typeof USER_TYPES)[number]
+
+export const USER_TYPE_LABELS: Record<UserType, string> = {
+  normal: "普通用户",
+  internal: "内部用户",
+  enterprise: "企业用户",
+  admin: "管理员",
+}
+
+export const USER_STATUSES = ["active", "suspended", "banned"] as const
+export type UserStatus = (typeof USER_STATUSES)[number]
+
+export const USER_STATUS_LABELS: Record<UserStatus, string> = {
+  active: "正常",
+  suspended: "已暂停",
+  banned: "已封禁",
+}
+
+export const VIP_TIERS = ["monthly", "annual", "lifetime"] as const
+export type VipTier = (typeof VIP_TIERS)[number]
+
+export const VIP_TIER_LABELS: Record<VipTier | "free", string> = {
+  free: "免费用户",
+  monthly: "月度会员",
+  annual: "年度会员",
+  lifetime: "终身会员",
+}
+
+/**
  * 模型类型常量与显示名映射
  */
 export const MODEL_TYPES = ["video", "image", "music"] as const

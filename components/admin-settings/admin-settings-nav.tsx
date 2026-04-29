@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Plug, Cpu, Sparkles, ChevronRight, Globe } from "lucide-react"
+import { Plug, Cpu, Sparkles, ChevronRight, Globe, Users } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
 
@@ -28,6 +28,7 @@ const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   { label: "供应商配置", href: "/admin-settings/providers", icon: Globe, desc: "管理模型供应商" },
   { label: "模型配置", href: "/admin-settings/models", icon: Cpu, desc: "管理可用模型" },
   { label: "提示词配置", href: "/admin-settings/prompts", icon: Sparkles, desc: "快捷提示词" },
+  { label: "用户管理", href: "/admin-settings/users", icon: Users, desc: "管理用户与会员" },
 ]
 
 export function AdminSettingsNav() {
