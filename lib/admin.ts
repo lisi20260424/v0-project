@@ -49,8 +49,7 @@ export const USER_STATUS_LABELS: Record<UserStatus, string> = {
 export const VIP_TIERS = ["monthly", "annual", "lifetime"] as const
 export type VipTier = (typeof VIP_TIERS)[number]
 
-export const VIP_TIER_LABELS: Record<VipTier | "free", string> = {
-  free: "免费用户",
+export const VIP_TIER_LABELS: Record<VipTier, string> = {
   monthly: "月度会员",
   annual: "年度会员",
   lifetime: "终身会员",

@@ -262,7 +262,7 @@ export function UsersManager({ initialUsers = [], currentUser }: Props) {
                 const initials = (u.display_name || u.email || "U").slice(0, 1).toUpperCase()
                 const vipLabel = u.vip_tier
                   ? VIP_TIER_LABELS[u.vip_tier as keyof typeof VIP_TIER_LABELS] ?? u.vip_tier
-                  : VIP_TIER_LABELS.free
+                  : "无会员"
                 const userTypeLabel =
                   USER_TYPE_LABELS[u.user_type as keyof typeof USER_TYPE_LABELS] ?? u.user_type
                 const statusKey = (u.status as UserStatus) in STATUS_BADGE ? (u.status as UserStatus) : "active"

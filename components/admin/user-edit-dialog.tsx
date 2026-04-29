@@ -65,7 +65,7 @@ export function UserEditDialog({ open, onOpenChange, user, currentUserIsAdmin, o
   const [avatarUrl, setAvatarUrl] = useState("")
   const [userType, setUserType] = useState<string>("normal")
   const [status, setStatus] = useState<string>("active")
-  const [vipTier, setVipTier] = useState<string>("free")
+  const [vipTier, setVipTier] = useState<string>("")
   const [vipExpiresAt, setVipExpiresAt] = useState<string>("")
   const [points, setPoints] = useState<string>("0")
   const [saving, setSaving] = useState(false)
@@ -77,7 +77,8 @@ export function UserEditDialog({ open, onOpenChange, user, currentUserIsAdmin, o
     setAvatarUrl(user.avatar_url ?? "")
     setUserType(user.user_type ?? "normal")
     setStatus(user.status ?? "active")
-    setVipTier(user.vip_tier ?? "free")
+    // vip_tier 为 null 时显示空值，不显示"free"
+    setVipTier(user.vip_tier ?? "")
     setVipExpiresAt(isoToLocalInput(user.vip_expires_at))
     setPoints(String(user.points ?? 0))
     setError(null)
@@ -189,19 +190,19 @@ export function UserEditDialog({ open, onOpenChange, user, currentUserIsAdmin, o
 
             <div className="flex flex-col gap-1.5">
               <Label>会员等级</Label>
-              <Select value={vipTier} onValueChange={setVipTier}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="free">{VIP_TIER_LABELS.free}</SelectItem>
-                  {VIP_TIERS.map((v) => (
-                    <SelectItem key={v} value={v}>
-                      {VIP_TIER_LABELS[v]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <Select value={vipTier} onValueChange={setVipTier}>
+              <SelectTrigger>
+                <SelectValue placeholder="选择会员等级" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">无会员</SelectItem>
+                {VIP_TIERS.map((v) => (
+                  <SelectItem key={v} value={v}>
+                    {VIP_TIER_LABELS[v]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             </div>
 
             <div className="flex flex-col gap-1.5">
@@ -211,7 +212,7 @@ export function UserEditDialog({ open, onOpenChange, user, currentUserIsAdmin, o
                 type="datetime-local"
                 value={vipExpiresAt}
                 onChange={(e) => setVipExpiresAt(e.target.value)}
-                disabled={vipTier === "free" || vipTier === "lifetime"}
+                disabled={!vipTier || vipTier === "lifetime"}
               />
               <p className="text-[11px] text-muted-foreground">
                 免费用户和终身会员无需到期时间
