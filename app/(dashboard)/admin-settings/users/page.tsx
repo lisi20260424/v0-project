@@ -1,8 +1,11 @@
+import { getCurrentUser } from "@/lib/supabase/get-user"
 import { UsersManager } from "@/components/admin/users-manager"
 
 export const dynamic = "force-dynamic"
 
-export default function AdminUsersPage() {
+export default async function AdminUsersPage() {
+  const user = await getCurrentUser()
+
   return (
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-1.5">
@@ -12,7 +15,7 @@ export default function AdminUsersPage() {
         </p>
       </header>
 
-      <UsersManager />
+      <UsersManager currentUser={user} />
     </div>
   )
 }

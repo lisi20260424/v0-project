@@ -36,6 +36,7 @@ type Props = {
   open: boolean
   onOpenChange: (open: boolean) => void
   user: AdminUser | null
+  currentUserIsAdmin: boolean
   onSave: (form: {
     id: string
     displayName: string
@@ -59,12 +60,12 @@ function isoToLocalInput(iso: string | null): string {
   )}`
 }
 
-export function UserEditDialog({ open, onOpenChange, user, onSave }: Props) {
+export function UserEditDialog({ open, onOpenChange, user, currentUserIsAdmin, onSave }: Props) {
   const [displayName, setDisplayName] = useState("")
   const [avatarUrl, setAvatarUrl] = useState("")
   const [userType, setUserType] = useState<string>("normal")
   const [status, setStatus] = useState<string>("active")
-  const [vipTier, setVipTier] = useState<string>("free")
+  const [vipTier, setVipTier] = useState<string>("none")
   const [vipExpiresAt, setVipExpiresAt] = useState<string>("")
   const [points, setPoints] = useState<string>("0")
   const [saving, setSaving] = useState(false)
@@ -76,7 +77,8 @@ export function UserEditDialog({ open, onOpenChange, user, onSave }: Props) {
     setAvatarUrl(user.avatar_url ?? "")
     setUserType(user.user_type ?? "normal")
     setStatus(user.status ?? "active")
-    setVipTier(user.vip_tier ?? "free")
+    // vip_tier 为 null 时设置为 "none"
+    setVipTier(user.vip_tier ?? "none")
     setVipExpiresAt(isoToLocalInput(user.vip_expires_at))
     setPoints(String(user.points ?? 0))
     setError(null)
@@ -101,7 +103,7 @@ export function UserEditDialog({ open, onOpenChange, user, onSave }: Props) {
         avatarUrl,
         userType,
         status,
-        vipTier,
+        vipTier: vipTier === "none" ? "" : vipTier,
         vipExpiresAt: vipExpiresAt ? new Date(vipExpiresAt).toISOString() : null,
         points: pts,
       })
@@ -153,8 +155,8 @@ export function UserEditDialog({ open, onOpenChange, user, onSave }: Props) {
           <section className="grid gap-4 md:grid-cols-2">
             <div className="flex flex-col gap-1.5">
               <Label>用户类型</Label>
-              <Select value={userType} onValueChange={setUserType}>
-                <SelectTrigger>
+              <Select value={userType} onValueChange={setUserType} disabled={!currentUserIsAdmin}>
+                <SelectTrigger className={!currentUserIsAdmin ? "opacity-50" : ""}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -165,6 +167,9 @@ export function UserEditDialog({ open, onOpenChange, user, onSave }: Props) {
                   ))}
                 </SelectContent>
               </Select>
+              {!currentUserIsAdmin && (
+                <p className="text-[11px] text-muted-foreground">仅管理员可以设置用户类型</p>
+              )}
             </div>
 
             <div className="flex flex-col gap-1.5">
@@ -185,19 +190,19 @@ export function UserEditDialog({ open, onOpenChange, user, onSave }: Props) {
 
             <div className="flex flex-col gap-1.5">
               <Label>会员等级</Label>
-              <Select value={vipTier} onValueChange={setVipTier}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="free">{VIP_TIER_LABELS.free}</SelectItem>
-                  {VIP_TIERS.map((v) => (
-                    <SelectItem key={v} value={v}>
-                      {VIP_TIER_LABELS[v]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <Select value={vipTier} onValueChange={setVipTier}>
+              <SelectTrigger>
+                <SelectValue placeholder="选择会员等级" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">无会员</SelectItem>
+                {VIP_TIERS.map((v) => (
+                  <SelectItem key={v} value={v}>
+                    {VIP_TIER_LABELS[v]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             </div>
 
             <div className="flex flex-col gap-1.5">
@@ -207,7 +212,7 @@ export function UserEditDialog({ open, onOpenChange, user, onSave }: Props) {
                 type="datetime-local"
                 value={vipExpiresAt}
                 onChange={(e) => setVipExpiresAt(e.target.value)}
-                disabled={vipTier === "free" || vipTier === "lifetime"}
+                disabled={vipTier === "none" || vipTier === "lifetime"}
               />
               <p className="text-[11px] text-muted-foreground">
                 免费用户和终身会员无需到期时间

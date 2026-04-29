@@ -17,6 +17,7 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Spinner } from "@/components/ui/spinner"
 import { UserEditDialog } from "@/components/admin/user-edit-dialog"
+import type { CurrentUser } from "@/components/user-provider"
 import {
   USER_TYPES,
   USER_TYPE_LABELS,
@@ -52,8 +53,10 @@ type UsersResponse = {
 type Banner = { ok: boolean; message: string } | null
 
 const fetcher = async (url: string): Promise<UsersResponse> => {
+  console.log("[v0] Fetching users from:", url)
   const res = await fetch(url)
   const json = await res.json()
+  console.log("[v0] Fetch response:", { status: res.status, data: json })
   if (!res.ok) throw new Error(json.error ?? "加载失败")
   return json
 }
@@ -71,7 +74,7 @@ function formatDateTime(value: string | null): string {
   return d.toLocaleString("zh-CN", { hour12: false })
 }
 
-export function UsersManager() {
+export function UsersManager({ initialUsers = [], currentUser }: Props) {
   const [searchInput, setSearchInput] = useState("")
   const [search, setSearch] = useState("")
   const [userType, setUserType] = useState<string>("all")
@@ -110,6 +113,8 @@ export function UsersManager() {
     keepPreviousData: true,
   })
 
+  console.log("[v0] UsersManager SWR state:", { queryKey, data, error, isLoading })
+
   function showBanner(b: Banner) {
     setBanner(b)
     if (b) setTimeout(() => setBanner(null), 3000)
@@ -118,9 +123,6 @@ export function UsersManager() {
   async function handleSave(form: {
     id: string
     displayName: string
-    bio: string
-    location: string
-    website: string
     avatarUrl: string
     userType: string
     status: string
@@ -260,7 +262,7 @@ export function UsersManager() {
                 const initials = (u.display_name || u.email || "U").slice(0, 1).toUpperCase()
                 const vipLabel = u.vip_tier
                   ? VIP_TIER_LABELS[u.vip_tier as keyof typeof VIP_TIER_LABELS] ?? u.vip_tier
-                  : VIP_TIER_LABELS.free
+                  : "无会员"
                 const userTypeLabel =
                   USER_TYPE_LABELS[u.user_type as keyof typeof USER_TYPE_LABELS] ?? u.user_type
                 const statusKey = (u.status as UserStatus) in STATUS_BADGE ? (u.status as UserStatus) : "active"
@@ -362,6 +364,7 @@ export function UsersManager() {
         open={!!editing}
         onOpenChange={(open) => !open && setEditing(null)}
         user={editing}
+        currentUserIsAdmin={currentUser?.userType === "admin"}
         onSave={handleSave}
       />
     </div>

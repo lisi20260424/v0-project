@@ -1,11 +1,15 @@
 import Link from "next/link"
 import Image from "next/image"
-import { ArrowRight, Video, ImageIcon, Music2, Sparkles } from "lucide-react"
+import { ArrowRight, Video, ImageIcon, Music2, Sparkles, AlertCircle, Zap } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { MOCK_CREATIONS } from "@/lib/mock-data"
 import { getCurrentUser } from "@/lib/supabase/get-user"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { resolveIcon } from "@/lib/icon-map"
+import { getDisplayTools } from "@/lib/display-tools"
+import { createClient } from "@/lib/supabase/client"
+import { USER_STATUS_LABELS, VIP_TIER_LABELS } from "@/lib/admin"
 
 export const metadata = {
   title: "工作台 · 灵境 AI",
@@ -30,6 +34,7 @@ function greeting() {
 export default async function DashboardPage() {
   const user = await getCurrentUser()
   const admin = createAdminClient()
+  const supabase = await createClient()
 
   // 获取真实任务数据用于计算指标
   const { data: allTasks } = await admin
@@ -56,17 +61,8 @@ export default async function DashboardPage() {
     .order("created_at", { ascending: false })
     .limit(3)
 
-  // 获取真实的供应商模型数据用于开始创作区块
-  const { data: providers } = await admin
-    .from("providers")
-    .select("id, name, type")
-    .eq("active", true)
-
-  const { data: models } = await admin
-    .from("models")
-    .select("id, name, provider_id, type, ui_icon, accent_color, cost_label, url_path")
-    .eq("active", true)
-    .limit(8)
+  // 按供应商维度展示工具（使用 getDisplayTools 统一逻辑）
+  const tools = await getDisplayTools(supabase as any)
 
   const recentCreations = MOCK_CREATIONS.slice(0, 6)
 
@@ -74,11 +70,49 @@ export default async function DashboardPage() {
     <div className="space-y-8">
       <section>
         <div className="flex items-end justify-between">
-          <div>
+          <div className="flex-1">
             <h1 className="text-2xl font-bold tracking-tight">
               {greeting()}，{user?.displayName ?? "创作者"}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">今天也是充满灵感的一天，来看看最新的工具吧。</p>
+            
+            {/* 用户状态和信息 */}
+            <div className="mt-4 flex items-center gap-3 flex-wrap">
+              {/* 用户状态标签 */}
+              {user?.status && (
+                <Badge variant={user.status === "active" ? "default" : "destructive"} className="text-xs">
+                  {USER_STATUS_LABELS[user.status as keyof typeof USER_STATUS_LABELS] || user.status}
+                </Badge>
+              )}
+              
+              {/* 会员等级 */}
+              {user?.vipTier && (
+                <Badge variant="secondary" className="text-xs">
+                  {VIP_TIER_LABELS[user.vipTier as keyof typeof VIP_TIER_LABELS] || user.vipTier}
+                </Badge>
+              )}
+              
+              {/* 可用点数 */}
+              <div className="flex items-center gap-1 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium">
+                <Zap className="h-3.5 w-3.5 text-accent" fill="currentColor" />
+                <span className="tabular-nums">{user?.points?.toLocaleString() ?? 0}</span>
+                <span className="text-muted-foreground">点</span>
+              </div>
+              
+              {/* 禁用提示 */}
+              {user?.status === "suspended" && (
+                <div className="flex items-center gap-1 text-xs text-amber-600">
+                  <AlertCircle className="h-3.5 w-3.5" />
+                  <span>账户已暂停，无法进行生成操作</span>
+                </div>
+              )}
+              {user?.status === "banned" && (
+                <div className="flex items-center gap-1 text-xs text-destructive">
+                  <AlertCircle className="h-3.5 w-3.5" />
+                  <span>账户已被禁用</span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -102,30 +136,37 @@ export default async function DashboardPage() {
       </section>
 
       <section>
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-base font-semibold">开始创作</h2>
-          <Link href="/#tools" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+        <div className="mb-6 flex items-center justify-between">
+          <h2 className="text-lg font-semibold">开始创作</h2>
+          <Link href="/#tools" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
             全部工具
-            <ArrowRight className="h-3 w-3" />
+            <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          {(models || []).map((m) => {
-            const Icon = m.ui_icon ? resolveIcon(m.ui_icon) : Sparkles
-            const provider = providers?.find((p) => p.id === m.provider_id)
-            const href = m.url_path || `//${m.name.toLowerCase()}`
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+          {tools.slice(0, 8).map((t) => {
+            const Icon = resolveIcon(t.icon)
             return (
               <Link
-                key={m.id}
-                href={href}
-                className={`group flex items-center gap-3 rounded-xl border border-border bg-gradient-to-br ${m.accent_color || "from-primary/30 to-accent/10"} p-3 transition-all hover:border-primary/40 hover:shadow-sm`}
+                key={t.id}
+                href={t.href}
+                className={`group relative overflow-hidden rounded-2xl border border-border/20 bg-gradient-to-br ${t.accent} transition-all hover:border-white/30 hover:shadow-lg`}
               >
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-background/60 backdrop-blur-sm">
-                  <Icon className="h-4 w-4" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-medium">{m.name}</div>
-                  <div className="truncate text-[10px] text-muted-foreground">{m.cost_label || "免费"}</div>
+                {/* 底部渐变遮罩 */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
+                
+                {/* 内容 */}
+                <div className="relative flex h-32 flex-col justify-between p-4">
+                  {/* 图标 */}
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/15 backdrop-blur-sm">
+                    <Icon className="h-6 w-6 text-white" />
+                  </div>
+                  
+                  {/* 文字 */}
+                  <div className="space-y-1">
+                    <div className="font-bold text-white text-sm leading-tight">{t.name}</div>
+                    {t.cost && <div className="text-xs text-white/80">{t.cost}</div>}
+                  </div>
                 </div>
               </Link>
             )

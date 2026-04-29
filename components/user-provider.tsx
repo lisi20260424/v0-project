@@ -10,6 +10,8 @@ export type CurrentUser = {
   avatarUrl: string | null
   points: number
   vipTier: "monthly" | "annual" | "lifetime" | null
+  status: "active" | "suspended" | "banned"
+  userType: "normal" | "admin"
 } | null
 
 type UserContextValue = {
@@ -44,28 +46,41 @@ export function UserProvider({
       if (!session?.user) {
         setUser(null)
         setIsAdmin(false)
+        setLoading(false)
         return
       }
-      setLoading(true)
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("display_name, avatar_url, points, vip_tier")
-        .eq("id", session.user.id)
-        .maybeSingle()
 
-      setUser({
-        id: session.user.id,
-        email: session.user.email ?? "",
-        displayName:
-          profile?.display_name ??
-          (session.user.user_metadata?.display_name as string) ??
-          (session.user.email?.split("@")[0] ?? "用户"),
-        avatarUrl: profile?.avatar_url ?? null,
-        points: profile?.points ?? 0,
-        vipTier:
-          (profile?.vip_tier as CurrentUser extends infer U ? (U extends null ? never : U["vipTier"]) : never) ?? null,
-      })
-      setLoading(false)
+      setLoading(true)
+      try {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("display_name, avatar_url, points, vip_tier, status, user_type")
+          .eq("id", session.user.id)
+          .maybeSingle()
+
+        const userData = {
+          id: session.user.id,
+          email: session.user.email ?? "",
+          displayName:
+            profile?.display_name ??
+            (session.user.user_metadata?.display_name as string) ??
+            (session.user.email?.split("@")[0] ?? "用户"),
+          avatarUrl: profile?.avatar_url ?? null,
+          points: profile?.points ?? 0,
+          vipTier:
+            (profile?.vip_tier as CurrentUser extends infer U ? (U extends null ? never : U["vipTier"]) : never) ?? null,
+          status: (profile?.status ?? "active") as "active" | "suspended" | "banned",
+          userType: (profile?.user_type ?? "normal") as "normal" | "admin",
+        }
+
+        setUser(userData)
+        setIsAdmin(userData.userType === "admin")
+      } catch (error) {
+        setUser(null)
+        setIsAdmin(false)
+      } finally {
+        setLoading(false)
+      }
     })
 
     return () => {

@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { Zap, Crown } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -16,11 +17,39 @@ const TIER_LABEL: Record<"monthly" | "annual" | "lifetime", string> = {
 export function DashboardUserCard() {
   const membership = useMembership()
   const { user } = useUser()
+  const [stats, setStats] = useState<{
+    initialPoints: number
+    available: number
+    used: number
+  } | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!user) return
+
+    const fetchStats = async () => {
+      try {
+        const res = await fetch("/api/user/points?type=stats")
+        if (res.ok) {
+          const data = await res.json()
+          setStats(data)
+        }
+      } catch (error) {
+        console.error("[v0] 获取点数统计失败:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchStats()
+  }, [user])
 
   if (!user) return null
 
-  const quota = 3000
-  const percent = Math.min(100, Math.round((user.points / quota) * 100))
+  const available = user.points
+  const used = stats?.used || 0
+  const total = available + used
+  const percent = total > 0 ? Math.min(100, Math.round((used / total) * 100)) : 0
   const initial = (user.displayName || user.email || "U").slice(0, 1).toUpperCase()
 
   return (
@@ -51,18 +80,46 @@ export function DashboardUserCard() {
       </div>
 
       <div className="mt-4 rounded-xl border border-border/60 bg-secondary/40 p-3">
-        <div className="flex items-center justify-between text-xs">
-          <span className="flex items-center gap-1 text-muted-foreground">
-            <Zap className="h-3 w-3 text-accent" fill="currentColor" />
-            可用点数
-          </span>
-          <span className="font-semibold tabular-nums">
-            {user.points.toLocaleString()} / {quota.toLocaleString()}
-          </span>
+        <div className="space-y-2">
+          {/* 可用点数 */}
+          <div className="flex items-center justify-between text-xs">
+            <span className="flex items-center gap-1 text-muted-foreground">
+              <Zap className="h-3 w-3 text-accent" fill="currentColor" />
+              可用点数
+            </span>
+            <span className="font-semibold tabular-nums text-foreground">
+              {available.toLocaleString()} 点
+            </span>
+          </div>
+
+          {/* 已使用点数 */}
+          {!loading && used > 0 && (
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-muted-foreground">已使用点数</span>
+              <span className="tabular-nums text-muted-foreground">
+                {used.toLocaleString()} 点
+              </span>
+            </div>
+          )}
+
+          {/* 进度条 - 显示已使用的比例 */}
+          {total > 0 && (
+            <>
+              <Progress value={percent} className="mt-2 h-1.5" />
+              <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                <span>
+                  {Math.round(percent)}% {total > 0 ? "已使用" : ""}
+                </span>
+                <span className="tabular-nums">
+                  {total.toLocaleString()} 点总计
+                </span>
+              </div>
+            </>
+          )}
         </div>
-        <Progress value={percent} className="mt-2 h-1.5" />
-        <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
-          <span>{user.vipTier ? "会员有效期内" : "升级解锁更多权益"}</span>
+
+        <div className="mt-2 text-[11px] text-muted-foreground">
+          {user.vipTier ? "会员有效期内" : "升级解锁更多权益"}
         </div>
       </div>
 

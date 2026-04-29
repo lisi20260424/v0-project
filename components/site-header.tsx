@@ -164,14 +164,20 @@ export function SiteHeader({ models }: SiteHeaderProps) {
               <DropdownMenuTrigger asChild>
                 <button
                   aria-label="用户菜单"
-                  className="hidden h-8 w-8 overflow-hidden rounded-full ring-1 ring-border transition hover:ring-primary/40 sm:inline-flex"
+                  className="relative hidden h-8 w-8 overflow-hidden rounded-full ring-1 ring-border transition hover:ring-primary/40 sm:inline-flex"
                 >
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={user.avatarUrl ?? undefined} alt="用户��像" />
+                    <AvatarImage src={user.avatarUrl ?? undefined} alt="用户头像" />
                     <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-xs text-primary-foreground">
                       {user.displayName.slice(0, 1).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
+                  {/* 禁用标识 */}
+                  {user.status && user.status !== "active" && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                      <span className="text-[10px] font-bold text-white">禁</span>
+                    </div>
+                  )}
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
