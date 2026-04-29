@@ -57,6 +57,8 @@ export function LoginForm() {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) throw error
       if (data?.session) {
+        // 等待一下确保 provider 已经更新了用户状态
+        await new Promise((resolve) => setTimeout(resolve, 500))
         router.push(next)
         router.refresh()
       }
@@ -111,6 +113,8 @@ export function LoginForm() {
       })
       if (error) throw error
       if (data?.session) {
+        // 等待一下确保 provider 已经更新了用户状态
+        await new Promise((resolve) => setTimeout(resolve, 500))
         router.push(next)
         router.refresh()
       }
