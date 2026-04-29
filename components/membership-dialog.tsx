@@ -186,7 +186,7 @@ export function MembershipDialog({
               <X className="h-4 w-4" />
             </button>
 
-            <div className="relative">
+            <div className="relative min-w-0">
               <DialogTitle className="text-pretty pr-10 text-2xl font-bold tracking-tight text-primary sm:text-3xl">
                 让创意灵感即刻成片
               </DialogTitle>
@@ -237,7 +237,7 @@ export function MembershipDialog({
                       <article
                         key={plan.id}
                         className={cn(
-                          "relative flex min-w-0 flex-col rounded-2xl border bg-background/60 p-5 transition-all sm:p-6",
+                          "relative flex flex-col rounded-2xl border bg-background/60 p-5 transition-all sm:p-6",
                           plan.recommended
                             ? "border-primary/60 shadow-xl shadow-primary/10"
                             : "border-border hover:border-primary/40",
@@ -294,7 +294,7 @@ export function MembershipDialog({
                   : POINTS_PACKAGES.map((pkg) => (
                       <article
                         key={pkg.id}
-                        className="relative flex min-w-0 flex-col rounded-2xl border border-border bg-background/60 p-5 transition-all hover:border-primary/40 sm:p-6"
+                        className="relative flex flex-col rounded-2xl border border-border bg-background/60 p-5 transition-all hover:border-primary/40 sm:p-6"
                       >
                         {pkg.badge && <BadgeTag tone="accent">{pkg.badge}</BadgeTag>}
 
@@ -337,7 +337,7 @@ export function MembershipDialog({
               <div className="mt-6 flex flex-col items-center gap-2 border-t border-border/60 pt-5 text-xs text-muted-foreground sm:flex-row sm:justify-between">
                 <p className="flex items-center gap-1.5">
                   <Zap className="h-3 w-3 text-accent" fill="currentColor" />
-                  支付宝 · 微信 · 银联 · 对公转账 · 可开增值税发票
+                  支付宝 · 微信 · 银联 · ���公转账 · 可开增值税发票
                 </p>
                 <p>购买即视为同意《服务条款》和《会员协议》</p>
               </div>
