@@ -81,7 +81,7 @@ export async function PUT(request: Request) {
       terminal_key: typeof terminalKey === "string" ? terminalKey : "",
       notify_url: typeof notifyUrl === "string" ? notifyUrl.trim() : "",
       return_url: typeof returnUrl === "string" ? returnUrl.trim() : "",
-      gateway_url: typeof gatewayUrl === "string" ? gatewayUrl.trim() : "https://qr.shouqianba.com",
+      gateway_url: typeof gatewayUrl === "string" ? gatewayUrl.trim() : "",
       test_mode: !!testMode,
       updated_by: user.id,
       updated_at: new Date().toISOString(),

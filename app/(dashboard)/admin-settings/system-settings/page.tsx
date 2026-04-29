@@ -45,7 +45,7 @@ export default async function SystemSettingsPage() {
       terminalKey: paymentData?.terminal_key ?? "",
       notifyUrl: paymentData?.notify_url ?? "",
       returnUrl: paymentData?.return_url ?? "",
-      gatewayUrl: paymentData?.gateway_url ?? "https://qr.shouqianba.com",
+      gatewayUrl: paymentData?.gateway_url ?? "",
       testMode: paymentData?.test_mode ?? true,
       updatedAt: paymentData?.updated_at ?? null,
     },

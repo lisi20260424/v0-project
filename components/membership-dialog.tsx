@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useRouter } from "next/navigation"
 import { Check, Crown, Zap, ArrowUpCircle, CreditCard, Info, X, Sparkles } from "lucide-react"
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
@@ -162,12 +163,21 @@ export function MembershipDialog({
   onOpenChange: (open: boolean) => void
   defaultTab?: "membership" | "points"
 }) {
+  const router = useRouter()
   const [tab, setTab] = React.useState<"membership" | "points">(defaultTab)
   const [pointsOpen, setPointsOpen] = React.useState(false)
 
   React.useEffect(() => {
     if (open) setTab(defaultTab)
   }, [open, defaultTab])
+
+  const handlePurchase = React.useCallback(
+    (kind: "membership" | "points", code: string) => {
+      onOpenChange(false)
+      router.push(`/billing/checkout?kind=${kind}&code=${encodeURIComponent(code)}`)
+    },
+    [onOpenChange, router],
+  )
 
   return (
     <>
@@ -279,6 +289,7 @@ export function MembershipDialog({
 
                         <Button
                           size="lg"
+                          onClick={() => handlePurchase("membership", plan.id)}
                           className={cn(
                             "mt-6 w-full rounded-full font-semibold",
                             plan.recommended
@@ -326,6 +337,7 @@ export function MembershipDialog({
 
                         <Button
                           size="lg"
+                          onClick={() => handlePurchase("points", pkg.id)}
                           className="mt-6 w-full rounded-full bg-primary font-semibold text-primary-foreground hover:bg-primary/90"
                         >
                           购买
@@ -337,7 +349,7 @@ export function MembershipDialog({
               <div className="mt-6 flex flex-col items-center gap-2 border-t border-border/60 pt-5 text-xs text-muted-foreground sm:flex-row sm:justify-between">
                 <p className="flex items-center gap-1.5">
                   <Zap className="h-3 w-3 text-accent" fill="currentColor" />
-                  支付宝 · 微信 · 银联 · ���公转账 · 可开增值税发票
+                  支付宝 · 微信 · 银联 · ���公转��� · 可开增值税发票
                 </p>
                 <p>购买即视为同意《服务条款》和《会员协议》</p>
               </div>

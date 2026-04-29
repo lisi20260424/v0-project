@@ -207,12 +207,11 @@ export function PaymentForm({ initialValue }: Props) {
               type="url"
               value={value.gatewayUrl}
               onChange={(e) => update("gatewayUrl", e.target.value)}
-              placeholder="https://qr.shouqianba.com"
+              placeholder="https://vsi-api.shouqianba.com"
               disabled={saving}
-              required
             />
             <p className="text-[11px] text-muted-foreground">
-              生产环境：https://qr.shouqianba.com，沙箱环境：https://qr-test4.shouqianba.com
+              生产环境：https://vsi-api.shouqianba.com，沙箱环境：https://test-api-vsi.shouqianba.com，留空将根据测试模式自动选择
             </p>
           </div>
 
