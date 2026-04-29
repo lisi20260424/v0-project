@@ -120,6 +120,53 @@ export function PaymentForm({ initialValue }: Props) {
           name: activateName.trim() || undefined,
         }),
       })
+
+      // 检查响应是否是 JSON
+      const contentType = res.headers.get("content-type")
+      if (!contentType?.includes("application/json")) {
+        const text = await res.text()
+        console.error("[v0] Non-JSON response:", text.slice(0, 200))
+        throw new Error(`服务器返回非 JSON 响应（HTTP ${res.status}），请检查网络或服务器状态`)
+      }
+
+      const json = await res.json()
+      if (!res.ok) {
+        throw new Error(json.error ?? `激活失败（HTTP ${res.status}）`)
+      }
+      if (!json.ok) {
+        throw new Error(json.error ?? "激活失败")
+      }
+
+      // 拉取最新配置回填
+      const latest = await fetch("/api/admin/payment", { cache: "no-store" })
+      if (!latest.ok) {
+        throw new Error("获取最新配置失败")
+      }
+      const latestJson = await latest.json()
+      setValue((prev) => rowToValue(latestJson.data, prev))
+
+      setActivateOpen(false)
+      setActivateCode("")
+      setActivateName("")
+      toast.success("终端激活成功，已更新终端凭证")
+    } catch (err) {
+      console.error("[v0] Activate error:", err)
+      toast.error(err instanceof Error ? err.message : "激活失败")
+    } finally {
+      setActivating(false)
+    }
+  }
+    setActivating(true)
+    try {
+      const res = await fetch("/api/admin/payment/activate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: activateCode.trim(),
+          deviceId: value.deviceId,
+          name: activateName.trim() || undefined,
+        }),
+      })
       const json = await res.json()
       if (!res.ok || !json.ok) throw new Error(json.error ?? "激活失败")
 
@@ -143,15 +190,33 @@ export function PaymentForm({ initialValue }: Props) {
     setCheckingIn(true)
     try {
       const res = await fetch("/api/admin/payment/checkin", { method: "POST" })
+
+      // 检查响应是否是 JSON
+      const contentType = res.headers.get("content-type")
+      if (!contentType?.includes("application/json")) {
+        const text = await res.text()
+        console.error("[v0] Non-JSON response:", text.slice(0, 200))
+        throw new Error(`服务器返回非 JSON 响应（HTTP ${res.status}），请检查网络或服务器状态`)
+      }
+
       const json = await res.json()
-      if (!res.ok || !json.ok) throw new Error(json.error ?? "签到失败")
+      if (!res.ok) {
+        throw new Error(json.error ?? `签到失败（HTTP ${res.status}）`)
+      }
+      if (!json.ok) {
+        throw new Error(json.error ?? "签到失败")
+      }
 
       const latest = await fetch("/api/admin/payment", { cache: "no-store" })
+      if (!latest.ok) {
+        throw new Error("获取最新配置失败")
+      }
       const latestJson = await latest.json()
       setValue((prev) => rowToValue(latestJson.data, prev))
 
       toast.success(json.message ?? "签到成功")
     } catch (err) {
+      console.error("[v0] Checkin error:", err)
       toast.error(err instanceof Error ? err.message : "签到失败")
     } finally {
       setCheckingIn(false)

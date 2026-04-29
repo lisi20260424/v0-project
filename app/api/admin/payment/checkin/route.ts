@@ -18,8 +18,11 @@ export async function POST() {
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  if (!user || !isAdminUser(user)) {
-    return NextResponse.json({ error: "无权限" }, { status: 403 })
+  if (!user) {
+    return NextResponse.json({ error: "未登录" }, { status: 401 })
+  }
+  if (!isAdminUser(user)) {
+    return NextResponse.json({ error: "非管理员用户" }, { status: 403 })
   }
 
   const settings = await loadPaymentSettings()
@@ -47,6 +50,7 @@ export async function POST() {
     if (!ok || !newTerminalKey) {
       return NextResponse.json(
         {
+          ok: false,
           error:
             result.biz_response?.error_message ??
             result.error_message ??
@@ -69,8 +73,9 @@ export async function POST() {
 
     return NextResponse.json({ ok: true, message: "签到成功，已更新终端密钥" })
   } catch (err) {
+    console.error("[v0] Checkin error:", err)
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "签到请求失败" },
+      { ok: false, error: err instanceof Error ? err.message : "签到请求失败" },
       { status: 502 },
     )
   }

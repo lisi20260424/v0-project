@@ -20,15 +20,23 @@ export async function POST(request: Request) {
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  if (!user || !isAdminUser(user)) {
-    return NextResponse.json({ error: "无权限" }, { status: 403 })
+  if (!user) {
+    return NextResponse.json({ error: "未登录" }, { status: 401 })
+  }
+  if (!isAdminUser(user)) {
+    return NextResponse.json({ error: "非管理员用户" }, { status: 403 })
   }
 
-  const body = (await request.json().catch(() => null)) as {
+  let body: {
     code?: string
     deviceId?: string
     name?: string
-  } | null
+  } | null = null
+  try {
+    body = (await request.json()) as typeof body
+  } catch {
+    return NextResponse.json({ error: "请求格式错误" }, { status: 400 })
+  }
 
   const code = body?.code?.trim()
   if (!code) {
@@ -89,6 +97,7 @@ export async function POST(request: Request) {
     if (!ok || !newTerminalSn || !newTerminalKey) {
       return NextResponse.json(
         {
+          ok: false,
           error:
             result.biz_response?.error_message ??
             result.error_message ??
@@ -117,8 +126,12 @@ export async function POST(request: Request) {
       message: "终端激活成功",
     })
   } catch (err) {
+    console.error("[v0] Activate error:", err)
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "激活请求失败" },
+      {
+        ok: false,
+        error: err instanceof Error ? err.message : "激活请求失败",
+      },
       { status: 502 },
     )
   }
