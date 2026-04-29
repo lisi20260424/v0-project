@@ -6,6 +6,9 @@ import { MOCK_CREATIONS } from "@/lib/mock-data"
 import { getCurrentUser } from "@/lib/supabase/get-user"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { resolveIcon } from "@/lib/icon-map"
+import { CATEGORY_LABEL, type ToolCategory } from "@/lib/tools"
+import { getDisplayTools } from "@/lib/display-tools"
+import { createClient } from "@/lib/supabase/client"
 
 export const metadata = {
   title: "工作台 · 灵境 AI",
@@ -30,6 +33,7 @@ function greeting() {
 export default async function DashboardPage() {
   const user = await getCurrentUser()
   const admin = createAdminClient()
+  const supabase = await createClient()
 
   // 获取真实任务数据用于计算指标
   const { data: allTasks } = await admin
@@ -56,19 +60,15 @@ export default async function DashboardPage() {
     .order("created_at", { ascending: false })
     .limit(3)
 
-  // 获取真实的供应商模型数据用于开始创作区块（使用新的 admin 表）
-  const { data: providers } = await admin
-    .from("admin_providers")
-    .select("*")
-    .eq("enabled", true)
-    .order("sort_order", { ascending: true })
-
-  const { data: models } = await admin
-    .from("admin_models")
-    .select("*")
-    .eq("enabled", true)
-    .order("sort_order", { ascending: true })
-    .limit(8)
+  // 按供应商维度展示工具（使用 getDisplayTools 统一逻辑）
+  const tools = await getDisplayTools(supabase as any)
+  
+  // 按 model_type 分组，展示供应商维度的工具
+  const groupedTools = (["video", "image", "music"] as ToolCategory[]).map((c) => ({
+    category: c,
+    label: CATEGORY_LABEL[c],
+    items: tools.filter((t) => t.category === c),
+  }))
 
   const recentCreations = MOCK_CREATIONS.slice(0, 6)
 
@@ -111,30 +111,35 @@ export default async function DashboardPage() {
             <ArrowRight className="h-3 w-3" />
           </Link>
         </div>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          {(models || []).map((m) => {
-            const provider = providers?.find((p) => p.name === m.provider)
-            const ui = provider?.config?.ui_by_type?.[m.model_type] ?? {}
-            const icon = ui.icon || m.config?.ui_icon || "Sparkles"
-            const accent = ui.accent || "from-primary/30 to-accent/10"
-            const href = `/${m.model_type}?provider=${encodeURIComponent(m.provider)}`
-            const Icon = resolveIcon(icon)
-            return (
-              <Link
-                key={m.id}
-                href={href}
-                className={`group flex items-center gap-3 rounded-xl border border-border bg-gradient-to-br ${accent} p-3 transition-all hover:border-primary/40 hover:shadow-sm`}
-              >
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-background/60 backdrop-blur-sm">
-                  <Icon className="h-4 w-4" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-medium">{m.name}</div>
-                  <div className="truncate text-[10px] text-muted-foreground">{ui.cost || "免费"}</div>
-                </div>
-              </Link>
-            )
-          })}
+        <div className="space-y-6">
+          {groupedTools.map((g) => (
+            <div key={g.category}>
+              <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                {g.label}
+              </h3>
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                {g.items.map((t) => {
+                  const Icon = resolveIcon(t.icon)
+                  return (
+                    <Link
+                      key={t.id}
+                      href={t.href}
+                      className={`group flex flex-col gap-3 rounded-xl border border-border bg-gradient-to-br ${t.accent} p-4 transition-all hover:border-primary/40 hover:shadow-sm`}
+                    >
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-background/60 backdrop-blur-sm">
+                        <Icon className="h-5 w-5" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="font-medium text-sm">{t.name}</div>
+                        <div className="text-xs text-muted-foreground mt-0.5">{t.brand}</div>
+                        {t.cost && <div className="text-xs text-muted-foreground mt-1">{t.cost}</div>}
+                      </div>
+                    </Link>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 
