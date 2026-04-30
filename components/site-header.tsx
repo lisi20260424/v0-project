@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { Menu, Zap, ChevronDown, LayoutDashboard, ListChecks, Images, CreditCard, Settings, LogOut, Plug, Cpu, Sparkles, Globe } from "lucide-react"
+import { Menu, Zap, ChevronDown, LayoutDashboard, ListChecks, Images, CreditCard, Settings, LogOut, Plug, Cpu, Sparkles, Globe, Users, Receipt } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ThemeToggle } from "@/components/theme-toggle"
@@ -212,6 +212,18 @@ export function SiteHeader({ models }: SiteHeaderProps) {
                   订阅与充值
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
+                  <Link href="/billing">
+                    <CreditCard className="mr-2 h-4 w-4" />
+                    订阅记录
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/billing/records">
+                    <Receipt className="mr-2 h-4 w-4" />
+                    账单记录
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
                   <Link href="/settings">
                     <Settings className="mr-2 h-4 w-4" />
                     账户设置
@@ -223,12 +235,6 @@ export function SiteHeader({ models }: SiteHeaderProps) {
                     <DropdownMenuLabel className="px-2 py-1 text-[11px] uppercase tracking-wider text-muted-foreground">
                       管理员
                     </DropdownMenuLabel>
-                    <DropdownMenuItem asChild>
-                      <Link href="/admin-settings/system-settings">
-                        <Plug className="mr-2 h-4 w-4" />
-                        系统设置
-                      </Link>
-                    </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <Link href="/admin-settings/providers">
                         <Globe className="mr-2 h-4 w-4" />
@@ -245,6 +251,18 @@ export function SiteHeader({ models }: SiteHeaderProps) {
                       <Link href="/admin-settings/prompts">
                         <Sparkles className="mr-2 h-4 w-4" />
                         提示词配置
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/admin-settings/users">
+                        <Users className="mr-2 h-4 w-4" />
+                        用户管理
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/admin-settings/system-settings">
+                        <Plug className="mr-2 h-4 w-4" />
+                        系统设置
                       </Link>
                     </DropdownMenuItem>
                   </>

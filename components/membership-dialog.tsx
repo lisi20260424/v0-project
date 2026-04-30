@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useRouter } from "next/navigation"
 import { Check, Crown, Zap, ArrowUpCircle, CreditCard, Info, X, Sparkles } from "lucide-react"
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
@@ -162,6 +163,7 @@ export function MembershipDialog({
   onOpenChange: (open: boolean) => void
   defaultTab?: "membership" | "points"
 }) {
+  const router = useRouter()
   const [tab, setTab] = React.useState<"membership" | "points">(defaultTab)
   const [pointsOpen, setPointsOpen] = React.useState(false)
 
@@ -169,12 +171,20 @@ export function MembershipDialog({
     if (open) setTab(defaultTab)
   }, [open, defaultTab])
 
+  const handlePurchase = React.useCallback(
+    (kind: "membership" | "points", code: string) => {
+      onOpenChange(false)
+      router.push(`/billing/checkout?kind=${kind}&code=${encodeURIComponent(code)}`)
+    },
+    [onOpenChange, router],
+  )
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
           showCloseButton={false}
-          className="w-[calc(100vw-1.5rem)] max-w-5xl gap-0 overflow-hidden border-border/70 bg-card p-0 sm:w-[calc(100vw-2rem)]"
+          className="w-[calc(100vw-1.5rem)] max-w-5xl gap-0 overflow-hidden border-border/70 bg-card p-0 sm:w-[calc(100vw-2rem)] sm:max-w-5xl"
         >
           <div className="relative max-h-[90vh] overflow-y-auto p-5 sm:p-8">
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-accent/5" />
@@ -187,7 +197,7 @@ export function MembershipDialog({
             </button>
 
             <div className="relative">
-              <DialogTitle className="text-pretty pr-10 text-2xl font-bold tracking-tight text-primary sm:text-3xl">
+              <DialogTitle className="pr-10 text-2xl font-bold tracking-tight text-primary sm:text-3xl">
                 让创意灵感即刻成片
               </DialogTitle>
               <DialogDescription className="mt-1.5 text-xs text-muted-foreground sm:text-sm">
@@ -237,7 +247,7 @@ export function MembershipDialog({
                       <article
                         key={plan.id}
                         className={cn(
-                          "relative flex min-w-0 flex-col rounded-2xl border bg-background/60 p-5 transition-all sm:p-6",
+                          "relative flex flex-col rounded-2xl border bg-background/60 p-5 transition-all sm:p-6",
                           plan.recommended
                             ? "border-primary/60 shadow-xl shadow-primary/10"
                             : "border-border hover:border-primary/40",
@@ -245,8 +255,8 @@ export function MembershipDialog({
                       >
                         {plan.badge && <BadgeTag tone={plan.badgeTone}>{plan.badge}</BadgeTag>}
 
-                        <header className="flex flex-wrap items-center gap-2">
-                          <h3 className="whitespace-nowrap text-xl font-bold">{plan.name}</h3>
+                        <header className="flex items-center gap-2">
+                          <h3 className="text-xl font-bold">{plan.name}</h3>
                           {plan.recommended && (
                             <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-orange-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-orange-500">
                               <Sparkles className="h-3 w-3" />
@@ -272,13 +282,14 @@ export function MembershipDialog({
                           {plan.features.map((f, i) => (
                             <li key={i} className="flex items-start gap-2 text-muted-foreground">
                               <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                              <span className="leading-relaxed">{f}</span>
+                              <span className="break-words leading-relaxed">{f}</span>
                             </li>
                           ))}
                         </ul>
 
                         <Button
                           size="lg"
+                          onClick={() => handlePurchase("membership", plan.id)}
                           className={cn(
                             "mt-6 w-full rounded-full font-semibold",
                             plan.recommended
@@ -294,11 +305,11 @@ export function MembershipDialog({
                   : POINTS_PACKAGES.map((pkg) => (
                       <article
                         key={pkg.id}
-                        className="relative flex min-w-0 flex-col rounded-2xl border border-border bg-background/60 p-5 transition-all hover:border-primary/40 sm:p-6"
+                        className="relative flex flex-col rounded-2xl border border-border bg-background/60 p-5 transition-all hover:border-primary/40 sm:p-6"
                       >
                         {pkg.badge && <BadgeTag tone="accent">{pkg.badge}</BadgeTag>}
 
-                        <h3 className="whitespace-nowrap text-xl font-bold tabular-nums">
+                        <h3 className="text-xl font-bold tabular-nums">
                           {pkg.points.toLocaleString()} 点
                         </h3>
 
@@ -319,13 +330,14 @@ export function MembershipDialog({
                           {pkg.features.map((f, i) => (
                             <li key={i} className="flex items-start gap-2 text-muted-foreground">
                               <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                              <span className="leading-relaxed">{f}</span>
+                              <span className="break-words leading-relaxed">{f}</span>
                             </li>
                           ))}
                         </ul>
 
                         <Button
                           size="lg"
+                          onClick={() => handlePurchase("points", pkg.id)}
                           className="mt-6 w-full rounded-full bg-primary font-semibold text-primary-foreground hover:bg-primary/90"
                         >
                           购买
@@ -337,7 +349,7 @@ export function MembershipDialog({
               <div className="mt-6 flex flex-col items-center gap-2 border-t border-border/60 pt-5 text-xs text-muted-foreground sm:flex-row sm:justify-between">
                 <p className="flex items-center gap-1.5">
                   <Zap className="h-3 w-3 text-accent" fill="currentColor" />
-                  支付宝 · 微信 · 银联 · 对公转账 · 可开增值税发票
+                  支付宝 · 微信 · 银联 · ���公转��� · 可开增值税发票
                 </p>
                 <p>购买即视为同意《服务条款》和《会员协议》</p>
               </div>
@@ -349,7 +361,7 @@ export function MembershipDialog({
       <Dialog open={pointsOpen} onOpenChange={setPointsOpen}>
         <DialogContent
           showCloseButton={false}
-          className="w-[calc(100vw-1.5rem)] max-w-3xl gap-0 overflow-hidden p-0 sm:w-[calc(100vw-2rem)]"
+          className="w-[calc(100vw-1.5rem)] max-w-3xl gap-0 overflow-hidden p-0 sm:w-[calc(100vw-2rem)] sm:max-w-3xl"
         >
           <div className="flex items-center justify-between border-b border-border px-4 py-3 sm:px-6 sm:py-4">
             <DialogTitle className="text-base font-semibold sm:text-lg">点数说明</DialogTitle>

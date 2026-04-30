@@ -44,8 +44,8 @@ const sections: SidebarSection[] = [
   {
     label: "账户",
     items: [
-      { href: "/billing", label: "订阅与账单", icon: CreditCard },
-      { href: "/orders", label: "消费记录", icon: Receipt },
+      { href: "/billing", label: "订阅记录", icon: CreditCard },
+      { href: "/billing/records", label: "账单记录", icon: Receipt },
       { href: "/invite", label: "邀请好友", icon: Gift, badge: "NEW" },
     ],
   },
@@ -61,17 +61,17 @@ const sections: SidebarSection[] = [
 const ADMIN_SECTION: SidebarSection = {
   label: "系统设置",
   items: [
-    { href: "/admin-settings/system-settings", label: "系统设置", icon: Plug },
     { href: "/admin-settings/providers", label: "供应商配置", icon: Sparkles },
     { href: "/admin-settings/models", label: "模型配置", icon: Cpu },
     { href: "/admin-settings/prompts", label: "提示词配置", icon: Sparkles },
     { href: "/admin-settings/users", label: "用户管理", icon: Users },
+    { href: "/admin-settings/system-settings", label: "系统设置", icon: Plug },
   ],
 }
 
 export function DashboardSidebar() {
   const pathname = usePathname()
-  const { isAdmin, user } = useUser()
+  const { isAdmin, user, refreshUser } = useUser()
   const [runningCount, setRunningCount] = React.useState<number | null>(null)
 
   // 获取运行中任务数
@@ -94,6 +94,33 @@ export function DashboardSidebar() {
     const interval = setInterval(fetchRunningCount, 10000)
     return () => clearInterval(interval)
   }, [user?.id])
+
+  // 监听用户交互，保持会话活跃
+  React.useEffect(() => {
+    let inactivityTimeout: NodeJS.Timeout
+    
+    const resetInactivityTimer = () => {
+      clearTimeout(inactivityTimeout)
+      // 30 分钟无操作后刷新用户信息
+      inactivityTimeout = setTimeout(() => {
+        refreshUser()
+      }, 30 * 60 * 1000)
+    }
+
+    const events = ['mousedown', 'keydown', 'touchstart', 'click']
+    events.forEach(event => {
+      window.addEventListener(event, resetInactivityTimer)
+    })
+
+    resetInactivityTimer()
+
+    return () => {
+      clearTimeout(inactivityTimeout)
+      events.forEach(event => {
+        window.removeEventListener(event, resetInactivityTimer)
+      })
+    }
+  }, [refreshUser])
 
   return (
     <nav aria-label="用户中心导航" className="rounded-2xl border border-border bg-card p-3">
@@ -131,14 +158,18 @@ export function DashboardSidebar() {
   )
 }
 
+// 需要精确匹配的菜单项（避免前缀匹配高亮父级）
+const EXACT_MATCH_HREFS = new Set(["/dashboard", "/billing"])
+
 function SidebarLink({ item, pathname }: { item: SidebarItem; pathname: string }) {
   const Icon = item.icon
-  
-  // 对于后台设置的菜单项，使用精确匹配；其他菜单项支持前缀匹配
+
+  // 后台设置菜单项和 EXACT_MATCH_HREFS 中的项，使用精确匹配；其他支持前缀匹配
   const isAdminItem = item.href.startsWith("/admin-settings/")
-  const active = isAdminItem 
-    ? pathname === item.href 
-    : pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(`${item.href}/`))
+  const isExactMatch = isAdminItem || EXACT_MATCH_HREFS.has(item.href)
+  const active = isExactMatch
+    ? pathname === item.href
+    : pathname === item.href || pathname.startsWith(`${item.href}/`)
 
   return (
     <li>

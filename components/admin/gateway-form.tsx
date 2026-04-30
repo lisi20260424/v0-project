@@ -1,7 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { AlertCircle, CheckCircle2, Eye, EyeOff, Plug } from "lucide-react"
+import { toast } from "sonner"
+import { Eye, EyeOff, Plug } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -19,13 +20,10 @@ export function GatewayForm({ initialApiKey, initialGatewayUrl, updatedAt }: Pro
   const [showKey, setShowKey] = useState(false)
   const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState(false)
-  const [saveMessage, setSaveMessage] = useState<{ ok: boolean; message: string } | null>(null)
-  const [testResult, setTestResult] = useState<{ ok: boolean; message: string; latency?: number } | null>(null)
 
   async function handleSave(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setSaving(true)
-    setSaveMessage(null)
     try {
       const res = await fetch("/api/admin/gateway", {
         method: "PUT",
@@ -34,13 +32,9 @@ export function GatewayForm({ initialApiKey, initialGatewayUrl, updatedAt }: Pro
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error ?? "保存失败")
-      setSaveMessage({ ok: true, message: "API 网关配置已更新" })
-      setTimeout(() => setSaveMessage(null), 3000)
+      toast.success("API 网关配置已更新")
     } catch (err) {
-      setSaveMessage({
-        ok: false,
-        message: err instanceof Error ? err.message : "保存失败，请稍后重试",
-      })
+      toast.error(err instanceof Error ? err.message : "保存失败，请稍后重试")
     } finally {
       setSaving(false)
     }
@@ -48,7 +42,6 @@ export function GatewayForm({ initialApiKey, initialGatewayUrl, updatedAt }: Pro
 
   async function handleTest() {
     setTesting(true)
-    setTestResult(null)
     try {
       const res = await fetch("/api/admin/gateway/test", {
         method: "POST",
@@ -56,16 +49,11 @@ export function GatewayForm({ initialApiKey, initialGatewayUrl, updatedAt }: Pro
         body: JSON.stringify({ apiKey, gatewayUrl }),
       })
       const json = await res.json()
-      setTestResult({
-        ok: !!json.ok,
-        message: json.message ?? (json.ok ? "连接成功" : "连接失败"),
-        latency: typeof json.latency === "number" ? json.latency : undefined,
-      })
+      if (!json.ok) throw new Error(json.message ?? "连接失败")
+      const latency = typeof json.latency === "number" ? json.latency : 0
+      toast.success(`连接成功（耗时 ${latency} ms）`)
     } catch (err) {
-      setTestResult({
-        ok: false,
-        message: err instanceof Error ? err.message : "网络错误",
-      })
+      toast.error(err instanceof Error ? err.message : "网络错误")
     } finally {
       setTesting(false)
     }
@@ -122,43 +110,6 @@ export function GatewayForm({ initialApiKey, initialGatewayUrl, updatedAt }: Pro
           </div>
         </div>
       </section>
-
-      {testResult ? (
-        <div
-          className={
-            testResult.ok
-              ? "flex items-start gap-2 rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-xs text-primary"
-              : "flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive"
-          }
-        >
-          {testResult.ok ? (
-            <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          ) : (
-            <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          )}
-          <span>
-            {testResult.message}
-            {typeof testResult.latency === "number" ? `（耗时 ${testResult.latency} ms）` : null}
-          </span>
-        </div>
-      ) : null}
-
-      {saveMessage ? (
-        <div
-          className={
-            saveMessage.ok
-              ? "flex items-start gap-2 rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-xs text-primary"
-              : "flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive"
-          }
-        >
-          {saveMessage.ok ? (
-            <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          ) : (
-            <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          )}
-          <span>{saveMessage.message}</span>
-        </div>
-      ) : null}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-xs text-muted-foreground">
