@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
@@ -16,6 +16,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { platformAPI } from "@/lib/platform-api"
 
 export function DeleteAccountDialog({ email }: { email: string }) {
   const router = useRouter()
@@ -31,11 +32,11 @@ export function DeleteAccountDialog({ email }: { email: string }) {
     setError(null)
     setLoading(true)
     try {
-      const res = await fetch("/api/account/delete", { method: "POST" })
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        throw new Error(data.error || "删除失败")
-      }
+      const token = localStorage.getItem("accessToken") ?? ""
+      if (!token) throw new Error("请先登录后再试")
+      await platformAPI.deleteAccount(token)
+      localStorage.removeItem("accessToken")
+      localStorage.removeItem("refreshToken")
       setOpen(false)
       router.push("/")
       router.refresh()
@@ -65,14 +66,12 @@ export function DeleteAccountDialog({ email }: { email: string }) {
         </DialogHeader>
 
         <div className="flex flex-col gap-3 text-sm">
-          <p className="text-muted-foreground">
-            删除账号后，以下数据将被永久清除：
-          </p>
+          <p className="text-muted-foreground">删除账号后，以下数据将被永久清除：</p>
           <ul className="ml-4 list-disc space-y-1 text-muted-foreground">
             <li>账号信息与绑定关系（{email}）</li>
             <li>所有生成任务与作品记录</li>
             <li>未使用的点数余额和会员权益</li>
-            <li>订单记录将脱敏后保留供财务审计</li>
+            <li>订单记录将脱敏后保留用于财务审计</li>
           </ul>
 
           <div className="flex flex-col gap-1.5 pt-2">

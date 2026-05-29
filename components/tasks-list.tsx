@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import Image from "next/image"
@@ -22,6 +22,7 @@ import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { platformAPI } from "@/lib/platform-api"
 
 type TaskType = "video" | "image" | "music"
 type TaskStatus = "queued" | "running" | "success" | "failed"
@@ -50,9 +51,9 @@ const TYPE_ICON: Record<TaskType, typeof Video> = {
 }
 
 const TYPE_LABEL: Record<TaskType, string> = {
-  video: "视频",
-  image: "图像",
-  music: "音乐",
+  video: "瑙嗛",
+  image: "鍥惧儚",
+  music: "闊充箰",
 }
 
 const STATUS_META: Record<
@@ -60,25 +61,25 @@ const STATUS_META: Record<
   { label: string; icon: typeof Loader2; className: string; dotClass: string }
 > = {
   queued: {
-    label: "排队中",
+    label: "鎺掗槦涓?,
     icon: Clock,
     className: "bg-muted text-muted-foreground",
     dotClass: "bg-muted-foreground",
   },
   running: {
-    label: "生成中",
+    label: "鐢熸垚涓?,
     icon: Loader2,
     className: "bg-primary/10 text-primary",
     dotClass: "bg-primary animate-pulse",
   },
   success: {
-    label: "已完成",
+    label: "宸插畬鎴?,
     icon: CheckCircle2,
     className: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
     dotClass: "bg-emerald-500",
   },
   failed: {
-    label: "失败",
+    label: "澶辫触",
     icon: XCircle,
     className: "bg-destructive/10 text-destructive",
     dotClass: "bg-destructive",
@@ -86,10 +87,10 @@ const STATUS_META: Record<
 }
 
 const FILTERS: { value: TaskStatus | "all"; label: string }[] = [
-  { value: "all", label: "全部" },
-  { value: "running", label: "进行中" },
-  { value: "success", label: "已完成" },
-  { value: "failed", label: "失败" },
+  { value: "all", label: "鍏ㄩ儴" },
+  { value: "running", label: "杩涜涓? },
+  { value: "success", label: "宸插畬鎴? },
+  { value: "failed", label: "澶辫触" },
 ]
 
 function formatDateTime(iso: string): string {
@@ -115,18 +116,16 @@ export function TasksList() {
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
 
-  // 拉取任务列表
+  // 鎷夊彇浠诲姟鍒楄〃
   const refresh = React.useCallback(async () => {
     try {
-      const res = await fetch("/api/tasks?limit=100", { cache: "no-store" })
-      if (!res.ok) {
-        throw new Error("加载任务失败")
-      }
-      const data = await res.json()
-      setTasks(data.tasks ?? [])
+      const token = localStorage.getItem("accessToken") ?? ""
+      if (!token) throw new Error("请先登录后再试")
+      const data = await platformAPI.listTasks(token)
+      setTasks(data.data?.tasks ?? [])
       setError(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "加载失败")
+      setError(err instanceof Error ? err.message : "鍔犺浇澶辫触")
     } finally {
       setLoading(false)
     }
@@ -136,7 +135,7 @@ export function TasksList() {
     refresh()
   }, [refresh])
 
-  // 当存在 running/queued 任务时，每 5 秒刷新一次
+  // 褰撳瓨鍦?running/queued 浠诲姟鏃讹紝姣?5 绉掑埛鏂颁竴娆?
   const hasPending = React.useMemo(
     () => tasks.some((t) => t.status === "running" || t.status === "queued"),
     [tasks],
@@ -148,7 +147,7 @@ export function TasksList() {
     return () => clearInterval(timer)
   }, [hasPending, refresh])
 
-  // 对每个 running 任务单独触发一次轮询，让服务端去查上游
+  // 瀵规瘡涓?running 浠诲姟鍗曠嫭瑙﹀彂涓€娆¤疆璇紝璁╂湇鍔＄鍘绘煡涓婃父
   React.useEffect(() => {
     const running = tasks.filter((t) => t.status === "running")
     if (running.length === 0) return
@@ -158,9 +157,10 @@ export function TasksList() {
       for (const id of ids) {
         if (cancelled) break
         try {
-          const res = await fetch(`/api/tasks/${id}`, { cache: "no-store" })
-          if (!res.ok) continue
-          const { task } = await res.json()
+          const token = localStorage.getItem("accessToken") ?? ""
+          if (!token) continue
+          const polled = await platformAPI.getTask(token, id)
+          const task = polled.data
           if (cancelled) break
           if (task) {
             setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, ...task } : t)))
@@ -200,15 +200,16 @@ export function TasksList() {
   )
 
   async function handleDelete(id: string) {
-    if (!confirm("确认删除这条任务记录？")) return
+    if (!confirm("纭鍒犻櫎杩欐潯浠诲姟璁板綍锛?)) return
     const prev = tasks
     setTasks((p) => p.filter((t) => t.id !== id))
     try {
-      const res = await fetch(`/api/tasks/${id}`, { method: "DELETE" })
-      if (!res.ok) throw new Error("删除失败")
+      const token = localStorage.getItem("accessToken") ?? ""
+      if (!token) throw new Error("请先登录后再试")
+      await platformAPI.deleteTask(token, id)
     } catch {
       setTasks(prev)
-      toast.error("删除失败")
+      toast.error("鍒犻櫎澶辫触")
     }
   }
 
@@ -223,15 +224,15 @@ export function TasksList() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">我的任务</h1>
-        <p className="mt-1 text-sm text-muted-foreground">查看所有正在进行和历史的生成任务，失败任务会自动退回点数。</p>
+        <h1 className="text-2xl font-bold tracking-tight">鎴戠殑浠诲姟</h1>
+        <p className="mt-1 text-sm text-muted-foreground">鏌ョ湅鎵€鏈夋鍦ㄨ繘琛屽拰鍘嗗彶鐨勭敓鎴愪换鍔★紝澶辫触浠诲姟浼氳嚜鍔ㄩ€€鍥炵偣鏁般€?/p>
       </div>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <StatCard label="进行中" value={stats.running} accent="text-primary" />
-        <StatCard label="已完成" value={stats.success} accent="text-emerald-500" />
-        <StatCard label="失败" value={stats.failed} accent="text-destructive" />
-        <StatCard label="累计消耗" value={stats.spend} suffix="点" accent="text-accent" />
+        <StatCard label="杩涜涓? value={stats.running} accent="text-primary" />
+        <StatCard label="宸插畬鎴? value={stats.success} accent="text-emerald-500" />
+        <StatCard label="澶辫触" value={stats.failed} accent="text-destructive" />
+        <StatCard label="绱娑堣€? value={stats.spend} suffix="鐐? accent="text-accent" />
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -249,7 +250,7 @@ export function TasksList() {
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="搜索提示词或模型"
+            placeholder="鎼滅储鎻愮ず璇嶆垨妯″瀷"
             className="h-9 w-full pl-8 sm:w-64"
           />
         </div>
@@ -259,7 +260,7 @@ export function TasksList() {
         {loading ? (
           <div className="flex items-center justify-center gap-2 rounded-2xl border border-border bg-card p-12 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
-            加载中...
+            鍔犺浇涓?..
           </div>
         ) : error ? (
           <div className="rounded-2xl border border-destructive/40 bg-destructive/5 p-12 text-center text-sm text-destructive">
@@ -267,7 +268,7 @@ export function TasksList() {
           </div>
         ) : filtered.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center">
-            <p className="text-sm text-muted-foreground">{tasks.length === 0 ? "还没有任务，去试试图片或视频生成吧" : "没有找到匹配的任务"}</p>
+            <p className="text-sm text-muted-foreground">{tasks.length === 0 ? "杩樻病鏈変换鍔★紝鍘昏瘯璇曞浘鐗囨垨瑙嗛鐢熸垚鍚? : "娌℃湁鎵惧埌鍖归厤鐨勪换鍔?}</p>
           </div>
         ) : (
           filtered.map((task) => (
@@ -372,18 +373,18 @@ function TaskRow({
               {meta.label}
             </span>
             <span className="text-xs font-medium text-foreground">
-              {task.tool_label || `${task.model_name} · ${TYPE_LABEL[task.type]}`}
+              {task.tool_label || `${task.model_name} 路 ${TYPE_LABEL[task.type]}`}
             </span>
             <span className="text-xs text-muted-foreground">#{shortId(task.id)}</span>
             <span className="ml-auto flex items-center gap-1 text-xs text-muted-foreground">
               <Zap className="h-3 w-3 text-accent" fill="currentColor" />
-              {task.cost} 点
+              {task.cost} 鐐?
             </span>
           </div>
 
           <p className="mt-2 line-clamp-2 text-sm text-foreground/85">{task.prompt}</p>
 
-          {/* 音乐结果在行内提供播放器 */}
+          {/* 闊充箰缁撴灉鍦ㄨ鍐呮彁渚涙挱鏀惧櫒 */}
           {isMusic && firstUrl && task.status === "success" && (
             <audio src={firstUrl} controls className="mt-2 h-8 w-full max-w-md" />
           )}
@@ -392,9 +393,9 @@ function TaskRow({
             <div className="text-xs text-muted-foreground">
               {formatDateTime(task.created_at)}
               {task.completed_at && task.status === "success" && (
-                <span className="ml-2">· 完成 {formatDateTime(task.completed_at)}</span>
+                <span className="ml-2">路 瀹屾垚 {formatDateTime(task.completed_at)}</span>
               )}
-              {task.error_message && <span className="ml-2 text-destructive">· {task.error_message}</span>}
+              {task.error_message && <span className="ml-2 text-destructive">路 {task.error_message}</span>}
             </div>
 
             <div className="flex items-center gap-1">
@@ -408,7 +409,7 @@ function TaskRow({
                     className="inline-flex h-7 items-center gap-1 rounded-md px-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
                   >
                     <Download className="h-3.5 w-3.5" />
-                    下载
+                    涓嬭浇
                   </a>
                   <Button
                     size="sm"
@@ -417,7 +418,7 @@ function TaskRow({
                     onClick={onCopyPrompt}
                   >
                     <Copy className="h-3.5 w-3.5" />
-                    复制提示词
+                    澶嶅埗鎻愮ず璇?
                   </Button>
                 </>
               )}
@@ -425,7 +426,7 @@ function TaskRow({
                 size="icon"
                 variant="ghost"
                 className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                aria-label="删除"
+                aria-label="鍒犻櫎"
                 onClick={onDelete}
               >
                 <Trash2 className="h-3.5 w-3.5" />
@@ -436,7 +437,7 @@ function TaskRow({
           {task.status === "running" && (
             <div className="mt-3">
               <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                <span>生成进度</span>
+                <span>鐢熸垚杩涘害</span>
                 <span className="tabular-nums">{task.progress}%</span>
               </div>
               <Progress value={task.progress} className="mt-1 h-1" />
@@ -447,3 +448,5 @@ function TaskRow({
     </article>
   )
 }
+
+

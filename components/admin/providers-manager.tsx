@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
@@ -68,8 +68,8 @@ export function ProvidersManager({ initialProviders }: { initialProviders: Admin
     }>
   }) {
     const isEdit = !!form.id
-    const url = isEdit ? `/api/admin/providers/${form.id}` : "/api/admin/providers"
-    // 把 uiByType / endpointsByType 编码到 config，清理空值
+    const url = isEdit ? `/v1/admin/providers/${form.id}` : "/v1/admin/providers"
+    // 鎶?uiByType / endpointsByType 缂栫爜鍒?config锛屾竻鐞嗙┖鍊?
     const cleanUiByType: any = {}
     for (const [type, ui] of Object.entries(form.uiByType)) {
       cleanUiByType[type] = {
@@ -93,14 +93,15 @@ export function ProvidersManager({ initialProviders }: { initialProviders: Admin
       ...form,
       config: { ui_by_type: cleanUiByType, endpoints: cleanEndpoints },
     }
+    const token = localStorage.getItem("accessToken") ?? ""
     const res = await fetch(url, {
       method: isEdit ? "PATCH" : "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
       body: JSON.stringify(payload),
     })
     const json = await res.json()
     if (!res.ok) {
-      throw new Error(json.error ?? "保存失败")
+      throw new Error(json.error ?? "淇濆瓨澶辫触")
     }
     const saved = json.provider as AdminProvider
     setProviders((prev) => {
@@ -108,23 +109,24 @@ export function ProvidersManager({ initialProviders }: { initialProviders: Admin
       if (exists) return prev.map((p) => (p.id === saved.id ? saved : p))
       return [saved, ...prev]
     })
-    showBanner({ ok: true, message: isEdit ? "供应商已更新" : "供应商已创建" })
+    showBanner({ ok: true, message: isEdit ? "渚涘簲鍟嗗凡鏇存柊" : "渚涘簲鍟嗗凡鍒涘缓" })
     router.refresh()
   }
 
   async function handleToggle(provider: AdminProvider, enabled: boolean) {
     setPendingId(provider.id)
     try {
-      const res = await fetch(`/api/admin/providers/${provider.id}`, {
+      const token = localStorage.getItem("accessToken") ?? ""
+      const res = await fetch(`/v1/admin/providers/${provider.id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ enabled }),
       })
-      if (!res.ok) throw new Error("更新失败")
+      if (!res.ok) throw new Error("鏇存柊澶辫触")
       setProviders((prev) => prev.map((p) => (p.id === provider.id ? { ...p, enabled } : p)))
       router.refresh()
     } catch (err) {
-      showBanner({ ok: false, message: err instanceof Error ? err.message : "更新失败" })
+      showBanner({ ok: false, message: err instanceof Error ? err.message : "鏇存柊澶辫触" })
     } finally {
       setPendingId(null)
     }
@@ -133,13 +135,14 @@ export function ProvidersManager({ initialProviders }: { initialProviders: Admin
   async function handleDelete(provider: AdminProvider) {
     setPendingId(provider.id)
     try {
-      const res = await fetch(`/api/admin/providers/${provider.id}`, { method: "DELETE" })
-      if (!res.ok) throw new Error("删除失败")
+      const token = localStorage.getItem("accessToken") ?? ""
+      const res = await fetch(`/v1/admin/providers/${provider.id}`, { method: "DELETE", headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) } })
+      if (!res.ok) throw new Error("鍒犻櫎澶辫触")
       setProviders((prev) => prev.filter((p) => p.id !== provider.id))
-      showBanner({ ok: true, message: "供应商已删除" })
+      showBanner({ ok: true, message: "渚涘簲鍟嗗凡鍒犻櫎" })
       router.refresh()
     } catch (err) {
-      showBanner({ ok: false, message: err instanceof Error ? err.message : "删除失败" })
+      showBanner({ ok: false, message: err instanceof Error ? err.message : "鍒犻櫎澶辫触" })
     } finally {
       setPendingId(null)
       setDeleteTarget(null)
@@ -156,17 +159,17 @@ export function ProvidersManager({ initialProviders }: { initialProviders: Admin
       )}
 
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">供应商列表</h2>
+        <h2 className="text-lg font-semibold">渚涘簲鍟嗗垪琛?/h2>
         <Button onClick={() => setCreating(true)} size="sm" className="h-8">
           <Plus className="h-4 w-4 mr-1" />
-          新建供应商
+          鏂板缓渚涘簲鍟?
         </Button>
       </div>
 
       <div className="space-y-2">
         {providers.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border bg-muted/30 px-4 py-8 text-center text-sm text-muted-foreground">
-            暂无供应商配置
+            鏆傛棤渚涘簲鍟嗛厤缃?
           </div>
         ) : (
           providers.map((provider) => (
@@ -179,11 +182,11 @@ export function ProvidersManager({ initialProviders }: { initialProviders: Admin
                   </Badge>
                   {provider.enabled ? (
                     <Badge variant="outline" className="bg-emerald-500/10 text-emerald-700 border-emerald-200 text-[10px]">
-                      已启用
+                      宸插惎鐢?
                     </Badge>
                   ) : (
                     <Badge variant="outline" className="text-[10px]">
-                      已禁用
+                      宸茬鐢?
                     </Badge>
                   )}
                 </div>
@@ -202,7 +205,7 @@ export function ProvidersManager({ initialProviders }: { initialProviders: Admin
                   onClick={() => setEditing(provider)}
                   className="h-8 w-8 p-0"
                 >
-                  ✏️
+                  鉁忥笍
                 </Button>
                 <Button
                   variant="ghost"
@@ -233,17 +236,19 @@ export function ProvidersManager({ initialProviders }: { initialProviders: Admin
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>删除供应商</AlertDialogTitle>
+            <AlertDialogTitle>鍒犻櫎渚涘簲鍟?/AlertDialogTitle>
             <AlertDialogDescription>
-              确定要删除供应商 "{deleteTarget?.display_name}" 吗？此操作无法撤销。
+              纭畾瑕佸垹闄や緵搴斿晢 "{deleteTarget?.display_name}" 鍚楋紵姝ゆ搷浣滄棤娉曟挙閿€銆?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction onClick={() => deleteTarget && handleDelete(deleteTarget)}>删除</AlertDialogAction>
+            <AlertDialogCancel>鍙栨秷</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deleteTarget && handleDelete(deleteTarget)}>鍒犻櫎</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>
   )
 }
+
+

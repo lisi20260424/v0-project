@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import Image from "next/image"
@@ -25,6 +25,7 @@ import { getVideoDimensions } from "@/lib/ratio-dimensions-mapping"
 import type { VideoCapabilities } from "@/lib/model-capabilities"
 import { useUser } from "@/components/user-provider"
 import { useMembership } from "@/components/membership-provider"
+import { platformAPI } from "@/lib/platform-api"
 
 export type VideoGeneratorModelData = {
   id: string
@@ -51,9 +52,9 @@ export type VideoGeneratorProps = {
 }
 
 const DEFAULT_EXAMPLES = [
-  "夜晚的东京街头，霓虹灯倒映在湿润的路面上，一只虎斑猫悠闲地踱步，镜头缓缓跟随",
-  "一杯拿铁被缓缓倒入透明玻璃杯，奶泡形成爱心图案，微距特写，自然光",
-  "中国水墨画风格，远山云海翻涌，一叶扁舟顺流而下，诗意悠远",
+  "澶滄櫄鐨勪笢浜澶达紝闇撹櫣鐏€掓槧鍦ㄦ箍娑︾殑璺潰涓婏紝涓€鍙檸鏂戠尗鎮犻棽鍦拌副姝ワ紝闀滃ご缂撶紦璺熼殢",
+  "涓€鏉嬁閾佽缂撶紦鍊掑叆閫忔槑鐜荤拑鏉紝濂舵场褰㈡垚鐖卞績鍥炬锛屽井璺濈壒鍐欙紝鑷劧鍏?,
+  "涓浗姘村ⅷ鐢婚鏍硷紝杩滃北浜戞捣缈绘秾锛屼竴鍙舵墎鑸熼『娴佽€屼笅锛岃瘲鎰忔偁杩?,
 ]
 
 type UploadSlotProps = {
@@ -85,14 +86,14 @@ function UploadSlot({ label, hint, value, onChange, className }: UploadSlotProps
         <>
           <Image
             src={value || "/placeholder.svg"}
-            alt="参考图片预览"
+            alt="鍙傝€冨浘鐗囬瑙?
             fill
             className="object-cover"
             unoptimized
           />
           <button
             type="button"
-            aria-label="移除图片"
+            aria-label="绉婚櫎鍥剧墖"
             onClick={(e) => {
               e.stopPropagation()
               onChange(null)
@@ -114,7 +115,7 @@ function UploadSlot({ label, hint, value, onChange, className }: UploadSlotProps
   )
 }
 
-const ACCENT_LABEL = "◇"
+const ACCENT_LABEL = "鈼?
 
 export function VideoGenerator({
   models,
@@ -126,16 +127,16 @@ export function VideoGenerator({
   const { user } = useUser()
   const membership = useMembership()
   
-  // 没有后台配置时，回退到内置示例，保证空数据库下也能给用户灵感
+  // 娌℃湁鍚庡彴閰嶇疆鏃讹紝鍥為€€鍒板唴缃ず渚嬶紝淇濊瘉绌烘暟鎹簱涓嬩篃鑳界粰鐢ㄦ埛鐏垫劅
   const promptChips: PromptChip[] =
     prompts.length > 0
       ? prompts
-      : DEFAULT_EXAMPLES.map((p, i) => ({ id: `default-${i}`, title: `示例 ${i + 1}`, content: p }))
-  // 空状态
+      : DEFAULT_EXAMPLES.map((p, i) => ({ id: `default-${i}`, title: `绀轰緥 ${i + 1}`, content: p }))
+  // 绌虹姸鎬?
   if (!models.length) {
     return (
       <div className="rounded-2xl border border-dashed border-border bg-card p-10 text-center text-sm text-muted-foreground">
-        当前供应商暂未启用任何视频模型，请先在系统设置中启用对应模型。
+        褰撳墠渚涘簲鍟嗘殏鏈惎鐢ㄤ换浣曡棰戞ā鍨嬶紝璇峰厛鍦ㄧ郴缁熻缃腑鍚敤瀵瑰簲妯″瀷銆?
       </div>
     )
   }
@@ -144,7 +145,7 @@ export function VideoGenerator({
   const model = models.find((m) => m.id === modelId) ?? models[0]
   const cap = model.capabilities
 
-  // 当模型切换时，把比例/时长/参考图模式重置为该模型支持的首项
+  // 褰撴ā鍨嬪垏鎹㈡椂锛屾妸姣斾緥/鏃堕暱/鍙傝€冨浘妯″紡閲嶇疆涓鸿妯″瀷鏀寔鐨勯椤?
   const [ratioId, setRatioId] = React.useState<string>(cap.ratios[0]?.id ?? "169")
   const [durationId, setDurationId] = React.useState<string | undefined>(cap.durations[0]?.id)
   const [count, setCount] = React.useState<number>(cap.counts[0] ?? 1)
@@ -152,7 +153,7 @@ export function VideoGenerator({
   const [imageSubMode, setImageSubMode] = React.useState<"frames" | "multi">("frames")
 
   React.useEffect(() => {
-    // 切换模型时校验当前选中项是否仍在允许集中
+    // 鍒囨崲妯″瀷鏃舵牎楠屽綋鍓嶉€変腑椤规槸鍚︿粛鍦ㄥ厑璁搁泦涓?
     if (!cap.ratios.find((r) => r.id === ratioId)) setRatioId(cap.ratios[0]?.id ?? "169")
     if (durationId && !cap.durations.find((d) => d.id === durationId)) setDurationId(cap.durations[0]?.id)
     if (!cap.counts.includes(count)) setCount(cap.counts[0] ?? 1)
@@ -201,9 +202,9 @@ export function VideoGenerator({
     if (!prompt.trim()) return
     if (mode === "image" && !hasImage) return
 
-    // 检查用户是否登录
+    // 妫€鏌ョ敤鎴锋槸鍚︾櫥褰?
     if (!user) {
-      toast.error("请先登录或注册账户")
+      toast.error("璇峰厛鐧诲綍鎴栨敞鍐岃处鎴?)
       membership.open("login")
       return
     }
@@ -214,38 +215,29 @@ export function VideoGenerator({
 
     setLoading(true)
     setProgress(0)
-    setStatusMsg("提交任务中...")
+    setStatusMsg("鎻愪氦浠诲姟涓?..")
     setResults([])
     try {
       const { width, height } = getVideoDimensions(ratioId)
       const duration = durationId ? parseInt(durationId) : 5
 
-      const response = await fetch("/api/tasks", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: "video",
-          modelId: model.id,
-          prompt,
-          params: {
-            duration,
-            width,
-            height,
-            fps: 24,
-            n: count,
-            ratio: ratio?.ratio,
-            negative: negative || undefined,
-          },
-        }),
+      const token = localStorage.getItem("accessToken") ?? ""
+      if (!token) throw new Error("请先登录后再试")
+      const { data: task } = await platformAPI.createTask(token, {
+        type: "video",
+        modelId: model.id,
+        prompt,
+        params: {
+          duration,
+          width,
+          height,
+          fps: 24,
+          n: count,
+          ratio: ratio?.ratio,
+          negative: negative || undefined,
+        },
       })
-
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({}))
-        throw new Error(err.error || "生成失败")
-      }
-
-      const { task } = await response.json()
-      if (!task) throw new Error("未获取到任务信息")
+      if (!task) throw new Error("鏈幏鍙栧埌浠诲姟淇℃伅")
 
       if (task.status === "success") {
         setResults(task.result_urls ?? [])
@@ -253,17 +245,17 @@ export function VideoGenerator({
         return
       }
       if (task.status === "failed") {
-        throw new Error(task.error_message || "生成失败")
+        throw new Error(task.error_message || "鐢熸垚澶辫触")
       }
 
-      // 异步任务：开始轮询
-      setStatusMsg("视频渲染中，请耐心等待...")
+      // 寮傛浠诲姟锛氬紑濮嬭疆璇?
+      setStatusMsg("瑙嗛娓叉煋涓紝璇疯€愬績绛夊緟...")
       setProgress(task.progress ?? 5)
       await pollTask(task.id, abortToken)
     } catch (error) {
       if (!abortToken.cancelled) {
         console.error("[v0] Generation error:", error)
-        const msg = error instanceof Error ? error.message : "生成失败，请重试"
+        const msg = error instanceof Error ? error.message : "鐢熸垚澶辫触锛岃閲嶈瘯"
         toast.error(msg)
       }
     } finally {
@@ -279,18 +271,16 @@ export function VideoGenerator({
     while (!abortToken.cancelled) {
       await new Promise((r) => setTimeout(r, 2500))
       if (abortToken.cancelled) return
-      let res: Response
+      let latest: any
       try {
-        res = await fetch(`/api/tasks/${taskId}`, { cache: "no-store" })
-      } catch (e) {
-        // 网络错误时短暂等待继续
+        const token = localStorage.getItem("accessToken") ?? ""
+        if (!token) throw new Error("请先登录后再试")
+        const polled = await platformAPI.getTask(token, taskId)
+        latest = polled.data
+      } catch {
         continue
       }
-      if (!res.ok) {
-        throw new Error("查询任务状态失败")
-      }
-      const { task: latest } = await res.json()
-      if (!latest) throw new Error("任务不存在")
+      if (!latest) throw new Error("浠诲姟涓嶅瓨鍦?)
 
       if (typeof latest.progress === "number") setProgress(latest.progress)
 
@@ -300,16 +290,16 @@ export function VideoGenerator({
         return
       }
       if (latest.status === "failed") {
-        throw new Error(latest.error_message || "生成失败")
+        throw new Error(latest.error_message || "鐢熸垚澶辫触")
       }
-      // 超过 30 分钟则放弃
+      // 瓒呰繃 30 鍒嗛挓鍒欐斁寮?
       if (Date.now() - startedAt > 30 * 60 * 1000) {
-        throw new Error("视频生成超时，请稍后查看「我的任务」")
+        throw new Error("瑙嗛鐢熸垚瓒呮椂锛岃绋嶅悗鏌ョ湅銆屾垜鐨勪换鍔°€?)
       }
     }
   }
 
-  // 根据 ratio.w/h 动态计算宽高比；竖屏用窄宽度避免太高，方屏适中，横屏占满
+  // 鏍规嵁 ratio.w/h 鍔ㄦ€佽绠楀楂樻瘮锛涚珫灞忕敤绐勫搴﹂伩鍏嶅お楂橈紝鏂瑰睆閫備腑锛屾í灞忓崰婊?
   const ratioW = ratio?.w ?? 16
   const ratioH = ratio?.h ?? 9
   const isPortrait = ratioH > ratioW
@@ -342,7 +332,7 @@ export function VideoGenerator({
               )}
             >
               <Type className="h-4 w-4" />
-              文生视频
+              鏂囩敓瑙嗛
             </button>
             <button
               type="button"
@@ -355,7 +345,7 @@ export function VideoGenerator({
               )}
             >
               <ImageIcon className="h-4 w-4" />
-              图生视频
+              鍥剧敓瑙嗛
             </button>
           </div>
         )}
@@ -376,7 +366,7 @@ export function VideoGenerator({
                   )}
                 >
                   <Film className="h-4 w-4" />
-                  首尾帧
+                  棣栧熬甯?
                 </button>
                 <button
                   type="button"
@@ -389,7 +379,7 @@ export function VideoGenerator({
                   )}
                 >
                   <Images className="h-4 w-4" />
-                  多图参考
+                  澶氬浘鍙傝€?
                 </button>
               </div>
             )}
@@ -397,9 +387,9 @@ export function VideoGenerator({
             {cap.imageCapability === "single" && (
               <div>
                 <Label className="mb-1 block text-sm font-medium">
-                  <span className="mr-1 text-primary">{ACCENT_LABEL}</span> 参考图片
+                  <span className="mr-1 text-primary">{ACCENT_LABEL}</span> 鍙傝€冨浘鐗?
                 </Label>
-                <p className="mb-3 text-xs text-primary/90">上传图片后，视频尺寸将跟随图片尺寸</p>
+                <p className="mb-3 text-xs text-primary/90">涓婁紶鍥剧墖鍚庯紝瑙嗛灏哄灏嗚窡闅忓浘鐗囧昂瀵?/p>
                 <SingleUpload value={singleImage} onChange={setSingleImage} />
               </div>
             )}
@@ -407,34 +397,34 @@ export function VideoGenerator({
             {cap.imageCapability === "frames" && imageSubMode === "frames" && (
               <div>
                 <Label className="mb-3 block text-sm font-medium">
-                  <span className="mr-1 text-primary">{ACCENT_LABEL}</span> 首尾帧
+                  <span className="mr-1 text-primary">{ACCENT_LABEL}</span> 棣栧熬甯?
                 </Label>
                 <div className="flex items-center gap-2">
-                  <UploadSlot label="上传首帧" value={frameStart} onChange={setFrameStart} className="flex-1" />
+                  <UploadSlot label="涓婁紶棣栧抚" value={frameStart} onChange={setFrameStart} className="flex-1" />
                   <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
-                  <UploadSlot label="上传尾帧" hint="选填" value={frameEnd} onChange={setFrameEnd} className="flex-1" />
+                  <UploadSlot label="涓婁紶灏惧抚" hint="閫夊～" value={frameEnd} onChange={setFrameEnd} className="flex-1" />
                 </div>
-                <p className="mt-2 text-xs text-muted-foreground">仅上传首帧可生成自然过渡；提供尾帧将引导镜头终点画���</p>
+                <p className="mt-2 text-xs text-muted-foreground">浠呬笂浼犻甯у彲鐢熸垚鑷劧杩囨浮锛涙彁渚涘熬甯у皢寮曞闀滃ご缁堢偣鐢伙拷锟斤拷</p>
               </div>
             )}
 
             {cap.imageCapability === "frames" && imageSubMode === "multi" && (
               <div>
                 <Label className="mb-3 block text-sm font-medium">
-                  <span className="mr-1 text-primary">{ACCENT_LABEL}</span> 参考图
+                  <span className="mr-1 text-primary">{ACCENT_LABEL}</span> 鍙傝€冨浘
                 </Label>
                 <div className="grid grid-cols-3 gap-2">
                   {multiImages.map((img, i) => (
                     <UploadSlot
                       key={i}
-                      label="上传图片"
-                      hint={i === 0 ? undefined : "选填"}
+                      label="涓婁紶鍥剧墖"
+                      hint={i === 0 ? undefined : "閫夊～"}
                       value={img}
                       onChange={(v) => updateMultiAt(i, v)}
                     />
                   ))}
                 </div>
-                <p className="mt-2 text-xs text-muted-foreground">最多上传 {cap.multiImageSlots} 张参考图，综合引导画面风格与主体</p>
+                <p className="mt-2 text-xs text-muted-foreground">鏈€澶氫笂浼?{cap.multiImageSlots} 寮犲弬鑰冨浘锛岀患鍚堝紩瀵肩敾闈㈤鏍间笌涓讳綋</p>
               </div>
             )}
           </div>
@@ -445,7 +435,7 @@ export function VideoGenerator({
           <div className="mb-2 flex items-center justify-between">
             <Label htmlFor="prompt" className="text-sm font-medium">
               <span className="mr-1 text-primary">{ACCENT_LABEL}</span>{" "}
-              {mode === "image" ? "描述您的视频场景" : "提示词"}
+              {mode === "image" ? "鎻忚堪鎮ㄧ殑瑙嗛鍦烘櫙" : "鎻愮ず璇?}
             </Label>
             <span className="text-xs tabular-nums text-muted-foreground">
               {prompt.length} / {cap.maxPromptLength}
@@ -457,8 +447,8 @@ export function VideoGenerator({
             onChange={(e) => setPrompt(e.target.value.slice(0, cap.maxPromptLength))}
             placeholder={
               mode === "image"
-                ? "结合图片，描述你想生成的画面…"
-                : "描述你想要的画面，例如：镜头语言、主体、风格、光线、声音等。越详细，生成越精准。"
+                ? "缁撳悎鍥剧墖锛屾弿杩颁綘鎯崇敓鎴愮殑鐢婚潰鈥?
+                : "鎻忚堪浣犳兂瑕佺殑鐢婚潰锛屼緥濡傦細闀滃ご璇█銆佷富浣撱€侀鏍笺€佸厜绾裤€佸０闊崇瓑銆傝秺璇︾粏锛岀敓鎴愯秺绮惧噯銆?
             }
             className="min-h-[140px] resize-none bg-background"
           />
@@ -484,13 +474,13 @@ export function VideoGenerator({
         {cap.supportsNegativePrompt && (
           <div className="mt-5">
             <Label htmlFor="video-negative" className="mb-2 block text-sm font-medium">
-              <span className="mr-1 text-primary">{ACCENT_LABEL}</span> 负向提示词（可选���
+              <span className="mr-1 text-primary">{ACCENT_LABEL}</span> 璐熷悜鎻愮ず璇嶏紙鍙€夛拷锟斤拷
             </Label>
             <Textarea
               id="video-negative"
               value={negative}
               onChange={(e) => setNegative(e.target.value.slice(0, 500))}
-              placeholder="不希望出现的元素，例如：模糊、抖动、变形、低画质"
+              placeholder="涓嶅笇鏈涘嚭鐜扮殑鍏冪礌锛屼緥濡傦細妯＄硦銆佹姈鍔ㄣ€佸彉褰€佷綆鐢昏川"
               className="min-h-[60px] resize-none bg-background"
             />
           </div>
@@ -499,7 +489,7 @@ export function VideoGenerator({
         {/* Model */}
         <div className="mt-6">
           <Label className="mb-2 block text-sm font-medium">
-            <span className="mr-1 text-primary">{ACCENT_LABEL}</span> 模型版本
+            <span className="mr-1 text-primary">{ACCENT_LABEL}</span> 妯″瀷鐗堟湰
           </Label>
           <div className="grid gap-2 sm:grid-cols-3">
             {models.map((m) => (
@@ -532,7 +522,7 @@ export function VideoGenerator({
         {!hideRatioInImageMode && cap.ratios.length > 0 && (
           <div className="mt-6">
             <Label className="mb-2 block text-sm font-medium">
-              <span className="mr-1 text-primary">{ACCENT_LABEL}</span> 视频比例
+              <span className="mr-1 text-primary">{ACCENT_LABEL}</span> 瑙嗛姣斾緥
             </Label>
             <div className="flex flex-wrap gap-2">
               {cap.ratios.map((r) => (
@@ -566,7 +556,7 @@ export function VideoGenerator({
         {cap.durations.length > 0 && (
           <div className="mt-6">
             <Label className="mb-2 block text-sm font-medium">
-              <span className="mr-1 text-primary">{ACCENT_LABEL}</span> 视频时长
+              <span className="mr-1 text-primary">{ACCENT_LABEL}</span> 瑙嗛鏃堕暱
             </Label>
             <div className="flex flex-wrap gap-2">
               {cap.durations.map((d) => (
@@ -592,7 +582,7 @@ export function VideoGenerator({
         {cap.counts.length > 1 && (
           <div className="mt-6">
             <Label className="mb-2 block text-sm font-medium">
-              <span className="mr-1 text-primary">{ACCENT_LABEL}</span> 生成数量
+              <span className="mr-1 text-primary">{ACCENT_LABEL}</span> 鐢熸垚鏁伴噺
             </Label>
             <div className="flex flex-wrap gap-2">
               {cap.counts.map((c) => (
@@ -619,12 +609,12 @@ export function VideoGenerator({
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-2 text-sm">
               <Crown className="h-3.5 w-3.5 text-accent" />
-              <span className="text-muted-foreground">会员价</span>
-              <span className="font-semibold tabular-nums">{member} 点</span>
+              <span className="text-muted-foreground">浼氬憳浠?/span>
+              <span className="font-semibold tabular-nums">{member} 鐐?/span>
             </div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span>普通价</span>
-              <span className="tabular-nums line-through">{regular} 点</span>
+              <span>鏅€氫环</span>
+              <span className="tabular-nums line-through">{regular} 鐐?/span>
             </div>
           </div>
           <Button
@@ -636,12 +626,12 @@ export function VideoGenerator({
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                生成中...
+                鐢熸垚涓?..
               </>
             ) : (
               <>
                 <Wand2 className="h-4 w-4" />
-                立即生成
+                绔嬪嵆鐢熸垚
               </>
             )}
           </Button>
@@ -652,10 +642,10 @@ export function VideoGenerator({
       <div className="flex flex-col gap-4">
         <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
           <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-sm font-medium">实时预览</h3>
+            <h3 className="text-sm font-medium">瀹炴椂棰勮</h3>
             <span className="flex items-center gap-1 text-xs text-muted-foreground">
               <Info className="h-3 w-3" />
-              配置摘要
+              閰嶇疆鎽樿
             </span>
           </div>
           <div
@@ -668,7 +658,7 @@ export function VideoGenerator({
             {loading ? (
               <div className="flex flex-col items-center gap-3 px-4 text-center text-sm text-muted-foreground">
                 <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                <span>{statusMsg || "排队生成中..."}</span>
+                <span>{statusMsg || "鎺掗槦鐢熸垚涓?.."}</span>
                 <div className="h-1 w-3/4 overflow-hidden rounded-full bg-background">
                   <div
                     className="h-full rounded-full bg-primary transition-all duration-500"
@@ -689,7 +679,7 @@ export function VideoGenerator({
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
                   <Wand2 className="h-4 w-4 text-primary" />
                 </div>
-                <span>输入提示词后开始生成</span>
+                <span>杈撳叆鎻愮ず璇嶅悗寮€濮嬬敓鎴?/span>
               </div>
             )}
           </div>
@@ -704,19 +694,19 @@ export function VideoGenerator({
           <dl className="mt-4 grid grid-cols-2 gap-2 text-xs">
             {[
               [
-                "模式",
+                "妯″紡",
                 mode === "text"
-                  ? "文生视频"
+                  ? "鏂囩敓瑙嗛"
                   : cap.imageCapability === "single"
-                    ? "图生视频"
+                    ? "鍥剧敓瑙嗛"
                     : imageSubMode === "frames"
-                      ? "图生 · 首尾帧"
-                      : "图生 · 多图参考",
+                      ? "鍥剧敓 路 棣栧熬甯?
+                      : "鍥剧敓 路 澶氬浘鍙傝€?,
               ],
-              ["模型", model.name],
-              ...(hideRatioInImageMode ? [["比例", "跟随图片"]] : [["比例", ratio.ratio]]),
-              ...(durationId ? [["时长", cap.durations.find((d) => d.id === durationId)?.label ?? "-"]] : []),
-              ["数量", `${count} 条`],
+              ["妯″瀷", model.name],
+              ...(hideRatioInImageMode ? [["姣斾緥", "璺熼殢鍥剧墖"]] : [["姣斾緥", ratio.ratio]]),
+              ...(durationId ? [["鏃堕暱", cap.durations.find((d) => d.id === durationId)?.label ?? "-"]] : []),
+              ["鏁伴噺", `${count} 鏉],
             ].map(([k, v]) => (
               <div
                 key={k as string}
@@ -732,13 +722,13 @@ export function VideoGenerator({
         <div className="rounded-2xl border border-border bg-gradient-to-br from-primary/10 via-card to-accent/10 p-5">
           <div className="flex items-center gap-2 text-sm font-medium">
             <Crown className="h-4 w-4 text-accent" />
-            升级会员 · 7.5 折省更多
+            鍗囩骇浼氬憳 路 7.5 鎶樼渷鏇村
           </div>
           <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-            会员可享所有模型 75 折、每日签到领点数、生成队列优先、支持私有模型定制。
+            浼氬憳鍙韩鎵€鏈夋ā鍨?75 鎶樸€佹瘡鏃ョ鍒伴鐐规暟銆佺敓鎴愰槦鍒椾紭鍏堛€佹敮鎸佺鏈夋ā鍨嬪畾鍒躲€?
           </p>
           <Button size="sm" variant="outline" className="mt-4 gap-1 bg-background/60">
-            查看会员特权
+            鏌ョ湅浼氬憳鐗规潈
           </Button>
         </div>
       </div>
@@ -766,7 +756,7 @@ function SingleUpload({ value, onChange }: { value: string | null; onChange: (v:
         <>
           <Image
             src={value || "/placeholder.svg"}
-            alt="参考图片"
+            alt="鍙傝€冨浘鐗?
             width={400}
             height={400}
             unoptimized
@@ -778,7 +768,7 @@ function SingleUpload({ value, onChange }: { value: string | null; onChange: (v:
               e.stopPropagation()
               onChange(null)
             }}
-            aria-label="移除图片"
+            aria-label="绉婚櫎鍥剧墖"
             className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-background/80 text-muted-foreground backdrop-blur transition-colors hover:bg-background hover:text-foreground"
           >
             <X className="h-3.5 w-3.5" />
@@ -789,11 +779,13 @@ function SingleUpload({ value, onChange }: { value: string | null; onChange: (v:
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-background">
             <Upload className="h-5 w-5" />
           </div>
-          <span className="font-medium text-foreground/80">点击上传图片</span>
-          <span className="text-xs">支持 JPG / PNG / WEBP，最大 10MB，仅支持 1 张</span>
+          <span className="font-medium text-foreground/80">鐐瑰嚮涓婁紶鍥剧墖</span>
+          <span className="text-xs">鏀寔 JPG / PNG / WEBP锛屾渶澶?10MB锛屼粎鏀寔 1 寮?/span>
         </div>
       )}
       <input ref={inputRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={onFile} />
     </div>
   )
 }
+
+

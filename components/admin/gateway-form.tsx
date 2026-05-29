@@ -25,9 +25,10 @@ export function GatewayForm({ initialApiKey, initialGatewayUrl, updatedAt }: Pro
     e.preventDefault()
     setSaving(true)
     try {
-      const res = await fetch("/api/admin/gateway", {
+      const token = localStorage.getItem("accessToken") ?? ""
+      const res = await fetch("/v1/admin/gateway", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ apiKey, gatewayUrl }),
       })
       const json = await res.json()
@@ -43,9 +44,10 @@ export function GatewayForm({ initialApiKey, initialGatewayUrl, updatedAt }: Pro
   async function handleTest() {
     setTesting(true)
     try {
-      const res = await fetch("/api/admin/gateway/test", {
+      const token = localStorage.getItem("accessToken") ?? ""
+      const res = await fetch("/v1/admin/gateway/test", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ apiKey, gatewayUrl }),
       })
       const json = await res.json()

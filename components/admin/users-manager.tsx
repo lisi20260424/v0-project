@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useEffect, useMemo, useState } from "react"
 import useSWR from "swr"
@@ -53,11 +53,12 @@ type UsersResponse = {
 type Banner = { ok: boolean; message: string } | null
 
 const fetcher = async (url: string): Promise<UsersResponse> => {
-  console.log("[v0] Fetching users from:", url)
-  const res = await fetch(url)
+  const token = localStorage.getItem("accessToken") ?? ""
+  const res = await fetch(url, {
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+  })
   const json = await res.json()
-  console.log("[v0] Fetch response:", { status: res.status, data: json })
-  if (!res.ok) throw new Error(json.error ?? "加载失败")
+  if (!res.ok) throw new Error(json.error ?? "鍔犺浇澶辫触")
   return json
 }
 
@@ -68,9 +69,9 @@ const STATUS_BADGE: Record<UserStatus, string> = {
 }
 
 function formatDateTime(value: string | null): string {
-  if (!value) return "—"
+  if (!value) return "鈥?
   const d = new Date(value)
-  if (Number.isNaN(d.getTime())) return "—"
+  if (Number.isNaN(d.getTime())) return "鈥?
   return d.toLocaleString("zh-CN", { hour12: false })
 }
 
@@ -85,7 +86,7 @@ export function UsersManager({ initialUsers = [], currentUser }: Props) {
   const [editing, setEditing] = useState<AdminUser | null>(null)
   const [banner, setBanner] = useState<Banner>(null)
 
-  // 防抖搜索
+  // 闃叉姈鎼滅储
   useEffect(() => {
     const t = setTimeout(() => {
       setSearch(searchInput.trim())
@@ -106,7 +107,7 @@ export function UsersManager({ initialUsers = [], currentUser }: Props) {
     if (vipTier !== "all") params.set("vipTier", vipTier)
     params.set("page", String(page))
     params.set("pageSize", String(pageSize))
-    return `/api/admin/users?${params.toString()}`
+    return `/v1/admin/users?${params.toString()}`
   }, [search, userType, status, vipTier, page])
 
   const { data, error, isLoading, mutate } = useSWR<UsersResponse>(queryKey, fetcher, {
@@ -130,14 +131,15 @@ export function UsersManager({ initialUsers = [], currentUser }: Props) {
     vipExpiresAt: string | null
     points: number
   }) {
-    const res = await fetch(`/api/admin/users/${form.id}`, {
+    const token = localStorage.getItem("accessToken") ?? ""
+      const res = await fetch(`/v1/admin/users/${form.id}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
       body: JSON.stringify(form),
     })
     const json = await res.json()
-    if (!res.ok) throw new Error(json.error ?? "保存失败")
-    showBanner({ ok: true, message: "用户信息已更新" })
+    if (!res.ok) throw new Error(json.error ?? "淇濆瓨澶辫触")
+    showBanner({ ok: true, message: "鐢ㄦ埛淇℃伅宸叉洿鏂? })
     await mutate()
   }
 
@@ -147,24 +149,24 @@ export function UsersManager({ initialUsers = [], currentUser }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* 搜索/筛选栏 */}
+      {/* 鎼滅储/绛涢€夋爮 */}
       <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 md:flex-row md:items-center">
         <div className="relative flex-1 min-w-0">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="搜索邮箱或昵称"
+            placeholder="鎼滅储閭鎴栨樀绉?
             className="pl-9"
           />
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Select value={userType} onValueChange={setUserType}>
             <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="用户类型" />
+              <SelectValue placeholder="鐢ㄦ埛绫诲瀷" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">全部类型</SelectItem>
+              <SelectItem value="all">鍏ㄩ儴绫诲瀷</SelectItem>
               {USER_TYPES.map((t) => (
                 <SelectItem key={t} value={t}>
                   {USER_TYPE_LABELS[t]}
@@ -175,10 +177,10 @@ export function UsersManager({ initialUsers = [], currentUser }: Props) {
 
           <Select value={status} onValueChange={setStatus}>
             <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="状态" />
+              <SelectValue placeholder="鐘舵€? />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">全部状态</SelectItem>
+              <SelectItem value="all">鍏ㄩ儴鐘舵€?/SelectItem>
               {USER_STATUSES.map((s) => (
                 <SelectItem key={s} value={s}>
                   {USER_STATUS_LABELS[s]}
@@ -189,10 +191,10 @@ export function UsersManager({ initialUsers = [], currentUser }: Props) {
 
           <Select value={vipTier} onValueChange={setVipTier}>
             <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="会员等级" />
+              <SelectValue placeholder="浼氬憳绛夌骇" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">全部会员</SelectItem>
+              <SelectItem value="all">鍏ㄩ儴浼氬憳</SelectItem>
               {VIP_TIERS.map((v) => (
                 <SelectItem key={v} value={v}>
                   {VIP_TIER_LABELS[v]}
@@ -223,22 +225,22 @@ export function UsersManager({ initialUsers = [], currentUser }: Props) {
       {error ? (
         <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
           <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          <span>{error instanceof Error ? error.message : "加载失败"}</span>
+          <span>{error instanceof Error ? error.message : "鍔犺浇澶辫触"}</span>
         </div>
       ) : null}
 
-      {/* 用户表格 */}
+      {/* 鐢ㄦ埛琛ㄦ牸 */}
       <div className="overflow-hidden rounded-xl border border-border bg-card">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[280px]">用户</TableHead>
-              <TableHead className="w-[120px]">类型</TableHead>
-              <TableHead className="w-[120px]">会员</TableHead>
-              <TableHead className="w-[100px] text-right">点数</TableHead>
-              <TableHead className="w-[100px]">状态</TableHead>
-              <TableHead className="w-[160px]">最近登录</TableHead>
-              <TableHead className="w-[80px] text-right">操作</TableHead>
+              <TableHead className="w-[280px]">鐢ㄦ埛</TableHead>
+              <TableHead className="w-[120px]">绫诲瀷</TableHead>
+              <TableHead className="w-[120px]">浼氬憳</TableHead>
+              <TableHead className="w-[100px] text-right">鐐规暟</TableHead>
+              <TableHead className="w-[100px]">鐘舵€?/TableHead>
+              <TableHead className="w-[160px]">鏈€杩戠櫥褰?/TableHead>
+              <TableHead className="w-[80px] text-right">鎿嶄綔</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -247,14 +249,14 @@ export function UsersManager({ initialUsers = [], currentUser }: Props) {
                 <TableCell colSpan={7} className="h-32 text-center">
                   <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
                     <Spinner className="h-4 w-4" />
-                    加载中...
+                    鍔犺浇涓?..
                   </div>
                 </TableCell>
               </TableRow>
             ) : users.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="h-32 text-center text-sm text-muted-foreground">
-                  没有匹配的用户
+                  娌℃湁鍖归厤鐨勭敤鎴?
                 </TableCell>
               </TableRow>
             ) : (
@@ -262,7 +264,7 @@ export function UsersManager({ initialUsers = [], currentUser }: Props) {
                 const initials = (u.display_name || u.email || "U").slice(0, 1).toUpperCase()
                 const vipLabel = u.vip_tier
                   ? VIP_TIER_LABELS[u.vip_tier as keyof typeof VIP_TIER_LABELS] ?? u.vip_tier
-                  : "无会员"
+                  : "鏃犱細鍛?
                 const userTypeLabel =
                   USER_TYPE_LABELS[u.user_type as keyof typeof USER_TYPE_LABELS] ?? u.user_type
                 const statusKey = (u.status as UserStatus) in STATUS_BADGE ? (u.status as UserStatus) : "active"
@@ -280,10 +282,10 @@ export function UsersManager({ initialUsers = [], currentUser }: Props) {
                         </Avatar>
                         <div className="flex min-w-0 flex-col">
                           <span className="truncate text-sm font-medium">
-                            {u.display_name || "未命名用户"}
+                            {u.display_name || "鏈懡鍚嶇敤鎴?}
                           </span>
                           <span className="truncate text-[11px] text-muted-foreground">
-                            {u.email ?? "—"}
+                            {u.email ?? "鈥?}
                           </span>
                         </div>
                       </div>
@@ -316,7 +318,7 @@ export function UsersManager({ initialUsers = [], currentUser }: Props) {
                     <TableCell className="text-right">
                       <Button size="sm" variant="ghost" onClick={() => setEditing(u)}>
                         <Pencil className="h-4 w-4" />
-                        <span className="sr-only">编辑</span>
+                        <span className="sr-only">缂栬緫</span>
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -327,14 +329,14 @@ export function UsersManager({ initialUsers = [], currentUser }: Props) {
         </Table>
       </div>
 
-      {/* 分页 */}
+      {/* 鍒嗛〉 */}
       <div className="flex items-center justify-between text-xs text-muted-foreground">
         <div>
-          共 <span className="font-medium text-foreground tabular-nums">{total}</span> 个用户
+          鍏?<span className="font-medium text-foreground tabular-nums">{total}</span> 涓敤鎴?
           {total > 0 ? (
             <>
-              {" · "}
-              第 <span className="tabular-nums">{page}</span> / {totalPages} 页
+              {" 路 "}
+              绗?<span className="tabular-nums">{page}</span> / {totalPages} 椤?
             </>
           ) : null}
         </div>
@@ -346,7 +348,7 @@ export function UsersManager({ initialUsers = [], currentUser }: Props) {
             onClick={() => setPage((p) => Math.max(1, p - 1))}
           >
             <ChevronLeft className="h-4 w-4" />
-            上一页
+            涓婁竴椤?
           </Button>
           <Button
             size="sm"
@@ -354,7 +356,7 @@ export function UsersManager({ initialUsers = [], currentUser }: Props) {
             disabled={page >= totalPages || isLoading}
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
           >
-            下一页
+            涓嬩竴椤?
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
@@ -370,3 +372,6 @@ export function UsersManager({ initialUsers = [], currentUser }: Props) {
     </div>
   )
 }
+
+
+

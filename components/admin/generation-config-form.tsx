@@ -31,9 +31,10 @@ export function GenerationConfigForm({
     e.preventDefault()
     setSaving(true)
     try {
-      const res = await fetch("/api/admin/generation-config", {
+      const token = localStorage.getItem("accessToken") ?? ""
+      const res = await fetch("/v1/admin/generation-config", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({
           musicTimeout: Math.max(60, musicTimeout),
           imageTimeout: Math.max(60, imageTimeout),

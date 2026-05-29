@@ -87,9 +87,10 @@ export function PaymentForm({ initialValue }: Props) {
     e.preventDefault()
     setSaving(true)
     try {
-      const res = await fetch("/api/admin/payment", {
+      const token = localStorage.getItem("accessToken") ?? ""
+      const res = await fetch("/v1/admin/payment", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify(value),
       })
       const json = await res.json()
@@ -110,9 +111,10 @@ export function PaymentForm({ initialValue }: Props) {
     }
     setActivating(true)
     try {
-      const res = await fetch("/api/admin/payment/activate", {
+      const token = localStorage.getItem("accessToken") ?? ""
+      const res = await fetch("/v1/admin/payment/activate", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({
           code: activateCode.trim(),
           deviceId: value.deviceId,
@@ -135,7 +137,7 @@ export function PaymentForm({ initialValue }: Props) {
         throw new Error(json.error ?? "激活失败")
       }
 
-      const latest = await fetch("/api/admin/payment", { cache: "no-store" })
+      const latest = await fetch("/v1/admin/payment", { cache: "no-store", headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) } })
       if (!latest.ok) {
         throw new Error("获取最新配置失败")
       }
@@ -157,7 +159,8 @@ export function PaymentForm({ initialValue }: Props) {
   async function handleCheckin() {
     setCheckingIn(true)
     try {
-      const res = await fetch("/api/admin/payment/checkin", { method: "POST" })
+      const token = localStorage.getItem("accessToken") ?? ""
+      const res = await fetch("/v1/admin/payment/checkin", { method: "POST", headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) } })
 
       const contentType = res.headers.get("content-type")
       if (!contentType?.includes("application/json")) {
@@ -174,7 +177,7 @@ export function PaymentForm({ initialValue }: Props) {
         throw new Error(json.error ?? "签到失败")
       }
 
-      const latest = await fetch("/api/admin/payment", { cache: "no-store" })
+      const latest = await fetch("/v1/admin/payment", { cache: "no-store", headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) } })
       if (!latest.ok) {
         throw new Error("获取最新配置失败")
       }
@@ -352,7 +355,7 @@ export function PaymentForm({ initialValue }: Props) {
               type="url"
               value={value.notifyUrl}
               onChange={(e) => update("notifyUrl", e.target.value)}
-              placeholder="https://your-domain.com/api/payment/notify"
+              placeholder="https://your-domain.com/v1/pay/notify/shouqianba"
               disabled={saving}
             />
             <p className="text-[11px] text-muted-foreground">

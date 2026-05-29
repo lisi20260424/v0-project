@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
@@ -67,37 +67,39 @@ export function PromptsManager({ initialPrompts }: { initialPrompts: AdminPrompt
     sortOrder: number
   }) {
     const isEdit = !!form.id
-    const url = isEdit ? `/api/admin/prompts/${form.id}` : "/api/admin/prompts"
+    const url = isEdit ? `/v1/admin/prompts/${form.id}` : "/v1/admin/prompts"
+    const token = localStorage.getItem("accessToken") ?? ""
     const res = await fetch(url, {
       method: isEdit ? "PATCH" : "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
       body: JSON.stringify(form),
     })
     const json = await res.json()
-    if (!res.ok) throw new Error(json.error ?? "保存失败")
+    if (!res.ok) throw new Error(json.error ?? "淇濆瓨澶辫触")
     const saved = json.prompt as AdminPrompt
     setPrompts((prev) => {
       const exists = prev.some((m) => m.id === saved.id)
       if (exists) return prev.map((m) => (m.id === saved.id ? saved : m))
       return [saved, ...prev]
     })
-    showBanner({ ok: true, message: isEdit ? "提示词已更新" : "提示词已创建" })
+    showBanner({ ok: true, message: isEdit ? "鎻愮ず璇嶅凡鏇存柊" : "鎻愮ず璇嶅凡鍒涘缓" })
     router.refresh()
   }
 
   async function handleToggle(prompt: AdminPrompt, enabled: boolean) {
     setPendingId(prompt.id)
     try {
-      const res = await fetch(`/api/admin/prompts/${prompt.id}`, {
+      const token = localStorage.getItem("accessToken") ?? ""
+      const res = await fetch(`/v1/admin/prompts/${prompt.id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ enabled }),
       })
       const json = await res.json()
-      if (!res.ok) throw new Error(json.error ?? "更新失败")
+      if (!res.ok) throw new Error(json.error ?? "鏇存柊澶辫触")
       setPrompts((prev) => prev.map((m) => (m.id === prompt.id ? { ...m, enabled } : m)))
     } catch (err) {
-      showBanner({ ok: false, message: err instanceof Error ? err.message : "更新失败" })
+      showBanner({ ok: false, message: err instanceof Error ? err.message : "鏇存柊澶辫触" })
     } finally {
       setPendingId(null)
     }
@@ -107,14 +109,15 @@ export function PromptsManager({ initialPrompts }: { initialPrompts: AdminPrompt
     if (!deleteTarget) return
     setPendingId(deleteTarget.id)
     try {
-      const res = await fetch(`/api/admin/prompts/${deleteTarget.id}`, { method: "DELETE" })
+      const token = localStorage.getItem("accessToken") ?? ""
+      const res = await fetch(`/v1/admin/prompts/${deleteTarget.id}`, { method: "DELETE", headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) } })
       const json = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(json.error ?? "删除失败")
+      if (!res.ok) throw new Error(json.error ?? "鍒犻櫎澶辫触")
       setPrompts((prev) => prev.filter((m) => m.id !== deleteTarget.id))
-      showBanner({ ok: true, message: "提示词已删除" })
+      showBanner({ ok: true, message: "鎻愮ず璇嶅凡鍒犻櫎" })
       router.refresh()
     } catch (err) {
-      showBanner({ ok: false, message: err instanceof Error ? err.message : "删除失败" })
+      showBanner({ ok: false, message: err instanceof Error ? err.message : "鍒犻櫎澶辫触" })
     } finally {
       setPendingId(null)
       setDeleteTarget(null)
@@ -137,7 +140,7 @@ export function PromptsManager({ initialPrompts }: { initialPrompts: AdminPrompt
         </Tabs>
         <Button onClick={() => setCreating(true)}>
           <Plus className="mr-2 h-4 w-4" />
-          新建提示词
+          鏂板缓鎻愮ず璇?
         </Button>
       </div>
 
@@ -161,11 +164,11 @@ export function PromptsManager({ initialPrompts }: { initialPrompts: AdminPrompt
       {visible.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border bg-card/50 p-12 text-center">
           <p className="text-sm text-muted-foreground">
-            {MODEL_TYPE_LABELS[activeType]} 还没有配置任何提示词
+            {MODEL_TYPE_LABELS[activeType]} 杩樻病鏈夐厤缃换浣曟彁绀鸿瘝
           </p>
           <Button variant="outline" size="sm" onClick={() => setCreating(true)}>
             <Plus className="mr-2 h-4 w-4" />
-            新建提示词
+            鏂板缓鎻愮ず璇?
           </Button>
         </div>
       ) : (
@@ -185,14 +188,14 @@ export function PromptsManager({ initialPrompts }: { initialPrompts: AdminPrompt
                   ) : null}
                   {!prompt.enabled ? (
                     <Badge variant="outline" className="border-muted-foreground/30 text-[11px] text-muted-foreground">
-                      已停用
+                      宸插仠鐢?
                     </Badge>
                   ) : null}
                 </div>
                 <p className="line-clamp-3 whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">
                   {prompt.content}
                 </p>
-                <p className="text-[11px] text-muted-foreground">排序：{prompt.sort_order}</p>
+                <p className="text-[11px] text-muted-foreground">鎺掑簭锛歿prompt.sort_order}</p>
               </div>
 
               <div className="flex items-center gap-2 md:flex-col md:items-end">
@@ -202,12 +205,12 @@ export function PromptsManager({ initialPrompts }: { initialPrompts: AdminPrompt
                     disabled={pendingId === prompt.id}
                     onCheckedChange={(v) => handleToggle(prompt, v)}
                   />
-                  <span className="text-xs text-muted-foreground">{prompt.enabled ? "启用" : "停用"}</span>
+                  <span className="text-xs text-muted-foreground">{prompt.enabled ? "鍚敤" : "鍋滅敤"}</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <Button size="sm" variant="ghost" onClick={() => setEditing(prompt)}>
                     <Pencil className="h-4 w-4" />
-                    <span className="sr-only">编辑</span>
+                    <span className="sr-only">缂栬緫</span>
                   </Button>
                   <Button
                     size="sm"
@@ -216,7 +219,7 @@ export function PromptsManager({ initialPrompts }: { initialPrompts: AdminPrompt
                     onClick={() => setDeleteTarget(prompt)}
                   >
                     <Trash2 className="h-4 w-4" />
-                    <span className="sr-only">删除</span>
+                    <span className="sr-only">鍒犻櫎</span>
                   </Button>
                 </div>
               </div>
@@ -242,19 +245,19 @@ export function PromptsManager({ initialPrompts }: { initialPrompts: AdminPrompt
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>确认删除提示词</AlertDialogTitle>
+            <AlertDialogTitle>纭鍒犻櫎鎻愮ず璇?/AlertDialogTitle>
             <AlertDialogDescription>
-              将永久删除「<span className="font-medium text-foreground">{deleteTarget?.title}</span>
-              」。此操作无法撤销。
+              灏嗘案涔呭垹闄ゃ€?span className="font-medium text-foreground">{deleteTarget?.title}</span>
+              銆嶃€傛鎿嶄綔鏃犳硶鎾ら攢銆?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogCancel>鍙栨秷</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              确认删除
+              纭鍒犻櫎
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -262,3 +265,5 @@ export function PromptsManager({ initialPrompts }: { initialPrompts: AdminPrompt
     </>
   )
 }
+
+

@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useEffect, useState } from "react"
 import { Zap, Crown } from "lucide-react"
@@ -7,11 +7,12 @@ import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { useMembership } from "@/components/membership-provider"
 import { useUser } from "@/components/user-provider"
+import { platformAPI } from "@/lib/platform-api"
 
 const TIER_LABEL: Record<"monthly" | "annual" | "lifetime", string> = {
-  monthly: "月会员",
-  annual: "年会员",
-  lifetime: "终身会员",
+  monthly: "鏈堜細鍛?,
+  annual: "骞翠細鍛?,
+  lifetime: "缁堣韩浼氬憳",
 }
 
 export function DashboardUserCard() {
@@ -29,13 +30,12 @@ export function DashboardUserCard() {
 
     const fetchStats = async () => {
       try {
-        const res = await fetch("/api/user/points?type=stats")
-        if (res.ok) {
-          const data = await res.json()
-          setStats(data)
-        }
+        const token = localStorage.getItem("accessToken") ?? ""
+        if (!token) return
+        const data = await platformAPI.userPoints(token, "type=stats")
+        setStats(data)
       } catch (error) {
-        console.error("[v0] 获取点数统计失败:", error)
+        console.error("[v0] 鑾峰彇鐐规暟缁熻澶辫触:", error)
       } finally {
         setLoading(false)
       }
@@ -56,7 +56,7 @@ export function DashboardUserCard() {
     <div className="rounded-2xl border border-border bg-card p-5">
       <div className="flex items-center gap-3">
         <Avatar className="h-12 w-12 ring-2 ring-primary/20">
-          <AvatarImage src={user.avatarUrl ?? undefined} alt="用户头像" />
+          <AvatarImage src={user.avatarUrl ?? undefined} alt="鐢ㄦ埛澶村儚" />
           <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-primary-foreground">
             {initial}
           </AvatarFallback>
@@ -71,7 +71,7 @@ export function DashboardUserCard() {
               </span>
             ) : (
               <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                免费
+                鍏嶈垂
               </span>
             )}
           </div>
@@ -81,37 +81,37 @@ export function DashboardUserCard() {
 
       <div className="mt-4 rounded-xl border border-border/60 bg-secondary/40 p-3">
         <div className="space-y-2">
-          {/* 可用点数 */}
+          {/* 鍙敤鐐规暟 */}
           <div className="flex items-center justify-between text-xs">
             <span className="flex items-center gap-1 text-muted-foreground">
               <Zap className="h-3 w-3 text-accent" fill="currentColor" />
-              可用点数
+              鍙敤鐐规暟
             </span>
             <span className="font-semibold tabular-nums text-foreground">
-              {available.toLocaleString()} 点
+              {available.toLocaleString()} 鐐?
             </span>
           </div>
 
-          {/* 已使用点数 */}
+          {/* 宸蹭娇鐢ㄧ偣鏁?*/}
           {!loading && used > 0 && (
             <div className="flex items-center justify-between text-xs">
-              <span className="text-muted-foreground">已使用点数</span>
+              <span className="text-muted-foreground">宸蹭娇鐢ㄧ偣鏁�</span>
               <span className="tabular-nums text-muted-foreground">
-                {used.toLocaleString()} 点
+                {used.toLocaleString()} 鐐?
               </span>
             </div>
           )}
 
-          {/* 进度条 - 显示已使用的比例 */}
+          {/* 杩涘害鏉?- 鏄剧ず宸蹭娇鐢ㄧ殑姣斾緥 */}
           {total > 0 && (
             <>
               <Progress value={percent} className="mt-2 h-1.5" />
               <div className="flex items-center justify-between text-[11px] text-muted-foreground">
                 <span>
-                  {Math.round(percent)}% {total > 0 ? "已使用" : ""}
+                  {Math.round(percent)}% {total > 0 ? "宸蹭娇鐢? : ""}
                 </span>
                 <span className="tabular-nums">
-                  {total.toLocaleString()} 点总计
+                  {total.toLocaleString()} 鐐规€昏
                 </span>
               </div>
             </>
@@ -119,7 +119,7 @@ export function DashboardUserCard() {
         </div>
 
         <div className="mt-2 text-[11px] text-muted-foreground">
-          {user.vipTier ? "会员有效期内" : "升级解锁更多权益"}
+          {user.vipTier ? "浼氬憳鏈夋晥鏈熷唴" : "鍗囩骇瑙ｉ攣鏇村鏉冪泭"}
         </div>
       </div>
 
@@ -130,12 +130,13 @@ export function DashboardUserCard() {
           className="h-8 bg-transparent text-xs"
           onClick={() => membership.open("membership")}
         >
-          {user.vipTier ? "续费会员" : "开通会员"}
+          {user.vipTier ? "缁垂浼氬憳" : "寮€閫氫細鍛?}
         </Button>
         <Button size="sm" className="h-8 text-xs" onClick={() => membership.open("points")}>
-          充值点数
+          鍏呭€肩偣鏁?
         </Button>
       </div>
     </div>
   )
 }
+

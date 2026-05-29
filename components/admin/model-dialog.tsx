@@ -80,7 +80,10 @@ export function ModelDialog({ open, onOpenChange, model, defaultModelType = "vid
   async function loadProviders() {
     setLoadingProviders(true)
     try {
-      const res = await fetch("/api/admin/providers")
+      const token = localStorage.getItem("accessToken") ?? ""
+      const res = await fetch("/v1/admin/providers", {
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      })
       const json = await res.json()
       setProviders(json.providers ?? [])
     } catch (err) {

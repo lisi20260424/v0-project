@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { cn } from "@/lib/utils"
+import { platformAPI } from "@/lib/platform-api"
 
 type PaymentMethod = "wechat" | "alipay"
 
@@ -71,7 +72,7 @@ export function CheckoutClient({
   const [terminalState, setTerminalState] =
     React.useState<"none" | "paid" | "expired" | "canceled" | "failed">("none")
 
-  // 生成订单
+  // 鐢熸垚璁㈠崟
   const handleCreate = React.useCallback(async () => {
     setCreating(true)
     setCreateError(null)
@@ -82,19 +83,10 @@ export function CheckoutClient({
     setPollStatus("pending")
 
     try {
-      const res = await fetch("/api/payment/orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ planKind, planCode, paymentMethod: method }),
-      })
-      const json = await res.json()
-      if (!res.ok) {
-        setCreateError(json.error ?? "创建订单失败")
-        if (json.orderId) setOrderId(json.orderId)
-        return
-      }
-
-      const data = json as OrderResp
+      const token = localStorage.getItem("accessToken") ?? ""
+      if (!token) throw new Error("请先登录后再试")
+      const json = await platformAPI.createOrder(token, { planKind, planCode, paymentMethod: method })
+      const data = (json.data ?? json) as OrderResp
       setOrderId(data.orderId)
       setExpiresAt(data.expiresAt)
 
@@ -105,13 +97,13 @@ export function CheckoutClient({
       })
       setQrImage(dataUrl)
     } catch (err) {
-      setCreateError(err instanceof Error ? err.message : "创建订单失败")
+      setCreateError(err instanceof Error ? err.message : "鍒涘缓璁㈠崟澶辫触")
     } finally {
       setCreating(false)
     }
   }, [planKind, planCode, method])
 
-  // 倒计时
+  // 鍊掕鏃?
   React.useEffect(() => {
     if (!expiresAt) return
     const tick = () => {
@@ -126,18 +118,19 @@ export function CheckoutClient({
     return () => clearInterval(t)
   }, [expiresAt, terminalState])
 
-  // 轮询订单状态
+  // 杞璁㈠崟鐘舵€?
   React.useEffect(() => {
     if (!orderId || terminalState !== "none") return
     let cancelled = false
 
     const poll = async () => {
       try {
-        const res = await fetch(`/api/payment/orders/${orderId}`, { cache: "no-store" })
-        if (!res.ok) return
-        const json = (await res.json()) as OrderStatusResp
+        const token = localStorage.getItem("accessToken") ?? ""
+        if (!token) return
+        const json = (await platformAPI.getOrder(token, orderId)) as any
         if (cancelled) return
-        const status = json.order?.status
+        const order = json.order ?? json.data ?? null
+        const status = order?.status
         if (!status) return
         setPollStatus(status)
         if (status === "paid") {
@@ -153,7 +146,7 @@ export function CheckoutClient({
           setTerminalState("failed")
         }
       } catch {
-        // 轮询失败忽略，下次重试
+        // 杞澶辫触蹇界暐锛屼笅娆￠噸璇?
       }
     }
 
@@ -175,31 +168,31 @@ export function CheckoutClient({
 
   return (
     <div className="grid gap-6 md:grid-cols-[1.2fr_1fr]">
-      {/* 左侧：订单详情 */}
+      {/* 宸︿晶锛氳鍗曡鎯?*/}
       <section className="rounded-2xl border border-border bg-card p-6">
-        <h2 className="text-lg font-semibold">订单详情</h2>
+        <h2 className="text-lg font-semibold">璁㈠崟璇︽儏</h2>
         <dl className="mt-4 grid gap-3 text-sm">
           <div className="flex items-center justify-between border-b border-border/60 pb-3">
-            <dt className="text-muted-foreground">商品</dt>
+            <dt className="text-muted-foreground">鍟嗗搧</dt>
             <dd className="font-medium">{planName}</dd>
           </div>
           <div className="flex items-center justify-between border-b border-border/60 pb-3">
-            <dt className="text-muted-foreground">类型</dt>
-            <dd>{planKind === "membership" ? "会员订阅" : "点数充值"}</dd>
+            <dt className="text-muted-foreground">绫诲瀷</dt>
+            <dd>{planKind === "membership" ? "浼氬憳璁㈤槄" : "鐐规暟鍏呭€?}</dd>
           </div>
           <div className="flex items-center justify-between border-b border-border/60 pb-3">
-            <dt className="text-muted-foreground">赠送/含点数</dt>
+            <dt className="text-muted-foreground">璧犻€?鍚偣鏁?/dt>
             <dd className="font-semibold tabular-nums text-primary">
-              {bonusPoints.toLocaleString()} 点
+              {bonusPoints.toLocaleString()} 鐐?
             </dd>
           </div>
           <div className="flex items-center justify-between pt-1">
-            <dt className="text-muted-foreground">应付金额</dt>
+            <dt className="text-muted-foreground">搴斾粯閲戦</dt>
             <dd className="flex items-baseline gap-2">
-              <span className="text-2xl font-bold tabular-nums">¥{amount}</span>
+              <span className="text-2xl font-bold tabular-nums">楼{amount}</span>
               {originalPrice && originalPrice > amount ? (
                 <span className="text-sm text-muted-foreground line-through tabular-nums">
-                  ¥{originalPrice}
+                  楼{originalPrice}
                 </span>
               ) : null}
             </dd>
@@ -217,13 +210,13 @@ export function CheckoutClient({
 
         <div className="mt-6 flex items-center gap-2 rounded-lg border border-border/50 bg-background/40 px-3 py-2 text-[11px] text-muted-foreground">
           <ShieldCheck className="h-3.5 w-3.5 text-primary" />
-          支付通过收钱吧聚合支付完成，安全可靠
+          鏀粯閫氳繃鏀堕挶鍚ц仛鍚堟敮浠樺畬鎴愶紝瀹夊叏鍙潬
         </div>
       </section>
 
-      {/* 右侧：支付方式 + 二维码 */}
+      {/* 鍙充晶锛氭敮浠樻柟寮?+ 浜岀淮鐮?*/}
       <section className="rounded-2xl border border-border bg-card p-6">
-        <h2 className="text-lg font-semibold">支付方式</h2>
+        <h2 className="text-lg font-semibold">鏀粯鏂瑰紡</h2>
 
         <div className="mt-4 grid grid-cols-2 gap-3">
           <MethodButton
@@ -231,7 +224,7 @@ export function CheckoutClient({
             disabled={!!orderId && terminalState === "none"}
             onClick={() => setMethod("wechat")}
             icon={<WechatIcon />}
-            label="微信支付"
+            label="寰俊鏀粯"
             tone="green"
           />
           <MethodButton
@@ -239,7 +232,7 @@ export function CheckoutClient({
             disabled={!!orderId && terminalState === "none"}
             onClick={() => setMethod("alipay")}
             icon={<AlipayIcon />}
-            label="支付宝"
+            label="鏀粯瀹?
             tone="blue"
           />
         </div>
@@ -247,9 +240,9 @@ export function CheckoutClient({
         <div className="mt-6 flex flex-col items-center">
           {!orderId && !creating ? (
             <div className="flex w-full flex-col items-center gap-4 rounded-xl border border-dashed border-border bg-background/30 p-6 text-center">
-              <p className="text-sm text-muted-foreground">点击下方按钮生成支付二维码</p>
+              <p className="text-sm text-muted-foreground">鐐瑰嚮涓嬫柟鎸夐挳鐢熸垚鏀粯浜岀淮鐮?/p>
               <Button onClick={handleCreate} disabled={creating} size="lg" className="rounded-full px-8">
-                生成 ¥{amount} 支付二维码
+                鐢熸垚 楼{amount} 鏀粯浜岀淮鐮?
               </Button>
               {createError ? (
                 <p className="flex items-center gap-1.5 text-xs text-destructive">
@@ -263,7 +256,7 @@ export function CheckoutClient({
           {creating ? (
             <div className="flex flex-col items-center gap-3 py-8">
               <Spinner className="h-6 w-6" />
-              <p className="text-sm text-muted-foreground">正在创建支付订单...</p>
+              <p className="text-sm text-muted-foreground">姝ｅ湪鍒涘缓鏀粯璁㈠崟...</p>
             </div>
           ) : null}
 
@@ -277,12 +270,12 @@ export function CheckoutClient({
                 )}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={qrImage} alt="支付二维码" className="h-full w-full object-contain" />
+                <img src={qrImage} alt="鏀粯浜岀淮鐮? className="h-full w-full object-contain" />
 
                 {terminalState === "paid" ? (
                   <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-xl bg-primary/95 text-primary-foreground">
                     <CheckCircle2 className="h-12 w-12" />
-                    <span className="text-base font-semibold">支付成功</span>
+                    <span className="text-base font-semibold">鏀粯鎴愬姛</span>
                   </div>
                 ) : null}
                 {terminalState === "expired" ? (
@@ -291,25 +284,25 @@ export function CheckoutClient({
                     className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-xl bg-card/95 text-sm font-medium text-foreground"
                   >
                     <RefreshCcw className="h-8 w-8" />
-                    二维码已过期，点击刷新
+                    浜岀淮鐮佸凡杩囨湡锛岀偣鍑诲埛鏂?
                   </button>
                 ) : null}
                 {(terminalState === "canceled" || terminalState === "failed") ? (
                   <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-xl bg-card/95 text-sm font-medium text-destructive">
                     <XCircle className="h-8 w-8" />
-                    支付未完成
+                    鏀粯鏈畬鎴?
                   </div>
                 ) : null}
               </div>
 
               <div className="flex flex-col items-center gap-1.5">
                 <p className="flex items-center gap-1.5 text-sm font-medium">
-                  请使用{method === "wechat" ? "微信" : "支付宝"}扫码支付
+                  璇蜂娇鐢▄method === "wechat" ? "寰俊" : "鏀粯瀹?}鎵爜鏀粯
                 </p>
                 {terminalState === "none" && pollStatus === "pending" ? (
                   <p className="flex items-center gap-1 text-xs text-muted-foreground">
                     <Clock className="h-3 w-3" />
-                    剩余 {minutesText} · 等待付款中...
+                    鍓╀綑 {minutesText} 路 绛夊緟浠樻涓?..
                   </p>
                 ) : null}
               </div>
@@ -322,7 +315,7 @@ export function CheckoutClient({
                 className="rounded-full"
               >
                 <RefreshCcw className="mr-1.5 h-3.5 w-3.5" />
-                重新生成
+                閲嶆柊鐢熸垚
               </Button>
             </div>
           ) : null}
@@ -390,3 +383,4 @@ function AlipayIcon() {
     </svg>
   )
 }
+

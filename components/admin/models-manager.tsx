@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
@@ -72,15 +72,16 @@ export function ModelsManager({ initialModels }: { initialModels: AdminModel[] }
     sortOrder: number
   }) {
     const isEdit = !!form.id
-    const url = isEdit ? `/api/admin/models/${form.id}` : "/api/admin/models"
+    const url = isEdit ? `/v1/admin/models/${form.id}` : "/v1/admin/models"
+    const token = localStorage.getItem("accessToken") ?? ""
     const res = await fetch(url, {
       method: isEdit ? "PATCH" : "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
       body: JSON.stringify(form),
     })
     const json = await res.json()
     if (!res.ok) {
-      throw new Error(json.error ?? "保存失败")
+      throw new Error(json.error ?? "淇濆瓨澶辫触")
     }
     const saved = json.model as AdminModel
     setModels((prev) => {
@@ -88,23 +89,24 @@ export function ModelsManager({ initialModels }: { initialModels: AdminModel[] }
       if (exists) return prev.map((m) => (m.id === saved.id ? saved : m))
       return [saved, ...prev]
     })
-    showBanner({ ok: true, message: isEdit ? "模型已更新" : "模型已创建" })
+    showBanner({ ok: true, message: isEdit ? "妯″瀷宸叉洿鏂? : "妯″瀷宸插垱寤? })
     router.refresh()
   }
 
   async function handleToggle(model: AdminModel, enabled: boolean) {
     setPendingId(model.id)
     try {
-      const res = await fetch(`/api/admin/models/${model.id}`, {
+      const token = localStorage.getItem("accessToken") ?? ""
+      const res = await fetch(`/v1/admin/models/${model.id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ enabled }),
       })
       const json = await res.json()
-      if (!res.ok) throw new Error(json.error ?? "更新失败")
+      if (!res.ok) throw new Error(json.error ?? "鏇存柊澶辫触")
       setModels((prev) => prev.map((m) => (m.id === model.id ? { ...m, enabled } : m)))
     } catch (err) {
-      showBanner({ ok: false, message: err instanceof Error ? err.message : "更新失败" })
+      showBanner({ ok: false, message: err instanceof Error ? err.message : "鏇存柊澶辫触" })
     } finally {
       setPendingId(null)
     }
@@ -114,14 +116,15 @@ export function ModelsManager({ initialModels }: { initialModels: AdminModel[] }
     if (!deleteTarget) return
     setPendingId(deleteTarget.id)
     try {
-      const res = await fetch(`/api/admin/models/${deleteTarget.id}`, { method: "DELETE" })
+      const token = localStorage.getItem("accessToken") ?? ""
+      const res = await fetch(`/v1/admin/models/${deleteTarget.id}`, { method: "DELETE", headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) } })
       const json = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(json.error ?? "删除失败")
+      if (!res.ok) throw new Error(json.error ?? "鍒犻櫎澶辫触")
       setModels((prev) => prev.filter((m) => m.id !== deleteTarget.id))
-      showBanner({ ok: true, message: "模型已删除" })
+      showBanner({ ok: true, message: "妯″瀷宸插垹闄? })
       router.refresh()
     } catch (err) {
-      showBanner({ ok: false, message: err instanceof Error ? err.message : "删除失败" })
+      showBanner({ ok: false, message: err instanceof Error ? err.message : "鍒犻櫎澶辫触" })
     } finally {
       setPendingId(null)
       setDeleteTarget(null)
@@ -135,7 +138,7 @@ export function ModelsManager({ initialModels }: { initialModels: AdminModel[] }
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as ModelType | "all")}>
           <TabsList>
-            <TabsTrigger value="all">全部 ({models.length})</TabsTrigger>
+            <TabsTrigger value="all">鍏ㄩ儴 ({models.length})</TabsTrigger>
             {MODEL_TYPES.map((t) => (
               <TabsTrigger key={t} value={t}>
                 {MODEL_TYPE_LABELS[t]} ({grouped[t].length})
@@ -148,7 +151,7 @@ export function ModelsManager({ initialModels }: { initialModels: AdminModel[] }
         </Tabs>
         <Button onClick={() => setCreating(true)}>
           <Plus className="mr-2 h-4 w-4" />
-          新建模型
+          鏂板缓妯″瀷
         </Button>
       </div>
 
@@ -171,10 +174,10 @@ export function ModelsManager({ initialModels }: { initialModels: AdminModel[] }
 
       {visible.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border bg-card/50 p-12 text-center">
-          <p className="text-sm text-muted-foreground">还没有配置任何模型</p>
+          <p className="text-sm text-muted-foreground">杩樻病鏈夐厤缃换浣曟ā鍨?/p>
           <Button variant="outline" size="sm" onClick={() => setCreating(true)}>
             <Plus className="mr-2 h-4 w-4" />
-            新建模型
+            鏂板缓妯″瀷
           </Button>
         </div>
       ) : (
@@ -195,16 +198,16 @@ export function ModelsManager({ initialModels }: { initialModels: AdminModel[] }
                   </Badge>
                   {!model.enabled ? (
                     <Badge variant="outline" className="border-muted-foreground/30 text-[11px] text-muted-foreground">
-                      已停用
+                      宸插仠鐢?
                     </Badge>
                   ) : null}
                 </div>
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                  <span>计费：{BILLING_TYPE_LABELS[model.billing_type] ?? model.billing_type}</span>
+                  <span>璁¤垂锛歿BILLING_TYPE_LABELS[model.billing_type] ?? model.billing_type}</span>
                   <span>
-                    单次消耗：<span className="font-medium text-foreground">{model.cost_per_use} 点</span>
+                    鍗曟娑堣€楋細<span className="font-medium text-foreground">{model.cost_per_use} 鐐?/span>
                   </span>
-                  <span>排序：{model.sort_order}</span>
+                  <span>鎺掑簭锛歿model.sort_order}</span>
                 </div>
                 {model.description ? (
                   <p className="text-xs leading-relaxed text-muted-foreground">{model.description}</p>
@@ -230,12 +233,12 @@ export function ModelsManager({ initialModels }: { initialModels: AdminModel[] }
                     disabled={pendingId === model.id}
                     onCheckedChange={(v) => handleToggle(model, v)}
                   />
-                  <span className="text-xs text-muted-foreground">{model.enabled ? "启用" : "停用"}</span>
+                  <span className="text-xs text-muted-foreground">{model.enabled ? "鍚敤" : "鍋滅敤"}</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <Button size="sm" variant="ghost" onClick={() => setEditing(model)}>
                     <Pencil className="h-4 w-4" />
-                    <span className="sr-only">编辑</span>
+                    <span className="sr-only">缂栬緫</span>
                   </Button>
                   <Button
                     size="sm"
@@ -244,7 +247,7 @@ export function ModelsManager({ initialModels }: { initialModels: AdminModel[] }
                     onClick={() => setDeleteTarget(model)}
                   >
                     <Trash2 className="h-4 w-4" />
-                    <span className="sr-only">删除</span>
+                    <span className="sr-only">鍒犻櫎</span>
                   </Button>
                 </div>
               </div>
@@ -270,19 +273,19 @@ export function ModelsManager({ initialModels }: { initialModels: AdminModel[] }
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>确认删除模型</AlertDialogTitle>
+            <AlertDialogTitle>纭鍒犻櫎妯″瀷</AlertDialogTitle>
             <AlertDialogDescription>
-              将永久删除模型 <span className="font-medium text-foreground">{deleteTarget?.name}</span>
-              。此操作无法撤销。
+              灏嗘案涔呭垹闄ゆā鍨?<span className="font-medium text-foreground">{deleteTarget?.name}</span>
+              銆傛鎿嶄綔鏃犳硶鎾ら攢銆?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogCancel>鍙栨秷</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              确认删除
+              纭鍒犻櫎
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -290,3 +293,5 @@ export function ModelsManager({ initialModels }: { initialModels: AdminModel[] }
     </>
   )
 }
+
+

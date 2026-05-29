@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState, useEffect } from "react"
 import useSWR from "swr"
@@ -14,6 +14,7 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Spinner } from "@/components/ui/spinner"
 import { Badge } from "@/components/ui/badge"
+import { platformAPI } from "@/lib/platform-api"
 
 type ConsumptionRecord = {
   id: string
@@ -34,23 +35,24 @@ type ConsumptionResponse = {
   totalPages: number
 }
 
-const fetcher = async (url: string): Promise<ConsumptionResponse> => {
-  const res = await fetch(url)
-  if (!res.ok) throw new Error("加载消费记录失败")
-  return res.json()
+const fetcher = async (key: string): Promise<ConsumptionResponse> => {
+  const token = localStorage.getItem("accessToken") ?? ""
+  if (!token) throw new Error("请先登录后再试")
+  const query = key.startsWith("cons:") ? key.slice("cons:".length) : key
+  return platformAPI.userConsumption(token, query)
 }
 
 const TYPE_ICONS = {
-  video: { icon: Video, label: "视频", color: "text-blue-500" },
-  image: { icon: ImageIcon, label: "图像", color: "text-purple-500" },
-  music: { icon: Music2, label: "音乐", color: "text-pink-500" },
+  video: { icon: Video, label: "瑙嗛", color: "text-blue-500" },
+  image: { icon: ImageIcon, label: "鍥惧儚", color: "text-purple-500" },
+  music: { icon: Music2, label: "闊充箰", color: "text-pink-500" },
 }
 
 const STATUS_CONFIG = {
-  success: { label: "完成", icon: CheckCircle2, color: "text-green-500", variant: "default" as const },
-  running: { label: "运行中", icon: Clock, color: "text-blue-500", variant: "secondary" as const },
-  failed: { label: "失败", icon: AlertCircle, color: "text-red-500", variant: "destructive" as const },
-  queued: { label: "排队中", icon: Clock, color: "text-yellow-500", variant: "secondary" as const },
+  success: { label: "瀹屾垚", icon: CheckCircle2, color: "text-green-500", variant: "default" as const },
+  running: { label: "杩愯涓?, icon: Clock, color: "text-blue-500", variant: "secondary" as const },
+  failed: { label: "澶辫触", icon: AlertCircle, color: "text-red-500", variant: "destructive" as const },
+  queued: { label: "鎺掗槦涓?, icon: Clock, color: "text-yellow-500", variant: "secondary" as const },
 }
 
 export function ConsumptionRecords() {
@@ -67,7 +69,7 @@ export function ConsumptionRecords() {
   })
 
   const { data, isLoading, error } = useSWR<ConsumptionResponse>(
-    `/api/user/consumption?${queryParams.toString()}`,
+    `cons:${queryParams.toString()}`,
     fetcher,
     { keepPreviousData: true }
   )
@@ -79,57 +81,57 @@ export function ConsumptionRecords() {
 
   return (
     <div className="space-y-6">
-      {/* 筛选器 */}
+      {/* 绛涢€夊櫒 */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium">类型</label>
+            <label className="text-sm font-medium">绫诲瀷</label>
             <Select value={type} onValueChange={(v) => { setType(v); setPage(1) }}>
               <SelectTrigger className="w-full sm:w-[120px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">全部类型</SelectItem>
-                <SelectItem value="video">视频</SelectItem>
-                <SelectItem value="image">图像</SelectItem>
-                <SelectItem value="music">音乐</SelectItem>
+                <SelectItem value="all">鍏ㄩ儴绫诲瀷</SelectItem>
+                <SelectItem value="video">瑙嗛</SelectItem>
+                <SelectItem value="image">鍥惧儚</SelectItem>
+                <SelectItem value="music">闊充箰</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium">状态</label>
+            <label className="text-sm font-medium">鐘舵€�</label>
             <Select value={status} onValueChange={(v) => { setStatus(v); setPage(1) }}>
               <SelectTrigger className="w-full sm:w-[120px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">全部状态</SelectItem>
-                <SelectItem value="success">完成</SelectItem>
-                <SelectItem value="running">运行中</SelectItem>
-                <SelectItem value="queued">排队中</SelectItem>
-                <SelectItem value="failed">失败</SelectItem>
+                <SelectItem value="all">鍏ㄩ儴鐘舵€�</SelectItem>
+                <SelectItem value="success">瀹屾垚</SelectItem>
+                <SelectItem value="running">杩愯涓?/SelectItem>
+                <SelectItem value="queued">鎺掗槦涓?/SelectItem>
+                <SelectItem value="failed">澶辫触</SelectItem>
               </SelectContent>
             </Select>
           </div>
         </div>
 
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          共 {data?.total || 0} 条记录
+          鍏?{data?.total || 0} 鏉¤褰?
         </div>
       </div>
 
-      {/* 表格 */}
+      {/* 琛ㄦ牸 */}
       <div className="overflow-x-auto rounded-lg border border-border">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[100px]">类型</TableHead>
-              <TableHead>工具</TableHead>
-              <TableHead className="text-right">消费点数</TableHead>
-              <TableHead>状态</TableHead>
-              <TableHead>创建时间</TableHead>
-              <TableHead>完成时间</TableHead>
+              <TableHead className="w-[100px]">绫诲瀷</TableHead>
+              <TableHead>宸ュ叿</TableHead>
+              <TableHead className="text-right">娑堣垂鐐规暟</TableHead>
+              <TableHead>鐘舵€�</TableHead>
+              <TableHead>鍒涘缓鏃堕棿</TableHead>
+              <TableHead>瀹屾垚鏃堕棿</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -138,20 +140,20 @@ export function ConsumptionRecords() {
                 <TableCell colSpan={6} className="h-32 text-center">
                   <div className="flex items-center justify-center gap-2">
                     <Spinner />
-                    <span>加载中...</span>
+                    <span>鍔犺浇涓?..</span>
                   </div>
                 </TableCell>
               </TableRow>
             ) : error ? (
               <TableRow>
                 <TableCell colSpan={6} className="h-32 text-center text-destructive">
-                  加载失败，请重试
+                  鍔犺浇澶辫触锛岃閲嶈瘯
                 </TableCell>
               </TableRow>
             ) : data?.data.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
-                  暂无消费记录
+                  鏆傛棤娑堣垂璁板綍
                 </TableCell>
               </TableRow>
             ) : (
@@ -182,7 +184,7 @@ export function ConsumptionRecords() {
                       {record.tool_label}
                     </TableCell>
                     <TableCell className="text-right">
-                      <span className="font-semibold tabular-nums">{record.cost}</span> 点
+                      <span className="font-semibold tabular-nums">{record.cost}</span> 鐐?
                     </TableCell>
                     <TableCell>
                       <Badge variant={statusConfig.variant} className="gap-1">
@@ -216,11 +218,11 @@ export function ConsumptionRecords() {
         </Table>
       </div>
 
-      {/* 分页 */}
+      {/* 鍒嗛〉 */}
       {data && data.totalPages > 1 && (
         <div className="flex items-center justify-between">
           <div className="text-sm text-muted-foreground">
-            第 {data.page} / {data.totalPages} 页
+            绗?{data.page} / {data.totalPages} 椤?
           </div>
           <div className="flex gap-2">
             <Button
@@ -259,3 +261,4 @@ export function ConsumptionRecords() {
     </div>
   )
 }
+

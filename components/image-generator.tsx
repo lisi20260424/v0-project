@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import Image from "next/image"
@@ -21,6 +21,7 @@ import { getImageDimension } from "@/lib/ratio-dimensions-mapping"
 import type { ImageCapabilities } from "@/lib/model-capabilities"
 import { useUser } from "@/components/user-provider"
 import { useMembership } from "@/components/membership-provider"
+import { platformAPI } from "@/lib/platform-api"
 
 export type ImageGeneratorModelData = {
   id: string
@@ -47,9 +48,9 @@ export type ImageGeneratorProps = {
 }
 
 const DEFAULT_EXAMPLES = [
-  "一只戴着圆框眼镜的橘色柯基犬坐在书桌前阅读《百年孤独》，皮克斯 3D 动画风格，暖色调灯光",
-  "上海外滩的赛博朋克夜景海报，中文标题「未来已来」，霓虹色调，电影海报构图",
-  "一朵正在盛开的牡丹花微距特写，花瓣上有细小水珠，柔和自然光，摄影杂志封面",
+  "涓€鍙埓鐫€鍦嗘鐪奸暅鐨勬鑹叉煰鍩虹姮鍧愬湪涔︽鍓嶉槄璇汇€婄櫨骞村鐙€嬶紝鐨厠鏂?3D 鍔ㄧ敾椋庢牸锛屾殩鑹茶皟鐏厜",
+  "涓婃捣澶栨哗鐨勮禌鍗氭湅鍏嬪鏅捣鎶ワ紝涓枃鏍囬銆屾湭鏉ュ凡鏉ャ€嶏紝闇撹櫣鑹茶皟锛岀數褰辨捣鎶ユ瀯鍥?,
+  "涓€鏈垫鍦ㄧ洓寮€鐨勭墶涓硅姳寰窛鐗瑰啓锛岃姳鐡ｄ笂鏈夌粏灏忔按鐝狅紝鏌斿拰鑷劧鍏夛紝鎽勫奖鏉傚織灏侀潰",
 ]
 
 const QUALITY_EXTRA: Record<string, number> = {
@@ -65,11 +66,11 @@ export function ImageGenerator({ models, defaultModelId, prompts = [] }: ImageGe
   const promptChips: ImagePromptChip[] =
     prompts.length > 0
       ? prompts
-      : DEFAULT_EXAMPLES.map((p, i) => ({ id: `default-${i}`, title: `示例 ${i + 1}`, content: p }))
+      : DEFAULT_EXAMPLES.map((p, i) => ({ id: `default-${i}`, title: `绀轰緥 ${i + 1}`, content: p }))
   if (!models.length) {
     return (
       <div className="rounded-2xl border border-dashed border-border bg-card p-10 text-center text-sm text-muted-foreground">
-        当前供应商暂未启用任何图像模型，请先在系统设置中启用对应模型。
+        褰撳墠渚涘簲鍟嗘殏鏈惎鐢ㄤ换浣曞浘鍍忔ā鍨嬶紝璇峰厛鍦ㄧ郴缁熻缃腑鍚敤瀵瑰簲妯″瀷銆?
       </div>
     )
   }
@@ -80,7 +81,7 @@ export function ImageGenerator({ models, defaultModelId, prompts = [] }: ImageGe
 
   const [prompt, setPrompt] = React.useState("")
   const [negative, setNegative] = React.useState("")
-  const [style, setStyle] = React.useState(cap.styles[0] ?? "自动")
+  const [style, setStyle] = React.useState(cap.styles[0] ?? "鑷姩")
   const [ratioId, setRatioId] = React.useState(cap.ratios[0]?.id ?? "11")
   const [quality, setQuality] = React.useState(cap.qualities[1]?.id ?? cap.qualities[0]?.id ?? "hd")
   const [count, setCount] = React.useState(cap.counts[0] ?? 1)
@@ -90,7 +91,7 @@ export function ImageGenerator({ models, defaultModelId, prompts = [] }: ImageGe
   const fileInputRef = React.useRef<HTMLInputElement>(null)
 
   React.useEffect(() => {
-    if (!cap.styles.includes(style)) setStyle(cap.styles[0] ?? "自动")
+    if (!cap.styles.includes(style)) setStyle(cap.styles[0] ?? "鑷姩")
     if (!cap.ratios.find((r) => r.id === ratioId)) setRatioId(cap.ratios[0]?.id ?? "11")
     if (!cap.qualities.find((q) => q.id === quality))
       setQuality(cap.qualities[1]?.id ?? cap.qualities[0]?.id ?? "hd")
@@ -106,9 +107,9 @@ export function ImageGenerator({ models, defaultModelId, prompts = [] }: ImageGe
   const onGenerate = async () => {
     if (!prompt.trim()) return
     
-    // 检查用户是否登录
+    // 妫€鏌ョ敤鎴锋槸鍚︾櫥褰?
     if (!user) {
-      toast.error("请先登录或注册账户")
+      toast.error("璇峰厛鐧诲綍鎴栨敞鍐岃处鎴?)
       membership.open("login")
       return
     }
@@ -117,41 +118,32 @@ export function ImageGenerator({ models, defaultModelId, prompts = [] }: ImageGe
     setResults([])
     try {
       const imageDimension = getImageDimension(ratioId)
-      const response = await fetch("/api/tasks", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: "image",
-          modelId: model.id,
-          prompt,
-          params: {
-            size: imageDimension,
-            n: count,
-            quality,
-            style,
-            responseFormat: "url",
-            negative: negative || undefined,
-          },
-        }),
+      const token = localStorage.getItem("accessToken") ?? ""
+      if (!token) throw new Error("请先登录后再试")
+      const { data: task } = await platformAPI.createTask(token, {
+        type: "image",
+        modelId: model.id,
+        prompt,
+        params: {
+          size: imageDimension,
+          n: count,
+          quality,
+          style,
+          responseFormat: "url",
+          negative: negative || undefined,
+        },
       })
-
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({}))
-        throw new Error(err.error || "生成失败")
-      }
-
-      const { task } = await response.json()
       if (task?.status === "failed") {
-        throw new Error(task.error_message || "生成失败")
+        throw new Error(task.error_message || "鐢熸垚澶辫触")
       }
       const urls: string[] = task?.result_urls ?? []
       if (urls.length === 0) {
-        throw new Error("未获取到生成的图片")
+        throw new Error("鏈幏鍙栧埌鐢熸垚鐨勫浘鐗?)
       }
       setResults(urls.slice(0, count))
     } catch (error) {
       console.error("[v0] Generation error:", error)
-      const msg = error instanceof Error ? error.message : "生成失败，请重试"
+      const msg = error instanceof Error ? error.message : "鐢熸垚澶辫触锛岃閲嶈瘯"
       toast.error(msg)
     } finally {
       setLoading(false)
@@ -173,7 +165,7 @@ export function ImageGenerator({ models, defaultModelId, prompts = [] }: ImageGe
         {/* Models */}
         <div>
           <Label className="mb-2 block text-sm font-medium">
-            <span className="mr-1 text-primary">◇</span> 选择模型
+            <span className="mr-1 text-primary">鈼?/span> 閫夋嫨妯″瀷
           </Label>
           <div className="grid gap-2 sm:grid-cols-3">
             {models.map((m) => (
@@ -206,7 +198,7 @@ export function ImageGenerator({ models, defaultModelId, prompts = [] }: ImageGe
         {cap.supportsReferenceImage && (
           <div className="mt-5">
             <Label className="mb-2 block text-sm font-medium">
-              <span className="mr-1 text-primary">◇</span> 参考图片（可选 · 最多 {cap.maxReferenceImages} 张）
+              <span className="mr-1 text-primary">鈼?/span> 鍙傝€冨浘鐗囷紙鍙€?路 鏈€澶?{cap.maxReferenceImages} 寮狅級
             </Label>
             <div
               onClick={() => fileInputRef.current?.click()}
@@ -219,7 +211,7 @@ export function ImageGenerator({ models, defaultModelId, prompts = [] }: ImageGe
                 <>
                   <Image
                     src={refImage || "/placeholder.svg"}
-                    alt="参考图"
+                    alt="鍙傝€冨浘"
                     width={120}
                     height={120}
                     className="h-24 w-auto object-contain"
@@ -233,7 +225,7 @@ export function ImageGenerator({ models, defaultModelId, prompts = [] }: ImageGe
                       e.stopPropagation()
                       setRefImage(null)
                     }}
-                    aria-label="移除图片"
+                    aria-label="绉婚櫎鍥剧墖"
                   >
                     <X className="h-3.5 w-3.5" />
                   </Button>
@@ -241,7 +233,7 @@ export function ImageGenerator({ models, defaultModelId, prompts = [] }: ImageGe
               ) : (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Upload className="h-4 w-4" />
-                  点击上传参考图片（PNG / JPG）
+                  鐐瑰嚮涓婁紶鍙傝€冨浘鐗囷紙PNG / JPG锛?
                 </div>
               )}
               <input
@@ -259,7 +251,7 @@ export function ImageGenerator({ models, defaultModelId, prompts = [] }: ImageGe
         <div className="mt-5">
           <div className="mb-2 flex items-center justify-between">
             <Label htmlFor="img-prompt" className="text-sm font-medium">
-              <span className="mr-1 text-primary">◇</span> 提示词
+              <span className="mr-1 text-primary">鈼?/span> 鎻愮ず璇?
             </Label>
             <span className="text-xs tabular-nums text-muted-foreground">
               {prompt.length} / {cap.maxPromptLength}
@@ -269,7 +261,7 @@ export function ImageGenerator({ models, defaultModelId, prompts = [] }: ImageGe
             id="img-prompt"
             value={prompt}
             onChange={(e) => setPrompt(e.target.value.slice(0, cap.maxPromptLength))}
-            placeholder="描述你想要的图像，包括主体、风格、光线、�����、细节等"
+            placeholder="鎻忚堪浣犳兂瑕佺殑鍥惧儚锛屽寘鎷富浣撱€侀鏍笺€佸厜绾裤€侊拷锟斤拷锟斤拷銆佺粏鑺傜瓑"
             className="min-h-[120px] resize-none bg-background"
           />
           {promptChips.length > 0 && (
@@ -294,13 +286,13 @@ export function ImageGenerator({ models, defaultModelId, prompts = [] }: ImageGe
         {cap.supportsNegativePrompt && (
           <div className="mt-5">
             <Label htmlFor="img-negative" className="mb-2 block text-sm font-medium">
-              <span className="mr-1 text-primary">◇</span> 负向提示词（可选）
+              <span className="mr-1 text-primary">鈼?/span> 璐熷悜鎻愮ず璇嶏紙鍙€夛級
             </Label>
             <Textarea
               id="img-negative"
               value={negative}
               onChange={(e) => setNegative(e.target.value.slice(0, 500))}
-              placeholder="不想出现的元素，例如：模糊、低画质、变形、多余手指"
+              placeholder="涓嶆兂鍑虹幇鐨勫厓绱狅紝渚嬪锛氭ā绯娿€佷綆鐢昏川銆佸彉褰€佸浣欐墜鎸?
               className="min-h-[60px] resize-none bg-background"
             />
           </div>
@@ -310,7 +302,7 @@ export function ImageGenerator({ models, defaultModelId, prompts = [] }: ImageGe
         {cap.styles.length > 0 && (
           <div className="mt-5">
             <Label className="mb-2 block text-sm font-medium">
-              <span className="mr-1 text-primary">◇</span> 风格
+              <span className="mr-1 text-primary">鈼?/span> 椋庢牸
             </Label>
             <div className="flex flex-wrap gap-2">
               {cap.styles.map((s) => (
@@ -336,7 +328,7 @@ export function ImageGenerator({ models, defaultModelId, prompts = [] }: ImageGe
         {cap.ratios.length > 0 && (
           <div className="mt-5">
             <Label className="mb-2 block text-sm font-medium">
-              <span className="mr-1 text-primary">◇</span> 画面比例
+              <span className="mr-1 text-primary">鈼?/span> 鐢婚潰姣斾緥
             </Label>
             <div className="flex flex-wrap gap-2">
               {cap.ratios.map((r) => {
@@ -371,7 +363,7 @@ export function ImageGenerator({ models, defaultModelId, prompts = [] }: ImageGe
           {cap.qualities.length > 0 && (
             <div>
               <Label className="mb-2 block text-sm font-medium">
-                <span className="mr-1 text-primary">◇</span> 画质
+                <span className="mr-1 text-primary">鈼?/span> 鐢昏川
               </Label>
               <div className="flex gap-2">
                 {cap.qualities.map((q) => (
@@ -395,7 +387,7 @@ export function ImageGenerator({ models, defaultModelId, prompts = [] }: ImageGe
           {cap.counts.length > 1 && (
             <div>
               <Label className="mb-2 block text-sm font-medium">
-                <span className="mr-1 text-primary">◇</span> 数量
+                <span className="mr-1 text-primary">鈼?/span> 鏁伴噺
               </Label>
               <div className="flex gap-2">
                 {cap.counts.map((c) => (
@@ -423,24 +415,24 @@ export function ImageGenerator({ models, defaultModelId, prompts = [] }: ImageGe
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-2 text-sm">
               <Crown className="h-3.5 w-3.5 text-accent" />
-              <span className="text-muted-foreground">会员价</span>
-              <span className="font-semibold tabular-nums">{member} 点</span>
+              <span className="text-muted-foreground">浼氬憳浠?/span>
+              <span className="font-semibold tabular-nums">{member} 鐐?/span>
             </div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span>普通价</span>
-              <span className="tabular-nums line-through">{regular} 点</span>
+              <span>鏅€氫环</span>
+              <span className="tabular-nums line-through">{regular} 鐐?/span>
             </div>
           </div>
           <Button size="lg" onClick={onGenerate} disabled={loading || !prompt.trim()} className="gap-2 sm:min-w-40">
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                生成中...
+                鐢熸垚涓?..
               </>
             ) : (
               <>
                 <Wand2 className="h-4 w-4" />
-                立即生成
+                绔嬪嵆鐢熸垚
               </>
             )}
           </Button>
@@ -450,9 +442,9 @@ export function ImageGenerator({ models, defaultModelId, prompts = [] }: ImageGe
       {/* Right: results */}
       <div className="rounded-2xl border border-border bg-card p-5 shadow-sm md:p-6">
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-sm font-medium">生成结果</h3>
+          <h3 className="text-sm font-medium">鐢熸垚缁撴灉</h3>
           <span className="text-xs text-muted-foreground">
-            {results.length > 0 ? `${results.length} 张图` : "等待生成"}
+            {results.length > 0 ? `${results.length} 寮犲浘` : "绛夊緟鐢熸垚"}
           </span>
         </div>
         {loading ? (
@@ -482,8 +474,8 @@ export function ImageGenerator({ models, defaultModelId, prompts = [] }: ImageGe
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
               <ImageLucide className="h-5 w-5 text-primary" />
             </div>
-            <p>输入提示词后点击「立即生成」</p>
-            <p className="text-xs">结果会实时展示在此区域</p>
+            <p>杈撳叆鎻愮ず璇嶅悗鐐瑰嚮銆岀珛鍗崇敓鎴愩€?/p>
+            <p className="text-xs">缁撴灉浼氬疄鏃跺睍绀哄湪姝ゅ尯鍩?/p>
           </div>
         ) : (
           <div
@@ -498,7 +490,7 @@ export function ImageGenerator({ models, defaultModelId, prompts = [] }: ImageGe
               <div key={i} className="group relative overflow-hidden rounded-xl border border-border">
                 <Image
                   src={src || "/placeholder.svg"}
-                  alt={`结果 ${i + 1}`}
+                  alt={`缁撴灉 ${i + 1}`}
                   width={600}
                   height={600}
                   className="h-auto w-full object-cover"
@@ -510,7 +502,7 @@ export function ImageGenerator({ models, defaultModelId, prompts = [] }: ImageGe
                     className="pointer-events-auto flex h-7 items-center gap-1 rounded-md bg-white/20 px-2 text-[10px] text-white backdrop-blur hover:bg-white/30"
                   >
                     <Download className="h-3 w-3" />
-                    下载
+                    涓嬭浇
                   </button>
                 </div>
               </div>
@@ -521,3 +513,4 @@ export function ImageGenerator({ models, defaultModelId, prompts = [] }: ImageGe
     </div>
   )
 }
+

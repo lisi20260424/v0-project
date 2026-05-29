@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import useSWR from "swr"
@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
+import { platformAPI } from "@/lib/platform-api"
 
 type BillingRecord = {
   id: string
@@ -53,25 +54,26 @@ type BillingResponse = {
   }
 }
 
-const fetcher = async (url: string): Promise<BillingResponse> => {
-  const res = await fetch(url)
-  if (!res.ok) throw new Error("加载账单记录失败")
-  return res.json()
+const fetcher = async (key: string): Promise<BillingResponse> => {
+  const token = localStorage.getItem("accessToken") ?? ""
+  if (!token) throw new Error("请先登录后再试")
+  const query = key.startsWith("billing:") ? key.slice("billing:".length) : key
+  return platformAPI.listBilling(token, query)
 }
 
 const TYPE_CONFIG: Record<
   string,
   { label: string; icon: typeof ArrowDownToLine; color: string }
 > = {
-  recharge: { label: "充值", icon: ArrowDownToLine, color: "text-emerald-500" },
-  refund: { label: "退款", icon: RotateCcw, color: "text-blue-500" },
-  bonus: { label: "赠送", icon: Gift, color: "text-orange-500" },
-  consumption: { label: "消费", icon: ArrowUpFromLine, color: "text-rose-500" },
+  recharge: { label: "鍏呭€?, icon: ArrowDownToLine, color: "text-emerald-500" },
+  refund: { label: "閫€娆?, icon: RotateCcw, color: "text-blue-500" },
+  bonus: { label: "璧犻€?, icon: Gift, color: "text-orange-500" },
+  consumption: { label: "娑堣垂", icon: ArrowUpFromLine, color: "text-rose-500" },
 }
 
 const PAYMENT_METHOD_LABEL: Record<string, string> = {
-  wechat: "微信",
-  alipay: "支付宝",
+  wechat: "寰俊",
+  alipay: "鏀粯瀹?,
 }
 
 function formatDate(value: string | null) {
@@ -99,7 +101,7 @@ export function BillingRecords() {
   })
 
   const { data, isLoading, error } = useSWR<BillingResponse>(
-    `/api/user/billing?${queryParams.toString()}`,
+    `billing:${queryParams.toString()}`,
     fetcher,
     { keepPreviousData: true },
   )
@@ -111,17 +113,17 @@ export function BillingRecords() {
 
   return (
     <div className="space-y-6">
-      {/* 汇总卡片 */}
+      {/* 姹囨€诲崱鐗?*/}
       <div className="grid gap-4 md:grid-cols-3">
         <div className="rounded-2xl border border-border bg-card p-5">
           <div className="flex items-center gap-2">
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500/10">
               <Wallet className="h-4 w-4 text-emerald-500" />
             </div>
-            <span className="text-sm text-muted-foreground">累计充值</span>
+            <span className="text-sm text-muted-foreground">绱鍏呭€?/span>
           </div>
           <div className="mt-3 text-2xl font-bold tabular-nums">
-            ¥ {(data?.summary.totalRecharge ?? 0).toFixed(2)}
+            楼 {(data?.summary.totalRecharge ?? 0).toFixed(2)}
           </div>
         </div>
 
@@ -130,7 +132,7 @@ export function BillingRecords() {
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-rose-500/10">
               <Coins className="h-4 w-4 text-rose-500" />
             </div>
-            <span className="text-sm text-muted-foreground">累计消费点数</span>
+            <span className="text-sm text-muted-foreground">绱娑堣垂鐐规暟</span>
           </div>
           <div className="mt-3 text-2xl font-bold tabular-nums">
             {(data?.summary.totalSpentPoints ?? 0).toLocaleString()}
@@ -142,19 +144,19 @@ export function BillingRecords() {
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-500/10">
               <Receipt className="h-4 w-4 text-blue-500" />
             </div>
-            <span className="text-sm text-muted-foreground">累计退款</span>
+            <span className="text-sm text-muted-foreground">绱閫€娆?/span>
           </div>
           <div className="mt-3 text-2xl font-bold tabular-nums">
-            ¥ {(data?.summary.totalRefund ?? 0).toFixed(2)}
+            楼 {(data?.summary.totalRefund ?? 0).toFixed(2)}
           </div>
         </div>
       </div>
 
-      {/* 筛选 */}
+      {/* 绛涢€?*/}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium">类型</label>
+            <label className="text-sm font-medium">绫诲瀷</label>
             <Select
               value={type}
               onValueChange={(v) => {
@@ -166,17 +168,17 @@ export function BillingRecords() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">全部类型</SelectItem>
-                <SelectItem value="recharge">充值</SelectItem>
-                <SelectItem value="consumption">消费</SelectItem>
-                <SelectItem value="bonus">赠送</SelectItem>
-                <SelectItem value="refund">退款</SelectItem>
+                <SelectItem value="all">鍏ㄩ儴绫诲瀷</SelectItem>
+                <SelectItem value="recharge">鍏呭€?/SelectItem>
+                <SelectItem value="consumption">娑堣垂</SelectItem>
+                <SelectItem value="bonus">璧犻€?/SelectItem>
+                <SelectItem value="refund">閫€娆?/SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium">方向</label>
+            <label className="text-sm font-medium">鏂瑰悜</label>
             <Select
               value={direction}
               onValueChange={(v) => {
@@ -188,31 +190,31 @@ export function BillingRecords() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">全部</SelectItem>
-                <SelectItem value="in">收入</SelectItem>
-                <SelectItem value="out">支出</SelectItem>
+                <SelectItem value="all">鍏ㄩ儴</SelectItem>
+                <SelectItem value="in">鏀跺叆</SelectItem>
+                <SelectItem value="out">鏀嚭</SelectItem>
               </SelectContent>
             </Select>
           </div>
         </div>
 
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          共 {data?.total ?? 0} 条记录
+          鍏?{data?.total ?? 0} 鏉¤褰?
         </div>
       </div>
 
-      {/* 表格 */}
+      {/* 琛ㄦ牸 */}
       <div className="overflow-x-auto rounded-lg border border-border">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[120px]">类型</TableHead>
-              <TableHead>说明</TableHead>
-              <TableHead className="text-right">金额</TableHead>
-              <TableHead className="text-right">点数变动</TableHead>
-              <TableHead className="text-right">余额</TableHead>
-              <TableHead>支付方式</TableHead>
-              <TableHead>时间</TableHead>
+              <TableHead className="w-[120px]">绫诲瀷</TableHead>
+              <TableHead>璇存槑</TableHead>
+              <TableHead className="text-right">閲戦</TableHead>
+              <TableHead className="text-right">鐐规暟鍙樺姩</TableHead>
+              <TableHead className="text-right">浣欓</TableHead>
+              <TableHead>鏀粯鏂瑰紡</TableHead>
+              <TableHead>鏃堕棿</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -221,20 +223,20 @@ export function BillingRecords() {
                 <TableCell colSpan={7} className="h-32 text-center">
                   <div className="flex items-center justify-center gap-2">
                     <Spinner />
-                    <span>加载中...</span>
+                    <span>鍔犺浇涓?..</span>
                   </div>
                 </TableCell>
               </TableRow>
             ) : error ? (
               <TableRow>
                 <TableCell colSpan={7} className="h-32 text-center text-destructive">
-                  加载失败，请刷新重试
+                  鍔犺浇澶辫触锛岃鍒锋柊閲嶈瘯
                 </TableCell>
               </TableRow>
             ) : data?.data.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="h-32 text-center text-muted-foreground">
-                  暂无账单记录
+                  鏆傛棤璐﹀崟璁板綍
                 </TableCell>
               </TableRow>
             ) : (
@@ -266,7 +268,7 @@ export function BillingRecords() {
                             isIn ? "text-emerald-500" : "text-rose-500",
                           )}
                         >
-                          {isIn ? "+" : "-"}¥ {Number(record.amount).toFixed(2)}
+                          {isIn ? "+" : "-"}楼 {Number(record.amount).toFixed(2)}
                         </span>
                       ) : (
                         <span className="text-muted-foreground">-</span>
@@ -308,11 +310,11 @@ export function BillingRecords() {
         </Table>
       </div>
 
-      {/* 分页 */}
+      {/* 鍒嗛〉 */}
       {data && data.totalPages > 1 && (
         <div className="flex items-center justify-between">
           <div className="text-sm text-muted-foreground">
-            第 {data.page} / {data.totalPages} 页
+            绗?{data.page} / {data.totalPages} 椤?
           </div>
           <div className="flex gap-2">
             <Button
@@ -351,3 +353,4 @@ export function BillingRecords() {
     </div>
   )
 }
+

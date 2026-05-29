@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -19,6 +19,7 @@ import {
 import * as React from "react"
 import { cn } from "@/lib/utils"
 import { useUser } from "@/components/user-provider"
+import { platformAPI } from "@/lib/platform-api"
 
 type SidebarItem = {
   href: string
@@ -34,38 +35,38 @@ type SidebarSection = {
 
 const sections: SidebarSection[] = [
   {
-    label: "工作台",
+    label: "宸ヤ綔鍙?,
     items: [
-      { href: "/dashboard", label: "概览", icon: LayoutDashboard },
-      { href: "/tasks", label: "我的任务", icon: ListChecks },
-      { href: "/creations", label: "我的创作", icon: Images },
+      { href: "/dashboard", label: "姒傝", icon: LayoutDashboard },
+      { href: "/tasks", label: "鎴戠殑浠诲姟", icon: ListChecks },
+      { href: "/creations", label: "鎴戠殑鍒涗綔", icon: Images },
     ],
   },
   {
-    label: "账户",
+    label: "璐︽埛",
     items: [
-      { href: "/billing", label: "订阅记录", icon: CreditCard },
-      { href: "/billing/records", label: "账单记录", icon: Receipt },
-      { href: "/invite", label: "邀请好友", icon: Gift, badge: "NEW" },
+      { href: "/billing", label: "璁㈤槄璁板綍", icon: CreditCard },
+      { href: "/billing/records", label: "璐﹀崟璁板綍", icon: Receipt },
+      { href: "/invite", label: "閭€璇峰ソ鍙?, icon: Gift, badge: "NEW" },
     ],
   },
   {
-    label: "其他",
+    label: "鍏朵粬",
     items: [
-      { href: "/settings", label: "账户设置", icon: Settings },
-      { href: "/help", label: "帮助中心", icon: HelpCircle },
+      { href: "/settings", label: "璐︽埛璁剧疆", icon: Settings },
+      { href: "/help", label: "甯姪涓績", icon: HelpCircle },
     ],
   },
 ]
 
 const ADMIN_SECTION: SidebarSection = {
-  label: "系统设置",
+  label: "绯荤粺璁剧疆",
   items: [
-    { href: "/admin-settings/providers", label: "供应商配置", icon: Sparkles },
-    { href: "/admin-settings/models", label: "模型配置", icon: Cpu },
-    { href: "/admin-settings/prompts", label: "提示词配置", icon: Sparkles },
-    { href: "/admin-settings/users", label: "用户管理", icon: Users },
-    { href: "/admin-settings/system-settings", label: "系统设置", icon: Plug },
+    { href: "/admin-settings/providers", label: "渚涘簲鍟嗛厤缃?, icon: Sparkles },
+    { href: "/admin-settings/models", label: "妯″瀷閰嶇疆", icon: Cpu },
+    { href: "/admin-settings/prompts", label: "鎻愮ず璇嶉厤缃?, icon: Sparkles },
+    { href: "/admin-settings/users", label: "鐢ㄦ埛绠＄悊", icon: Users },
+    { href: "/admin-settings/system-settings", label: "绯荤粺璁剧疆", icon: Plug },
   ],
 }
 
@@ -74,14 +75,15 @@ export function DashboardSidebar() {
   const { isAdmin, user, refreshUser } = useUser()
   const [runningCount, setRunningCount] = React.useState<number | null>(null)
 
-  // 获取运行中任务数
+  // 鑾峰彇杩愯涓换鍔℃暟
   React.useEffect(() => {
     if (!user?.id) return
     const fetchRunningCount = async () => {
       try {
-        const res = await fetch("/api/tasks")
-        const json = await res.json()
-        const tasks = json.tasks || []
+        const token = localStorage.getItem("accessToken") ?? ""
+        if (!token) return
+        const json = await platformAPI.listTasks(token)
+        const tasks = json.data?.tasks || []
         const count = tasks.filter((t: any) => t.status === "running" || t.status === "queued").length
         setRunningCount(count)
       } catch (err) {
@@ -90,18 +92,18 @@ export function DashboardSidebar() {
     }
     
     fetchRunningCount()
-    // 每 10 秒刷新一次
+    // 姣?10 绉掑埛鏂颁竴娆?
     const interval = setInterval(fetchRunningCount, 10000)
     return () => clearInterval(interval)
   }, [user?.id])
 
-  // 监听用户交互，保持会话活跃
+  // 鐩戝惉鐢ㄦ埛浜や簰锛屼繚鎸佷細璇濇椿璺?
   React.useEffect(() => {
     let inactivityTimeout: NodeJS.Timeout
     
     const resetInactivityTimer = () => {
       clearTimeout(inactivityTimeout)
-      // 30 分钟无操作后刷新用户信息
+      // 30 鍒嗛挓鏃犳搷浣滃悗鍒锋柊鐢ㄦ埛淇℃伅
       inactivityTimeout = setTimeout(() => {
         refreshUser()
       }, 30 * 60 * 1000)
@@ -123,7 +125,7 @@ export function DashboardSidebar() {
   }, [refreshUser])
 
   return (
-    <nav aria-label="用户中心导航" className="rounded-2xl border border-border bg-card p-3">
+    <nav aria-label="鐢ㄦ埛涓績瀵艰埅" className="rounded-2xl border border-border bg-card p-3">
       {sections.map((section) => (
         <div key={section.label} className="mb-3">
           <div className="px-3 pb-1 pt-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
@@ -131,7 +133,7 @@ export function DashboardSidebar() {
           </div>
           <ul className="space-y-0.5">
             {section.items.map((item) => {
-              // 对"我的任务"添加动态 badge
+              // 瀵?鎴戠殑浠诲姟"娣诲姞鍔ㄦ€?badge
               let badge = item.badge
               if (item.href === "/tasks" && runningCount !== null && runningCount > 0) {
                 badge = String(runningCount)
@@ -158,13 +160,13 @@ export function DashboardSidebar() {
   )
 }
 
-// 需要精确匹配的菜单项（避免前缀匹配高亮父级）
+// 闇€瑕佺簿纭尮閰嶇殑鑿滃崟椤癸紙閬垮厤鍓嶇紑鍖归厤楂樹寒鐖剁骇锛?
 const EXACT_MATCH_HREFS = new Set(["/dashboard", "/billing"])
 
 function SidebarLink({ item, pathname }: { item: SidebarItem; pathname: string }) {
   const Icon = item.icon
 
-  // 后台设置菜单项和 EXACT_MATCH_HREFS 中的项，使用精确匹配；其他支持前缀匹配
+  // 鍚庡彴璁剧疆鑿滃崟椤瑰拰 EXACT_MATCH_HREFS 涓殑椤癸紝浣跨敤绮剧‘鍖归厤锛涘叾浠栨敮鎸佸墠缂€鍖归厤
   const isAdminItem = item.href.startsWith("/admin-settings/")
   const isExactMatch = isAdminItem || EXACT_MATCH_HREFS.has(item.href)
   const active = isExactMatch
@@ -200,3 +202,4 @@ function SidebarLink({ item, pathname }: { item: SidebarItem; pathname: string }
     </li>
   )
 }
+
