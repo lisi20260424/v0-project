@@ -5,8 +5,6 @@ import { Toaster } from "sonner"
 import { ThemeProvider } from "@/components/theme-provider"
 import { MembershipProvider } from "@/components/membership-provider"
 import { UserProvider } from "@/components/user-provider"
-import { getCurrentUser } from "@/lib/supabase/get-user"
-import { isCurrentUserAdmin } from "@/lib/supabase/require-admin"
 import "./globals.css"
 
 const inter = Inter({
@@ -34,14 +32,11 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  const user = await getCurrentUser().catch(() => null)
-  const isAdmin = await isCurrentUserAdmin().catch(() => false)
-
   return (
     <html lang="zh-CN" suppressHydrationWarning className={`${inter.variable} ${jetbrainsMono.variable} bg-background`}>
       <body className="font-sans antialiased">
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
-          <UserProvider initialUser={user} initialIsAdmin={isAdmin}>
+          <UserProvider initialUser={null} initialIsAdmin={false}>
             <MembershipProvider>{children}</MembershipProvider>
           </UserProvider>
         </ThemeProvider>

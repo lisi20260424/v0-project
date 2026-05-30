@@ -1,5 +1,4 @@
-import { createAdminClient } from "@/lib/supabase/admin"
-import { SQB_API_DOMAIN_PROD, SQB_API_DOMAIN_TEST, type ShouQianBaConfig } from "./shouqianba"
+﻿import { SQB_API_DOMAIN_PROD, SQB_API_DOMAIN_TEST, type ShouQianBaConfig } from "./shouqianba"
 
 export type PaymentSettingsRow = {
   enabled: boolean
@@ -18,39 +17,37 @@ export type PaymentSettingsRow = {
   updated_at: string | null
 }
 
-const SELECT_COLUMNS =
-  "enabled, vendor_sn, vendor_key, app_id, terminal_sn, terminal_key, device_id, operator, notify_url, return_url, gateway_url, callback_public_key, test_mode, updated_at"
+const SELECT_COLUMNS = "enabled, vendor_sn, vendor_key, app_id, terminal_sn, terminal_key, device_id, operator, notify_url, return_url, gateway_url, callback_public_key, test_mode, updated_at"
 
-/**
- * 服务端读取支付配置（仅在已通过权限校验的路由中调用）
- */
 export async function loadPaymentSettings(): Promise<PaymentSettingsRow | null> {
-  const admin = createAdminClient()
-  const { data } = await admin
-    .from("admin_payment_settings")
-    .select(SELECT_COLUMNS)
-    .eq("id", 1)
-    .maybeSingle()
-
-  return (data as PaymentSettingsRow | null) ?? null
+  return {
+    enabled: false,
+    vendor_sn: null,
+    vendor_key: null,
+    app_id: null,
+    terminal_sn: process.env.SQB_TERMINAL_SN ?? null,
+    terminal_key: process.env.SQB_TERMINAL_KEY ?? null,
+    device_id: null,
+    operator: null,
+    notify_url: null,
+    return_url: null,
+    gateway_url: process.env.SQB_GATEWAY_URL ?? null,
+    callback_public_key: null,
+    test_mode: process.env.NODE_ENV !== "production",
+    updated_at: null,
+  }
 }
 
-/**
- * 把 DB 行转为 ShouQianBaConfig，缺少 terminal 凭证时返回 null
- */
 export function toShouQianBaConfig(row: PaymentSettingsRow | null): ShouQianBaConfig | null {
-  if (!row) return null
-  if (!row.terminal_sn || !row.terminal_key) return null
+  if (!row?.terminal_sn || !row.terminal_key) return null
   const customGateway = row.gateway_url?.trim()
-  const baseGateway =
-    customGateway || (row.test_mode ? SQB_API_DOMAIN_TEST : SQB_API_DOMAIN_PROD)
   return {
     terminal_sn: row.terminal_sn,
     terminal_key: row.terminal_key,
     vendor_sn: row.vendor_sn ?? undefined,
     vendor_key: row.vendor_key ?? undefined,
     app_id: row.app_id ?? undefined,
-    gateway_url: baseGateway,
+    gateway_url: customGateway || (row.test_mode ? SQB_API_DOMAIN_TEST : SQB_API_DOMAIN_PROD),
     test_mode: row.test_mode,
   }
 }

@@ -52,6 +52,18 @@ type updateGenReq struct {
 func (h *Handler) ListModels(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"models": h.svc.ListModels(c.Request.Context())})
 }
+
+func (h *Handler) PublicModels(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"models": h.svc.ListEnabledModels(c.Request.Context(), c.Query("type"))})
+}
+
+func (h *Handler) PublicProviders(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"providers": h.svc.ListEnabledProviders(c.Request.Context())})
+}
+
+func (h *Handler) PublicPrompts(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"prompts": h.svc.ListEnabledPrompts(c.Request.Context(), c.Query("type"))})
+}
 func (h *Handler) CreateModel(c *gin.Context) {
 	var req createModelReq
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -208,19 +220,26 @@ var paymentState = map[string]any{
 	"device_id": "", "operator": "", "notify_url": "", "return_url": "", "gateway_url": "", "callback_public_key": "", "test_mode": true, "updated_at": "",
 }
 
+func (h *Handler) GetGateway(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"data": h.svc.GetGateway(c.Request.Context())})
+}
+
 func (h *Handler) UpdateGateway(c *gin.Context) {
 	var req updateGatewayReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid params"})
 		return
 	}
-	gatewayState.APIKey = req.APIKey
-	gatewayState.GatewayURL = req.GatewayURL
-	c.JSON(http.StatusOK, gin.H{"ok": true, "data": gatewayState})
+	out := h.svc.UpdateGateway(c.Request.Context(), GatewaySettings{APIKey: req.APIKey, GatewayURL: req.GatewayURL})
+	c.JSON(http.StatusOK, gin.H{"ok": true, "data": out})
 }
 
 func (h *Handler) TestGateway(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"ok": true, "latency": 42, "message": "ok"})
+}
+
+func (h *Handler) GetGenerationConfig(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"data": h.svc.GetGenerationConfig(c.Request.Context())})
 }
 
 func (h *Handler) UpdateGenerationConfig(c *gin.Context) {
@@ -229,15 +248,12 @@ func (h *Handler) UpdateGenerationConfig(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid params"})
 		return
 	}
-	generationState.MusicTimeout = req.MusicTimeout
-	generationState.ImageTimeout = req.ImageTimeout
-	generationState.VideoTimeout = req.VideoTimeout
-	generationState.UpdatedAt = "now"
-	c.JSON(http.StatusOK, gin.H{"ok": true, "data": generationState})
+	out := h.svc.UpdateGenerationConfig(c.Request.Context(), GenerationConfig{MusicTimeout: req.MusicTimeout, ImageTimeout: req.ImageTimeout, VideoTimeout: req.VideoTimeout})
+	c.JSON(http.StatusOK, gin.H{"ok": true, "data": out})
 }
 
 func (h *Handler) GetPayment(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"data": paymentState})
+	c.JSON(http.StatusOK, gin.H{"data": h.svc.GetPayment(c.Request.Context())})
 }
 
 func (h *Handler) UpdatePayment(c *gin.Context) {
@@ -246,18 +262,14 @@ func (h *Handler) UpdatePayment(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid params"})
 		return
 	}
-	for k, v := range body {
-		paymentState[k] = v
-	}
-	c.JSON(http.StatusOK, gin.H{"data": paymentState})
+	c.JSON(http.StatusOK, gin.H{"data": h.svc.UpdatePayment(c.Request.Context(), body)})
 }
 
 func (h *Handler) ActivatePayment(c *gin.Context) {
-	paymentState["terminal_sn"] = "term_demo"
-	paymentState["terminal_key"] = "term_key_demo"
-	c.JSON(http.StatusOK, gin.H{"ok": true, "data": paymentState})
+	c.JSON(http.StatusOK, gin.H{"ok": true, "data": h.svc.ActivatePayment(c.Request.Context())})
 }
 
 func (h *Handler) CheckinPayment(c *gin.Context) {
+	h.svc.CheckinPayment(c.Request.Context())
 	c.JSON(http.StatusOK, gin.H{"ok": true, "message": "checkin ok"})
 }

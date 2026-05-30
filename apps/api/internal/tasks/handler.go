@@ -1,6 +1,7 @@
 package tasks
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -48,4 +49,34 @@ func (h *Handler) List(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"code": 0, "data": gin.H{"tasks": items}})
+}
+
+func (h *Handler) Get(c *gin.Context) {
+	uid := c.GetString("user_id")
+	task, err := h.svc.Get(c.Request.Context(), uid, c.Param("id"))
+	if err != nil {
+		writeTaskError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"code": 0, "data": task})
+}
+
+func (h *Handler) Delete(c *gin.Context) {
+	uid := c.GetString("user_id")
+	if err := h.svc.Delete(c.Request.Context(), uid, c.Param("id")); err != nil {
+		writeTaskError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"code": 0, "message": "task deleted"})
+}
+
+func writeTaskError(c *gin.Context, err error) {
+	switch {
+	case errors.Is(err, ErrNotFound):
+		c.JSON(http.StatusNotFound, gin.H{"code": 40004, "message": err.Error()})
+	case errors.Is(err, ErrForbidden):
+		c.JSON(http.StatusForbidden, gin.H{"code": 30001, "message": err.Error()})
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"code": 40001, "message": err.Error()})
+	}
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 
 	"v0-project/apps/worker/internal/jobs"
@@ -11,6 +12,12 @@ import (
 
 func main() {
 	cfg := queue.LoadConfig()
+	store, err := jobs.NewStore(context.Background(), cfg)
+	if err != nil {
+		log.Fatalf("init store failed: %v", err)
+	}
+	defer store.Close()
+
 	srv := asynq.NewServer(
 		asynq.RedisClientOpt{Addr: cfg.RedisAddr},
 		asynq.Config{
@@ -24,9 +31,9 @@ func main() {
 	)
 
 	mux := asynq.NewServeMux()
-	jobs.Register(mux)
+	jobs.Register(mux, store)
 
-	log.Printf("worker started redis=%s", cfg.RedisAddr)
+	log.Printf("worker started redis=%s postgres=%t", cfg.RedisAddr, cfg.DatabaseURL != "")
 	if err := srv.Run(mux); err != nil {
 		log.Fatalf("worker failed: %v", err)
 	}

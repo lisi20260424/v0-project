@@ -1,10 +1,10 @@
 /**
- * 多种 API 请求/响应格式适配器
+ * Multi-provider API request/response adapters.
  *
- * 支持的格式：
- * - 图片：openai / gemini / qwen-openai
- * - 视频：openai / jimeng / kling / sora
- * - 音乐：openai / gemini
+ * Supported formats:
+ * - Image: openai / gemini / qwen-openai
+ * - Video: openai / jimeng / kling / sora
+ * - Music: openai / gemini
  */
 
 export type GenerationType = "image" | "video" | "music"
@@ -17,13 +17,13 @@ export type AnyFormat = ImageFormat | VideoFormat | MusicFormat
 export type EndpointConfig = {
   path: string
   format: AnyFormat
-  // 视频异步任务的查询路径模板，可包含 {taskId} 占位符
+  // Polling path template for async video tasks. It may include a {taskId} placeholder.
   pollPath?: string
-  // Sora 特有：获取视频内容的 API 路径模板，可包含 {taskId} 占位符
+  // Sora-only content path template. It may include a {taskId} placeholder.
   contentPath?: string
 }
 
-/** 默认端点（未配置时回退） */
+/** Default endpoints used when no provider endpoint is configured. */
 export const DEFAULT_ENDPOINTS: Record<GenerationType, EndpointConfig> = {
   image: { path: "/v1/images/generations", format: "openai" },
   video: { path: "/v1/video/generations", format: "openai" },
@@ -66,21 +66,17 @@ export type MusicRequestParams = {
 
 export type AnyRequestParams = ImageRequestParams | VideoRequestParams | MusicRequestParams
 
-/** 解析后的统一响应：要么同步拿到 URL，要么是异步任务 */
+/** Unified parsed response: sync URL result, async task result, or binary result. */
 export type ParsedResponse =
   | { kind: "sync"; urls: string[]; raw: unknown }
   | { kind: "async"; providerTaskId: string; raw: unknown }
   | { kind: "binary"; binary: true; raw: unknown }
 
-/** 视频任务轮询结果 */
+/** Polling result for async video tasks. */
 export type PollResult =
   | { status: "running"; progress?: number; raw: unknown }
   | { status: "success"; urls: string[]; raw: unknown }
   | { status: "failed"; error: string; raw: unknown }
-
-/* ------------------------------------------------------------------------- */
-/* 请求体构造                                                                  */
-/* ------------------------------------------------------------------------- */
 
 export function buildRequestBody(
   type: GenerationType,
@@ -96,7 +92,6 @@ function buildImageBody(format: ImageFormat, p: ImageRequestParams) {
   const { prompt, modelId, size = "1024x1024", n = 1, quality, style, responseFormat = "url", negative } = p
 
   if (format === "gemini") {
-    // 原生 Gemini 格式：generateContent + image generation config
     return {
       body: {
         contents: [
@@ -116,7 +111,6 @@ function buildImageBody(format: ImageFormat, p: ImageRequestParams) {
   }
 
   if (format === "qwen-openai") {
-    // 通义千问 OpenAI 兼容格式（DashScope）：保留 OpenAI 字段，附加 negative_prompt / seed
     const body: Record<string, any> = {
       model: modelId,
       prompt,
@@ -129,7 +123,6 @@ function buildImageBody(format: ImageFormat, p: ImageRequestParams) {
     return { body }
   }
 
-  // 默认 OpenAI
   const body: Record<string, any> = {
     model: modelId,
     prompt,
@@ -159,11 +152,12 @@ function buildVideoBody(format: VideoFormat, p: VideoRequestParams) {
 
   const sizeStr = size ?? `${width}x${height}`
   const ratioStr = ratio ?? deriveRatio(width, height)
+  void fps
+  void n
+  void seed
+  void sizeStr
 
   if (format === "sora") {
-    // Sora 异步任务：POST /v1/videos
-    // Sora 使用 "seconds" 而不是 "duration"，且必须是字符串
-    // 视频使用 width 和 height，不使用 size
     return {
       body: {
         model: modelId,
@@ -176,8 +170,6 @@ function buildVideoBody(format: VideoFormat, p: VideoRequestParams) {
   }
 
   if (format === "kling") {
-    // 可灵：POST /kling/v1/videos/text2video
-    // duration 必须是字符串
     const body: Record<string, any> = {
       model_name: modelId,
       prompt,
@@ -189,8 +181,6 @@ function buildVideoBody(format: VideoFormat, p: VideoRequestParams) {
   }
 
   if (format === "jimeng") {
-    // 即梦（字节跳动）：POST /jimeng/?Action=CVSync2AsyncSubmitTask
-    // 视频使用 width 和 height
     const body: Record<string, any> = {
       req_key: modelId,
       prompt,
@@ -201,9 +191,6 @@ function buildVideoBody(format: VideoFormat, p: VideoRequestParams) {
     return { body }
   }
 
-  // 默认 OpenAI 风格（统一接口）
-  // 按照 /v1/videos 的统一接口格式
-  // 视频使用 width 和 height，不使用 size
   const body: Record<string, any> = {
     model: modelId,
     prompt,
@@ -218,7 +205,6 @@ function buildMusicBody(format: MusicFormat, p: MusicRequestParams) {
   const { prompt, modelId, voice = "alloy", responseFormat = "mp3", speed = 1 } = p
 
   if (format === "gemini") {
-    // 原生 Gemini 格式：generateContent + 语音合成
     return {
       body: {
         contents: [
@@ -239,7 +225,6 @@ function buildMusicBody(format: MusicFormat, p: MusicRequestParams) {
     }
   }
 
-  // 默认 OpenAI TTS：/v1/audio/speech
   return {
     body: {
       model: modelId,
@@ -251,20 +236,14 @@ function buildMusicBody(format: MusicFormat, p: MusicRequestParams) {
   }
 }
 
-/* ------------------------------------------------------------------------- */
-/* 响应解析                                                                    */
-/* ------------------------------------------------------------------------- */
-
 export async function parseResponse(
   type: GenerationType,
   format: AnyFormat,
   response: Response,
 ): Promise<ParsedResponse> {
-  // 二进制响应（�� OpenAI TTS 直接返回 audio）—— 当前实现仅支持上游返回 URL/JSON
   const contentType = response.headers.get("content-type") || ""
 
   if (contentType.startsWith("audio/") || contentType.startsWith("video/") || contentType.startsWith("image/")) {
-    // 二进制无法直接保存为 URL，标记为不支持的同步二进制
     return { kind: "binary", binary: true, raw: { contentType } }
   }
 
@@ -283,7 +262,6 @@ export async function parseResponse(
 
 function parseImageResponse(format: ImageFormat, json: any): ParsedResponse {
   if (format === "gemini") {
-    // Gemini: candidates[0].content.parts[].inline_data.data 或 file_data.file_uri
     const urls: string[] = []
     const candidates = json?.candidates ?? []
     for (const c of candidates) {
@@ -299,7 +277,6 @@ function parseImageResponse(format: ImageFormat, json: any): ParsedResponse {
     return { kind: "sync", urls, raw: json }
   }
 
-  // OpenAI / Qwen-OpenAI：data[].url 或 data[].b64_json
   const data = Array.isArray(json?.data) ? json.data : []
   const urls: string[] = []
   for (const item of data) {
@@ -315,9 +292,7 @@ function parseImageResponse(format: ImageFormat, json: any): ParsedResponse {
 
 function parseVideoResponse(format: VideoFormat, json: any): ParsedResponse {
   if (format === "sora") {
-    // Sora：{ id, status }，需要异步轮询
     if (json?.id) {
-      // 已完成的同步响应（少见）
       const url = sorContentUrl(json)
       if (json?.status === "completed" && url) return { kind: "sync", urls: [url], raw: json }
       return { kind: "async", providerTaskId: String(json.id), raw: json }
@@ -327,20 +302,17 @@ function parseVideoResponse(format: VideoFormat, json: any): ParsedResponse {
   }
 
   if (format === "kling") {
-    // 可灵：{ data: { task_id, task_status } }
     const taskId = json?.data?.task_id ?? json?.task_id
     if (taskId) return { kind: "async", providerTaskId: String(taskId), raw: json }
     throw new Error("可灵响应缺少 task_id")
   }
 
   if (format === "jimeng") {
-    // 即梦：{ data: { task_id } } 或 { task_id }
     const taskId = json?.data?.task_id ?? json?.task_id
     if (taskId) return { kind: "async", providerTaskId: String(taskId), raw: json }
     throw new Error("即梦响应缺少 task_id")
   }
 
-  // 默认 OpenAI 视频：可能同步返回 data[].url，也可能异步 { id }
   if (Array.isArray(json?.data) && json.data.length > 0 && json.data[0].url) {
     const urls = json.data.map((d: any) => d.url).filter(Boolean)
     return { kind: "sync", urls, raw: json }
@@ -352,7 +324,6 @@ function parseVideoResponse(format: VideoFormat, json: any): ParsedResponse {
 
 function parseMusicResponse(format: MusicFormat, json: any): ParsedResponse {
   if (format === "gemini") {
-    // Gemini 音频：candidates[0].content.parts[].inline_data
     const urls: string[] = []
     for (const c of json?.candidates ?? []) {
       for (const part of c?.content?.parts ?? []) {
@@ -367,7 +338,6 @@ function parseMusicResponse(format: MusicFormat, json: any): ParsedResponse {
     return { kind: "sync", urls, raw: json }
   }
 
-  // OpenAI 音频：网关一般返回 { data: [{ url }] } 或直接 binary
   const data = Array.isArray(json?.data) ? json.data : []
   const urls: string[] = []
   for (const item of data) {
@@ -380,13 +350,7 @@ function parseMusicResponse(format: MusicFormat, json: any): ParsedResponse {
   throw new Error("响应未包含音频数据")
 }
 
-/* ------------------------------------------------------------------------- */
-/* 视频异步任务轮询                                                              */
-/* ------------------------------------------------------------------------- */
-
-/**
- * 构造轮询 URL；支持自定义 pollPath 模板，否则按格式约定生成
- */
+/** Build polling URL for async video tasks. */
 export function buildPollUrl(format: VideoFormat, baseURL: string, taskId: string, customPath?: string): string {
   if (customPath) {
     const p = customPath.replace("{taskId}", encodeURIComponent(taskId))
@@ -448,17 +412,13 @@ export function parsePollResponse(format: VideoFormat, json: any): PollResult {
     return { status: "running", raw: json }
   }
 
-  // 默认 OpenAI 视频任务 / 通用网关响应
-  // 兼容多种响应格式
   let status = json?.status
   if (!status) status = json?.data?.status
   if (!status) status = json?.code
-  
+
   if (status === "succeeded" || status === "completed" || status === "success" || status === "SUCCESS") {
     const urls: string[] = []
-    
-    // 尝试从多个可能的位置提取视频 URL - 逐个尝试，如果找到就直接返回
-    // 优先级：最顶层的 url → 嵌套一层 → 嵌套两层 → 数组格式
+
     if (typeof json?.url === "string" && json.url.trim()) {
       urls.push(json.url.trim())
     } else if (typeof json?.video_url === "string" && json.video_url.trim()) {
@@ -478,7 +438,6 @@ export function parsePollResponse(format: VideoFormat, json: any): PollResult {
     } else if (typeof json?.data?.data?.result_url === "string" && json.data.data.result_url.trim()) {
       urls.push(json.data.data.result_url.trim())
     } else if (Array.isArray(json?.data)) {
-      // 如果是数组格式，提取所有有效的 URL
       for (const d of json.data) {
         if (typeof d?.url === "string" && d.url.trim()) {
           urls.push(d.url.trim())
@@ -489,7 +448,6 @@ export function parsePollResponse(format: VideoFormat, json: any): PollResult {
         }
       }
     } else if (Array.isArray(json?.outputs)) {
-      // outputs 数组
       for (const o of json.outputs) {
         if (typeof o?.url === "string" && o.url.trim()) {
           urls.push(o.url.trim())
@@ -500,20 +458,16 @@ export function parsePollResponse(format: VideoFormat, json: any): PollResult {
         }
       }
     }
-    
+
     return { status: "success", urls, raw: json }
   }
-  
+
   if (status === "failed" || status === "error" || status === "FAILED") {
     return { status: "failed", error: json?.error?.message || json?.fail_reason || "视频生成失败", raw: json }
   }
-  
+
   return { status: "running", raw: json }
 }
-
-/* ------------------------------------------------------------------------- */
-/* 工具函数                                                                    */
-/* ------------------------------------------------------------------------- */
 
 function sorContentUrl(json: any): string | undefined {
   return json?.video?.url ?? json?.url ?? json?.output?.[0]?.url

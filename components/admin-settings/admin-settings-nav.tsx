@@ -41,7 +41,8 @@ export function AdminSettingsNav() {
       {ADMIN_NAV_ITEMS.map((item) => {
         const Icon = item.icon
         const active = pathname === item.href || pathname.startsWith(item.href + "/")
-        const hasChildren = item.children && item.children.length > 0
+        const children = item.children ?? []
+        const hasChildren = children.length > 0
 
         return (
           <div key={item.href}>
@@ -89,7 +90,7 @@ export function AdminSettingsNav() {
 
             {hasChildren && expandedItem === item.href && (
               <div className="mt-2 ml-4 space-y-1 border-l border-border/50 pl-4">
-                {item.children.map((child) => {
+                {children.map((child) => {
                   const childActive = pathname === child.href
                   return (
                     <Link

@@ -165,7 +165,7 @@ function initial(provider?: AdminProvider): FormState {
     displayName: provider.display_name,
     description: provider.description ?? "",
     enabled: provider.enabled,
-    sortOrder: provider.sort_order,
+    sortOrder: provider.sort_order ?? 0,
     uiByType,
     endpointsByType,
   }
