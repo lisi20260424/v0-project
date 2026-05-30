@@ -1,5 +1,7 @@
 "use client"
 
+import { platformAuthFetch } from "@/lib/platform-session"
+
 import { useState } from "react"
 import { toast } from "sonner"
 import {
@@ -87,7 +89,7 @@ export function PaymentForm({ initialValue }: Props) {
     e.preventDefault()
     setSaving(true)
     try {
-      const res = await fetch("/api/admin/payment", {
+      const res = await platformAuthFetch("/v1/admin/payment", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(value),
@@ -110,7 +112,7 @@ export function PaymentForm({ initialValue }: Props) {
     }
     setActivating(true)
     try {
-      const res = await fetch("/api/admin/payment/activate", {
+      const res = await platformAuthFetch("/v1/admin/payment/activate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -135,7 +137,7 @@ export function PaymentForm({ initialValue }: Props) {
         throw new Error(json.error ?? "激活失败")
       }
 
-      const latest = await fetch("/api/admin/payment", { cache: "no-store" })
+      const latest = await platformAuthFetch("/v1/admin/payment", { cache: "no-store" })
       if (!latest.ok) {
         throw new Error("获取最新配置失败")
       }
@@ -157,7 +159,7 @@ export function PaymentForm({ initialValue }: Props) {
   async function handleCheckin() {
     setCheckingIn(true)
     try {
-      const res = await fetch("/api/admin/payment/checkin", { method: "POST" })
+      const res = await platformAuthFetch("/v1/admin/payment/checkin", { method: "POST" })
 
       const contentType = res.headers.get("content-type")
       if (!contentType?.includes("application/json")) {
@@ -174,7 +176,7 @@ export function PaymentForm({ initialValue }: Props) {
         throw new Error(json.error ?? "签到失败")
       }
 
-      const latest = await fetch("/api/admin/payment", { cache: "no-store" })
+      const latest = await platformAuthFetch("/v1/admin/payment", { cache: "no-store" })
       if (!latest.ok) {
         throw new Error("获取最新配置失败")
       }

@@ -1,7 +1,8 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState, useCallback } from "react"
-import { createClient } from "@/lib/supabase/client"
+import { createContext, useCallback, useContext, useEffect, useState } from "react"
+import { platformAPI } from "@/lib/platform-api"
+import { clearPlatformSession, getPlatformSession } from "@/lib/platform-session"
 
 export type CurrentUser = {
   id: string
@@ -19,6 +20,7 @@ type UserContextValue = {
   loading: boolean
   isAdmin: boolean
   refreshUser: () => Promise<void>
+  setUserFromApi: (raw: any) => void
 }
 
 const UserContext = createContext<UserContextValue>({
@@ -26,7 +28,26 @@ const UserContext = createContext<UserContextValue>({
   loading: true,
   isAdmin: false,
   refreshUser: async () => {},
+  setUserFromApi: () => {},
 })
+
+function normalizeUser(raw: any): NonNullable<CurrentUser> {
+  const email = raw?.email ?? ""
+  const userType = (raw?.userType ?? raw?.user_type ?? (raw?.role === "admin" ? "admin" : "normal")) as
+    | "normal"
+    | "admin"
+
+  return {
+    id: raw?.id ?? email,
+    email,
+    displayName: raw?.displayName ?? raw?.display_name ?? email.split("@")[0] ?? "User",
+    avatarUrl: raw?.avatarUrl ?? raw?.avatar_url ?? null,
+    points: raw?.points ?? 0,
+    vipTier: (raw?.vipTier ?? raw?.vip_tier ?? null) as "monthly" | "annual" | "lifetime" | null,
+    status: (raw?.status ?? "active") as "active" | "suspended" | "banned",
+    userType,
+  }
+}
 
 export function UserProvider({
   initialUser,
@@ -40,113 +61,37 @@ export function UserProvider({
   const [user, setUser] = useState<CurrentUser>(initialUser)
   const [isAdmin, setIsAdmin] = useState<boolean>(initialIsAdmin)
   const [loading, setLoading] = useState(false)
-  const supabaseRef = createClient()
-  let unsubscribeRef: (() => void) | null = null
 
-  // 刷新用户信息，同时处理会话过期
+  const setUserFromApi = useCallback((raw: any) => {
+    const userData = normalizeUser(raw)
+    setUser(userData)
+    setIsAdmin(userData.userType === "admin")
+  }, [])
+
   const refreshUser = useCallback(async () => {
+    const session = getPlatformSession()
+    if (!session?.accessToken) {
+      setUser(null)
+      setIsAdmin(false)
+      return
+    }
+
     try {
-      const { data: { session } } = await supabaseRef.auth.getSession()
-      
-      if (!session?.user) {
-        setUser(null)
-        setIsAdmin(false)
-        return
-      }
-
-      // 检查并刷新令牌
-      const { data, error } = await supabaseRef.auth.refreshSession()
-      if (error || !data.session) {
-        setUser(null)
-        setIsAdmin(false)
-        return
-      }
-
-      const { data: profile } = await supabaseRef
-        .from("profiles")
-        .select("display_name, avatar_url, points, vip_tier, status, user_type")
-        .eq("id", session.user.id)
-        .maybeSingle()
-
-      const userData = {
-        id: session.user.id,
-        email: session.user.email ?? "",
-        displayName:
-          profile?.display_name ??
-          (session.user.user_metadata?.display_name as string) ??
-          (session.user.email?.split("@")[0] ?? "用户"),
-        avatarUrl: profile?.avatar_url ?? null,
-        points: profile?.points ?? 0,
-        vipTier:
-          (profile?.vip_tier as CurrentUser extends infer U ? (U extends null ? never : U["vipTier"]) : never) ?? null,
-        status: (profile?.status ?? "active") as "active" | "suspended" | "banned",
-        userType: (profile?.user_type ?? "normal") as "normal" | "admin",
-      }
-
-      setUser(userData)
-      setIsAdmin(userData.userType === "admin")
+      const res = await platformAPI.me(session.accessToken)
+      setUserFromApi(res.data ?? res)
     } catch (error) {
       console.error("[v0] Failed to refresh user:", error)
+      clearPlatformSession()
       setUser(null)
       setIsAdmin(false)
     }
-  }, [])
+  }, [setUserFromApi])
 
-  // 设置认证状态变化监听器
   useEffect(() => {
     setLoading(true)
-    
-    const { data: subscription } = supabaseRef.auth.onAuthStateChange(async (_event, session) => {
-      if (!session?.user) {
-        setUser(null)
-        setIsAdmin(false)
-        setLoading(false)
-        return
-      }
+    refreshUser().finally(() => setLoading(false))
+  }, [refreshUser])
 
-      try {
-        const { data: profile } = await supabaseRef
-          .from("profiles")
-          .select("display_name, avatar_url, points, vip_tier, status, user_type")
-          .eq("id", session.user.id)
-          .maybeSingle()
-
-        const userData = {
-          id: session.user.id,
-          email: session.user.email ?? "",
-          displayName:
-            profile?.display_name ??
-            (session.user.user_metadata?.display_name as string) ??
-            (session.user.email?.split("@")[0] ?? "用户"),
-          avatarUrl: profile?.avatar_url ?? null,
-          points: profile?.points ?? 0,
-          vipTier:
-            (profile?.vip_tier as CurrentUser extends infer U ? (U extends null ? never : U["vipTier"]) : never) ?? null,
-          status: (profile?.status ?? "active") as "active" | "suspended" | "banned",
-          userType: (profile?.user_type ?? "normal") as "normal" | "admin",
-        }
-
-        setUser(userData)
-        setIsAdmin(userData.userType === "admin")
-      } catch (error) {
-        console.error("[v0] Auth state change error:", error)
-        setUser(null)
-        setIsAdmin(false)
-      } finally {
-        setLoading(false)
-      }
-    })
-
-    unsubscribeRef = subscription.subscription.unsubscribe
-
-    return () => {
-      if (unsubscribeRef) {
-        unsubscribeRef()
-      }
-    }
-  }, [])
-
-  // 定期检查会话是否有效（每 5 分钟检查一次）
   useEffect(() => {
     const interval = setInterval(() => {
       refreshUser()
@@ -156,7 +101,7 @@ export function UserProvider({
   }, [refreshUser])
 
   return (
-    <UserContext.Provider value={{ user, loading, isAdmin, refreshUser }}>
+    <UserContext.Provider value={{ user, loading, isAdmin, refreshUser, setUserFromApi }}>
       {children}
     </UserContext.Provider>
   )

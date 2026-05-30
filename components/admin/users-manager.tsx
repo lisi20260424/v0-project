@@ -52,9 +52,15 @@ type UsersResponse = {
 
 type Banner = { ok: boolean; message: string } | null
 
+import { platformAuthFetch } from "@/lib/platform-session"
+type Props = {
+  initialUsers?: AdminUser[]
+  currentUser?: CurrentUser | null
+}
+
 const fetcher = async (url: string): Promise<UsersResponse> => {
   console.log("[v0] Fetching users from:", url)
-  const res = await fetch(url)
+  const res = await platformAuthFetch(url)
   const json = await res.json()
   console.log("[v0] Fetch response:", { status: res.status, data: json })
   if (!res.ok) throw new Error(json.error ?? "加载失败")
@@ -106,7 +112,7 @@ export function UsersManager({ initialUsers = [], currentUser }: Props) {
     if (vipTier !== "all") params.set("vipTier", vipTier)
     params.set("page", String(page))
     params.set("pageSize", String(pageSize))
-    return `/api/admin/users?${params.toString()}`
+    return `/v1/admin/users?${params.toString()}`
   }, [search, userType, status, vipTier, page])
 
   const { data, error, isLoading, mutate } = useSWR<UsersResponse>(queryKey, fetcher, {
@@ -130,7 +136,7 @@ export function UsersManager({ initialUsers = [], currentUser }: Props) {
     vipExpiresAt: string | null
     points: number
   }) {
-    const res = await fetch(`/api/admin/users/${form.id}`, {
+    const res = await platformAuthFetch(`/v1/admin/users/${form.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),

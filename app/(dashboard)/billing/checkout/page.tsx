@@ -1,7 +1,6 @@
 import Link from "next/link"
 import { redirect } from "next/navigation"
 import { ArrowLeft } from "lucide-react"
-import { createClient } from "@/lib/supabase/server"
 import { findPlan, type PlanKind } from "@/lib/payment/plans"
 import { CheckoutClient } from "@/components/billing/checkout-client"
 
@@ -14,15 +13,6 @@ type SearchParams = Promise<{
 
 export default async function CheckoutPage({ searchParams }: { searchParams: SearchParams }) {
   const { kind, code } = await searchParams
-
-  // 校验登录
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) {
-    redirect(`/auth/login?next=${encodeURIComponent(`/billing/checkout?kind=${kind ?? ""}&code=${code ?? ""}`)}`)
-  }
 
   // 校验套餐
   const planKind = kind as PlanKind | undefined

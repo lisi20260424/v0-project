@@ -1,5 +1,7 @@
 "use client"
 
+import { platformAuthFetch } from "@/lib/platform-session"
+
 import * as React from "react"
 import useSWR from "swr"
 import {
@@ -54,7 +56,7 @@ type BillingResponse = {
 }
 
 const fetcher = async (url: string): Promise<BillingResponse> => {
-  const res = await fetch(url)
+  const res = await platformAuthFetch(url)
   if (!res.ok) throw new Error("加载账单记录失败")
   return res.json()
 }
@@ -99,7 +101,7 @@ export function BillingRecords() {
   })
 
   const { data, isLoading, error } = useSWR<BillingResponse>(
-    `/api/user/billing?${queryParams.toString()}`,
+    `/v1/pay/billing?${queryParams.toString()}`,
     fetcher,
     { keepPreviousData: true },
   )

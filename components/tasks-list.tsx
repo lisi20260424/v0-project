@@ -1,5 +1,7 @@
 "use client"
 
+import { platformAuthFetch } from "@/lib/platform-session"
+
 import * as React from "react"
 import Image from "next/image"
 import {
@@ -118,12 +120,12 @@ export function TasksList() {
   // 拉取任务列表
   const refresh = React.useCallback(async () => {
     try {
-      const res = await fetch("/api/tasks?limit=100", { cache: "no-store" })
+      const res = await platformAuthFetch("/v1/tasks", { cache: "no-store" })
       if (!res.ok) {
         throw new Error("加载任务失败")
       }
       const data = await res.json()
-      setTasks(data.tasks ?? [])
+      setTasks(data.data?.tasks ?? data.tasks ?? [])
       setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : "加载失败")
@@ -158,9 +160,10 @@ export function TasksList() {
       for (const id of ids) {
         if (cancelled) break
         try {
-          const res = await fetch(`/api/tasks/${id}`, { cache: "no-store" })
+          const res = await platformAuthFetch(`/v1/tasks/${id}`, { cache: "no-store" })
           if (!res.ok) continue
-          const { task } = await res.json()
+          const json = await res.json()
+          const task = json.data ?? json.task
           if (cancelled) break
           if (task) {
             setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, ...task } : t)))
@@ -204,7 +207,7 @@ export function TasksList() {
     const prev = tasks
     setTasks((p) => p.filter((t) => t.id !== id))
     try {
-      const res = await fetch(`/api/tasks/${id}`, { method: "DELETE" })
+      const res = await platformAuthFetch(`/v1/tasks/${id}`, { method: "DELETE" })
       if (!res.ok) throw new Error("删除失败")
     } catch {
       setTasks(prev)

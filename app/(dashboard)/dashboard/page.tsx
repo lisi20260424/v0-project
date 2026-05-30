@@ -4,11 +4,8 @@ import { ArrowRight, Video, ImageIcon, Music2, Sparkles, AlertCircle, Zap } from
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { MOCK_CREATIONS } from "@/lib/mock-data"
-import { getCurrentUser } from "@/lib/supabase/get-user"
-import { createAdminClient } from "@/lib/supabase/admin"
 import { resolveIcon } from "@/lib/icon-map"
 import { getDisplayTools } from "@/lib/display-tools"
-import { createClient } from "@/lib/supabase/client"
 import { USER_STATUS_LABELS, VIP_TIER_LABELS } from "@/lib/admin"
 
 export const metadata = {
@@ -32,37 +29,16 @@ function greeting() {
 }
 
 export default async function DashboardPage() {
-  const user = await getCurrentUser()
-  const admin = createAdminClient()
-  const supabase = await createClient()
-
-  // 获取真实任务数据用于计算指标
-  const { data: allTasks } = await admin
-    .from("generation_tasks")
-    .select("type, status")
-    .eq("user_id", user?.id)
-
-  // 计算指标
-  const tasks = allTasks || []
-  const successTasks = tasks.filter((t) => t.status === "success")
+  const user: any = null
+  const successTasks: Array<{ type: string }> = []
   const stats = {
     total: successTasks.length,
     video: successTasks.filter((t) => t.type === "video").length,
     image: successTasks.filter((t) => t.type === "image").length,
     music: successTasks.filter((t) => t.type === "music").length,
   }
-
-  // 获取进行中的任务（最多3条）
-  const { data: runningTasks } = await admin
-    .from("generation_tasks")
-    .select("*")
-    .eq("user_id", user?.id)
-    .in("status", ["running", "queued"])
-    .order("created_at", { ascending: false })
-    .limit(3)
-
-  // 按供应商维度展示工具（使用 getDisplayTools 统一逻辑）
-  const tools = await getDisplayTools(supabase as any)
+  const runningTasks: any[] = []
+  const tools = await getDisplayTools()
 
   const recentCreations = MOCK_CREATIONS.slice(0, 6)
 

@@ -5,7 +5,8 @@ import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { AlertCircle, ArrowLeft, CheckCircle2, MailCheck } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { createClient } from "@/lib/supabase/client"
+import { platformAPI } from "@/lib/platform-api"
+import { savePlatformSession } from "@/lib/platform-session"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -13,6 +14,7 @@ import { Spinner } from "@/components/ui/spinner"
 import { OAuthButtons } from "./oauth-buttons"
 import { OtpInput } from "./otp-input"
 import { translateAuthError } from "@/lib/auth-errors"
+import { useUser } from "@/components/user-provider"
 
 type Mode = "password" | "otp"
 type OtpStep = "email" | "verify"
@@ -22,6 +24,7 @@ const RESEND_SECONDS = 60
 export function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { refreshUser, setUserFromApi } = useUser()
   const next = searchParams.get("next") ?? "/dashboard"
 
   const [mode, setMode] = useState<Mode>("password")
@@ -53,15 +56,13 @@ export function LoginForm() {
     setError(null)
     setLoading(true)
     try {
-      const supabase = createClient()
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) throw error
-      if (data?.session) {
-        // 等待一下确保 provider 已经更新了用户状态
-        await new Promise((resolve) => setTimeout(resolve, 500))
-        router.push(next)
-        router.refresh()
-      }
+      const res = await platformAPI.login(email, password)
+      const data = res.data ?? res
+      savePlatformSession({ accessToken: data.accessToken, refreshToken: data.refreshToken })
+      if (data.user) setUserFromApi(data.user)
+      router.push(next)
+      router.refresh()
+      void refreshUser()
     } catch (err) {
       setError(translateAuthError(err, "登录失败，请检查账号密码"))
       setLoading(false)
@@ -69,31 +70,8 @@ export function LoginForm() {
   }
 
   async function sendOtp(isResend = false) {
-    setError(null)
-    if (!email) {
-      setError("请先输入邮箱")
-      return
-    }
-    setLoading(true)
-    try {
-      const supabase = createClient()
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          shouldCreateUser: false,
-          emailRedirectTo:
-            process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ?? `${window.location.origin}/auth/callback`,
-        },
-      })
-      if (error) throw error
-      setOtpStep("verify")
-      setOtp("")
-      setCooldown(RESEND_SECONDS)
-    } catch (err) {
-      setError(translateAuthError(err, "发送验证码失败，请稍后重试"))
-    } finally {
-      setLoading(false)
-    }
+    setError("邮箱验证码登录暂未接入 Go API，请先使用密码登录")
+    setLoading(false)
   }
 
   async function handleOtpEmailSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -102,27 +80,9 @@ export function LoginForm() {
   }
 
   async function verifyOtp(code: string) {
-    setError(null)
-    setLoading(true)
-    try {
-      const supabase = createClient()
-      const { data, error } = await supabase.auth.verifyOtp({
-        email,
-        token: code,
-        type: "email",
-      })
-      if (error) throw error
-      if (data?.session) {
-        // 等待一下确保 provider 已经更新了用户状态
-        await new Promise((resolve) => setTimeout(resolve, 500))
-        router.push(next)
-        router.refresh()
-      }
-    } catch (err) {
-      setError(translateAuthError(err, "验证码错误或已过期"))
-      setOtp("")
-      setLoading(false)
-    }
+    setError("邮箱验证码登录暂未接入 Go API，请先使用密码登录")
+    setOtp("")
+    setLoading(false)
   }
 
   async function handleOtpVerifySubmit(e: React.FormEvent<HTMLFormElement>) {

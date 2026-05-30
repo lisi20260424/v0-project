@@ -1,5 +1,7 @@
 "use client"
 
+import { platformAuthFetch } from "@/lib/platform-session"
+
 import { useEffect, useMemo, useState } from "react"
 import { AlertCircle, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -80,7 +82,7 @@ export function ModelDialog({ open, onOpenChange, model, defaultModelType = "vid
   async function loadProviders() {
     setLoadingProviders(true)
     try {
-      const res = await fetch("/api/admin/providers")
+      const res = await platformAuthFetch("/v1/admin/providers")
       const json = await res.json()
       setProviders(json.providers ?? [])
     } catch (err) {
@@ -156,7 +158,6 @@ export function ModelDialog({ open, onOpenChange, model, defaultModelType = "vid
                 </Label>
                 <Input
                   id="m-name"
-                  size="sm"
                   value={form.name}
                   onChange={(e) => update("name", e.target.value)}
                   placeholder="例如：Sora Turbo"

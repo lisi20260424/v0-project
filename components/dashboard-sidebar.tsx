@@ -1,5 +1,7 @@
 "use client"
 
+import { platformAuthFetch } from "@/lib/platform-session"
+
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
@@ -79,9 +81,9 @@ export function DashboardSidebar() {
     if (!user?.id) return
     const fetchRunningCount = async () => {
       try {
-        const res = await fetch("/api/tasks")
+        const res = await platformAuthFetch("/v1/tasks")
         const json = await res.json()
-        const tasks = json.tasks || []
+        const tasks = json.data?.tasks || json.tasks || []
         const count = tasks.filter((t: any) => t.status === "running" || t.status === "queued").length
         setRunningCount(count)
       } catch (err) {

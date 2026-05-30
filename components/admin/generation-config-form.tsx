@@ -1,5 +1,7 @@
 "use client"
 
+import { platformAuthFetch } from "@/lib/platform-session"
+
 import { useState } from "react"
 import { toast } from "sonner"
 import { Clock } from "lucide-react"
@@ -31,7 +33,7 @@ export function GenerationConfigForm({
     e.preventDefault()
     setSaving(true)
     try {
-      const res = await fetch("/api/admin/generation-config", {
+      const res = await platformAuthFetch("/v1/admin/generation-config", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

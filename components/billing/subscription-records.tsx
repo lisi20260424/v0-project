@@ -1,5 +1,7 @@
 "use client"
 
+import { platformAuthFetch } from "@/lib/platform-session"
+
 import * as React from "react"
 import Link from "next/link"
 import useSWR from "swr"
@@ -47,7 +49,7 @@ type SubscriptionResponse = {
 }
 
 const fetcher = async (url: string): Promise<SubscriptionResponse> => {
-  const res = await fetch(url)
+  const res = await platformAuthFetch(url)
   if (!res.ok) throw new Error("加载订阅记录失败")
   return res.json()
 }
@@ -104,7 +106,7 @@ export function SubscriptionRecords() {
   })
 
   const { data, isLoading, error } = useSWR<SubscriptionResponse>(
-    `/api/user/subscriptions?${queryParams.toString()}`,
+    `/v1/pay/subscriptions?${queryParams.toString()}`,
     fetcher,
     { keepPreviousData: true },
   )

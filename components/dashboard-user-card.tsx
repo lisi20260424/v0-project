@@ -1,5 +1,7 @@
 "use client"
 
+import { platformAuthFetch } from "@/lib/platform-session"
+
 import { useEffect, useState } from "react"
 import { Zap, Crown } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -29,7 +31,7 @@ export function DashboardUserCard() {
 
     const fetchStats = async () => {
       try {
-        const res = await fetch("/api/user/points?type=stats")
+        const res = await platformAuthFetch("/v1/user/points?type=stats")
         if (res.ok) {
           const data = await res.json()
           setStats(data)

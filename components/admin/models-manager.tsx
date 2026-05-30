@@ -1,6 +1,8 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { platformAuthFetch } from "@/lib/platform-session"
+
+import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Plus, Pencil, Trash2, AlertCircle, CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -55,6 +57,16 @@ export function ModelsManager({ initialModels }: { initialModels: AdminModel[] }
     return result
   }, [models])
 
+  useEffect(() => {
+    platformAuthFetch("/v1/admin/models", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        const items = json?.models ?? json?.data?.models ?? json?.data ?? []
+        setModels(items)
+      })
+      .catch(() => {})
+  }, [])
+
   function showBanner(b: Banner) {
     setBanner(b)
     if (b) setTimeout(() => setBanner(null), 3000)
@@ -72,17 +84,18 @@ export function ModelsManager({ initialModels }: { initialModels: AdminModel[] }
     sortOrder: number
   }) {
     const isEdit = !!form.id
-    const url = isEdit ? `/api/admin/models/${form.id}` : "/api/admin/models"
-    const res = await fetch(url, {
+    const url = isEdit ? `/v1/admin/models/${form.id}` : "/v1/admin/models"
+    const res = await platformAuthFetch(url, {
       method: isEdit ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),
     })
     const json = await res.json()
     if (!res.ok) {
-      throw new Error(json.error ?? "保存失败")
+      throw new Error(json.error ?? json.message ?? "保存失败")
     }
-    const saved = json.model as AdminModel
+    const saved = (json.data ?? json.model) as AdminModel
+    if (!saved?.id) throw new Error("保存返回数据异常")
     setModels((prev) => {
       const exists = prev.some((m) => m.id === saved.id)
       if (exists) return prev.map((m) => (m.id === saved.id ? saved : m))
@@ -95,14 +108,15 @@ export function ModelsManager({ initialModels }: { initialModels: AdminModel[] }
   async function handleToggle(model: AdminModel, enabled: boolean) {
     setPendingId(model.id)
     try {
-      const res = await fetch(`/api/admin/models/${model.id}`, {
+      const res = await platformAuthFetch(`/v1/admin/models/${model.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ enabled }),
       })
       const json = await res.json()
-      if (!res.ok) throw new Error(json.error ?? "更新失败")
-      setModels((prev) => prev.map((m) => (m.id === model.id ? { ...m, enabled } : m)))
+      if (!res.ok) throw new Error(json.error ?? json.message ?? "更新失败")
+      const saved = (json.data ?? json.model) as AdminModel | undefined
+      setModels((prev) => prev.map((m) => (m.id === model.id ? { ...m, ...(saved ?? {}), enabled } : m)))
     } catch (err) {
       showBanner({ ok: false, message: err instanceof Error ? err.message : "更新失败" })
     } finally {
@@ -114,9 +128,9 @@ export function ModelsManager({ initialModels }: { initialModels: AdminModel[] }
     if (!deleteTarget) return
     setPendingId(deleteTarget.id)
     try {
-      const res = await fetch(`/api/admin/models/${deleteTarget.id}`, { method: "DELETE" })
+      const res = await platformAuthFetch(`/v1/admin/models/${deleteTarget.id}`, { method: "DELETE" })
       const json = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(json.error ?? "删除失败")
+      if (!res.ok) throw new Error(json.error ?? json.message ?? "删除失败")
       setModels((prev) => prev.filter((m) => m.id !== deleteTarget.id))
       showBanner({ ok: true, message: "模型已删除" })
       router.refresh()

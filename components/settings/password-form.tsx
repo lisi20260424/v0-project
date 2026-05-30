@@ -2,13 +2,15 @@
 
 import { useState } from "react"
 import { AlertCircle, CheckCircle2 } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
+import { platformAPI } from "@/lib/platform-api"
+import { getPlatformSession } from "@/lib/platform-session"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Spinner } from "@/components/ui/spinner"
 
 export function PasswordForm() {
+  const [currentPassword, setCurrentPassword] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [loading, setLoading] = useState(false)
@@ -20,6 +22,10 @@ export function PasswordForm() {
     setError(null)
     setSuccess(false)
 
+    if (!currentPassword) {
+      setError("请输入当前密码")
+      return
+    }
     if (password.length < 8) {
       setError("新密码至少需要 8 位")
       return
@@ -31,10 +37,11 @@ export function PasswordForm() {
 
     setLoading(true)
     try {
-      const supabase = createClient()
-      const { error } = await supabase.auth.updateUser({ password })
-      if (error) throw error
+      const session = getPlatformSession()
+      if (!session?.accessToken) throw new Error("请先登录")
+      await platformAPI.changePassword(session.accessToken, currentPassword, password)
       setSuccess(true)
+      setCurrentPassword("")
       setPassword("")
       setConfirmPassword("")
       setTimeout(() => setSuccess(false), 3000)
@@ -48,6 +55,19 @@ export function PasswordForm() {
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4">
       <div className="grid gap-4 md:grid-cols-2">
+        <div className="flex flex-col gap-1.5 md:col-span-2">
+          <Label htmlFor="current_password">当前密码</Label>
+          <Input
+            id="current_password"
+            type="password"
+            autoComplete="current-password"
+            placeholder="请输入当前密码"
+            required
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            disabled={loading}
+          />
+        </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="new_password">新密码</Label>
           <Input

@@ -1,5 +1,7 @@
 "use client"
 
+import { platformAuthFetch } from "@/lib/platform-session"
+
 import * as React from "react"
 import Image from "next/image"
 import {
@@ -204,7 +206,7 @@ export function VideoGenerator({
     // 检查用户是否登录
     if (!user) {
       toast.error("请先登录或注册账户")
-      membership.open("login")
+      membership.open()
       return
     }
 
@@ -220,7 +222,7 @@ export function VideoGenerator({
       const { width, height } = getVideoDimensions(ratioId)
       const duration = durationId ? parseInt(durationId) : 5
 
-      const response = await fetch("/api/tasks", {
+      const response = await platformAuthFetch("/v1/tasks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -244,7 +246,8 @@ export function VideoGenerator({
         throw new Error(err.error || "生成失败")
       }
 
-      const { task } = await response.json()
+      const json = await response.json()
+      const task = json.data ?? json.task
       if (!task) throw new Error("未获取到任务信息")
 
       if (task.status === "success") {
@@ -281,7 +284,7 @@ export function VideoGenerator({
       if (abortToken.cancelled) return
       let res: Response
       try {
-        res = await fetch(`/api/tasks/${taskId}`, { cache: "no-store" })
+        res = await platformAuthFetch(`/v1/tasks/${taskId}`, { cache: "no-store" })
       } catch (e) {
         // 网络错误时短暂等待继续
         continue
@@ -289,7 +292,8 @@ export function VideoGenerator({
       if (!res.ok) {
         throw new Error("查询任务状态失败")
       }
-      const { task: latest } = await res.json()
+      const json = await res.json()
+      const latest = json.data ?? json.task
       if (!latest) throw new Error("任务不存在")
 
       if (typeof latest.progress === "number") setProgress(latest.progress)

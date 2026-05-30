@@ -1,26 +1,12 @@
-import { redirect } from "next/navigation"
 import { Mail, ShieldAlert, KeyRound } from "lucide-react"
-import { createClient } from "@/lib/supabase/server"
 import { PasswordForm } from "@/components/settings/password-form"
+import { SecuritySummary } from "@/components/settings/security-summary"
 
 export const metadata = {
   title: "账户安全 · 账户设置",
 }
 
 export default async function SecurityPage() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) redirect("/auth/login?next=/settings/security")
-
-  const emailConfirmed = Boolean(user.email_confirmed_at)
-  const lastSignIn = user.last_sign_in_at
-    ? new Date(user.last_sign_in_at).toLocaleString("zh-CN", { hour12: false })
-    : "—"
-  const provider = user.app_metadata?.provider ?? "email"
-
   return (
     <div className="flex flex-col gap-6">
       <section className="rounded-xl border border-border bg-card p-6">
@@ -31,26 +17,9 @@ export default async function SecurityPage() {
           </h2>
           <p className="text-xs text-muted-foreground">你当前的登录方式与基础信息</p>
         </div>
-
-        <dl className="mt-5 grid gap-4 sm:grid-cols-2">
-          <InfoItem label="邮箱" value={user.email ?? "—"} />
-          <InfoItem
-            label="邮箱状态"
-            value={
-              <span
-                className={
-                  emailConfirmed
-                    ? "inline-flex items-center rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-medium text-primary"
-                    : "inline-flex items-center rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-600 dark:text-amber-400"
-                }
-              >
-                {emailConfirmed ? "已验证" : "未验证"}
-              </span>
-            }
-          />
-          <InfoItem label="登录方式" value={provider === "email" ? "邮箱 + 密码" : provider} />
-          <InfoItem label="上次登录" value={lastSignIn} />
-        </dl>
+        <div className="mt-5">
+          <SecuritySummary />
+        </div>
       </section>
 
       <section className="rounded-xl border border-border bg-card p-6">
@@ -80,15 +49,6 @@ export default async function SecurityPage() {
           </span>
         </div>
       </section>
-    </div>
-  )
-}
-
-function InfoItem({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div className="flex flex-col gap-1">
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="text-sm font-medium">{value}</dd>
     </div>
   )
 }

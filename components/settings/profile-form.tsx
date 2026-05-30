@@ -1,8 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { AlertCircle, CheckCircle2 } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
+import { platformAPI } from "@/lib/platform-api"
+import { getPlatformSession } from "@/lib/platform-session"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -31,25 +32,30 @@ export function ProfileForm({ initial }: { initial: ProfileInput }) {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
 
+  useEffect(() => {
+    const session = getPlatformSession()
+    if (!session?.accessToken) return
+    platformAPI.getProfile(session.accessToken)
+      .then((res) => {
+        const data = res.data ?? res
+        setDisplayName(data.displayName ?? data.display_name ?? "")
+        setAvatarUrl(data.avatarUrl ?? data.avatar_url ?? "")
+        setBio(data.bio ?? "")
+        setLocation(data.location ?? "")
+        setWebsite(data.website ?? "")
+      })
+      .catch(() => {})
+  }, [])
+
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError(null)
     setSuccess(false)
     setLoading(true)
     try {
-      const supabase = createClient()
-      const { error } = await supabase
-        .from("profiles")
-        .update({
-          display_name: displayName || null,
-          avatar_url: avatarUrl || null,
-          bio: bio || null,
-          location: location || null,
-          website: website || null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", initial.id)
-      if (error) throw error
+      const session = getPlatformSession()
+      if (!session?.accessToken) throw new Error("请先登录")
+      await platformAPI.updateProfile(session.accessToken, { displayName, avatarUrl, bio, location, website })
       setSuccess(true)
       setTimeout(() => setSuccess(false), 3000)
     } catch (err) {

@@ -1,5 +1,7 @@
 "use client"
 
+import { platformAuthFetch } from "@/lib/platform-session"
+
 import { useState, useEffect } from "react"
 import useSWR from "swr"
 import { ChevronLeft, ChevronRight, Video, ImageIcon, Music2, AlertCircle, CheckCircle2, Clock } from "lucide-react"
@@ -35,7 +37,7 @@ type ConsumptionResponse = {
 }
 
 const fetcher = async (url: string): Promise<ConsumptionResponse> => {
-  const res = await fetch(url)
+  const res = await platformAuthFetch(url)
   if (!res.ok) throw new Error("加载消费记录失败")
   return res.json()
 }
@@ -67,7 +69,7 @@ export function ConsumptionRecords() {
   })
 
   const { data, isLoading, error } = useSWR<ConsumptionResponse>(
-    `/api/user/consumption?${queryParams.toString()}`,
+    `/v1/user/consumption?${queryParams.toString()}`,
     fetcher,
     { keepPreviousData: true }
   )
