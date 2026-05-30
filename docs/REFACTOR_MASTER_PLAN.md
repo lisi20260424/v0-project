@@ -10,18 +10,19 @@
 - P6 Payment and billing
 - P7 Admin APIs
 - P8 Cutover and validation
-- P9 Supabase runtime removal
-- P10 Supabase capability replacement
+- P9 Legacy dependency removal
+- P10 Self-hosted capability replacement
 
 ## P0 Status
 - Completed on 2026-05-26
 
 ## Linked Plans
-- Runtime removal plan: `docs/frontend-remove-supabase-plan.md`
-- Capability replacement plan: `docs/supabase-capability-replacement-plan.md`
+- Docker deployment: `deploy/docker/docker-compose.yml`
+- Database migrations: `packages/db/migrations`
+- Go API: `apps/api`
 
 ## Current Priority
-- Continue `docs/supabase-capability-replacement-plan.md` Phase 2.
+- Continue validating the self-hosted Go API, PostgreSQL, Redis, and MinIO runtime.
 - Completed auth slices: PostgreSQL schema, DB connection, startup migrations, email OTP registration, real password login, persisted refresh token rotation, `/v1/me` from DB, forgot/reset password, and logged-in change password.
 - Completed OTP hardening: 60-second resend cooldown and 5-per-hour email rate limit.
 - Completed SMTP provider: local defaults to `MAIL_PROVIDER=log`, production can use `MAIL_PROVIDER=smtp` with `SMTP_*` variables.

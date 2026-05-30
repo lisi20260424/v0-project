@@ -375,7 +375,7 @@ try {
 # API 网关配置
 NEXT_PUBLIC_API_GATEWAY_URL=https://api.newapi.pro
 
-# 这些在 Supabase 表中存储
+# 这些在 PostgreSQL 业务表中存储
 # admin_gateway_settings: gateway_url, api_key
 # admin_models: id, name, api_model_id, config
 ```
