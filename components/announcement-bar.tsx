@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import * as React from "react"
 import Link from "next/link"
@@ -16,8 +16,8 @@ export function AnnouncementBar() {
   const [dismissed, setDismissed] = React.useState(false)
 
   React.useEffect(() => {
-    const timer = setInterval(() => setIndex((current) => (current + 1) % ANNOUNCEMENTS.length), 3500)
-    return () => clearInterval(timer)
+    const t = setInterval(() => setIndex((i) => (i + 1) % ANNOUNCEMENTS.length), 3500)
+    return () => clearInterval(t)
   }, [])
 
   if (dismissed) return null
@@ -30,8 +30,13 @@ export function AnnouncementBar() {
           <Megaphone className="h-3.5 w-3.5 text-primary" />
           公告
         </span>
-        <Link href={item.href} className="group inline-flex items-center gap-1 text-muted-foreground transition-colors hover:text-foreground">
-          <span key={index} className="animate-in fade-in slide-in-from-bottom-1 duration-500">{item.label}</span>
+        <Link
+          href={item.href}
+          className="group inline-flex items-center gap-1 text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <span key={index} className="animate-in fade-in slide-in-from-bottom-1 duration-500">
+            {item.label}
+          </span>
           <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
         </Link>
         <button

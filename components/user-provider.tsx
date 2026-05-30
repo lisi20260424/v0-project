@@ -1,7 +1,7 @@
 "use client"
 
-import { createContext, useCallback, useContext, useEffect, useState } from "react"
-import { platformAPI } from "@/lib/platform-api"
+import { createContext, useContext, useEffect, useState, useCallback } from "react"
+import { createClient } from "@/lib/supabase/client"
 
 export type CurrentUser = {
   id: string
@@ -28,25 +28,6 @@ const UserContext = createContext<UserContextValue>({
   refreshUser: async () => {},
 })
 
-function normalizeUser(payload: any): NonNullable<CurrentUser> {
-  const role = payload.role ?? payload.userType ?? payload.user_type
-  const email = String(payload.email ?? payload.id ?? "")
-  const displayName = String(
-    payload.displayName ?? payload.display_name ?? (email ? email.split("@")[0] : "User"),
-  )
-
-  return {
-    id: String(payload.id ?? email),
-    email,
-    displayName,
-    avatarUrl: payload.avatarUrl ?? payload.avatar_url ?? null,
-    points: Number(payload.points ?? 0),
-    vipTier: (payload.vipTier ?? payload.vip_tier ?? null) as NonNullable<CurrentUser>["vipTier"],
-    status: (payload.status ?? "active") as NonNullable<CurrentUser>["status"],
-    userType: (role === "admin" ? "admin" : "normal") as NonNullable<CurrentUser>["userType"],
-  }
-}
-
 export function UserProvider({
   initialUser,
   initialIsAdmin = false,
@@ -58,56 +39,127 @@ export function UserProvider({
 }) {
   const [user, setUser] = useState<CurrentUser>(initialUser)
   const [isAdmin, setIsAdmin] = useState<boolean>(initialIsAdmin)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
+  const supabaseRef = createClient()
+  let unsubscribeRef: (() => void) | null = null
 
+  // 刷新用户信息，同时处理会话过期
   const refreshUser = useCallback(async () => {
-    setLoading(true)
     try {
-      const token = localStorage.getItem("accessToken") ?? ""
-      if (!token) {
+      const { data: { session } } = await supabaseRef.auth.getSession()
+      
+      if (!session?.user) {
         setUser(null)
         setIsAdmin(false)
         return
       }
 
-      const json = await platformAPI.me(token)
-      const nextUser = normalizeUser(json.data ?? json)
-      setUser(nextUser)
-      setIsAdmin(nextUser.userType === "admin")
+      // 检查并刷新令牌
+      const { data, error } = await supabaseRef.auth.refreshSession()
+      if (error || !data.session) {
+        setUser(null)
+        setIsAdmin(false)
+        return
+      }
+
+      const { data: profile } = await supabaseRef
+        .from("profiles")
+        .select("display_name, avatar_url, points, vip_tier, status, user_type")
+        .eq("id", session.user.id)
+        .maybeSingle()
+
+      const userData = {
+        id: session.user.id,
+        email: session.user.email ?? "",
+        displayName:
+          profile?.display_name ??
+          (session.user.user_metadata?.display_name as string) ??
+          (session.user.email?.split("@")[0] ?? "用户"),
+        avatarUrl: profile?.avatar_url ?? null,
+        points: profile?.points ?? 0,
+        vipTier:
+          (profile?.vip_tier as CurrentUser extends infer U ? (U extends null ? never : U["vipTier"]) : never) ?? null,
+        status: (profile?.status ?? "active") as "active" | "suspended" | "banned",
+        userType: (profile?.user_type ?? "normal") as "normal" | "admin",
+      }
+
+      setUser(userData)
+      setIsAdmin(userData.userType === "admin")
     } catch (error) {
       console.error("[v0] Failed to refresh user:", error)
-      localStorage.removeItem("accessToken")
-      localStorage.removeItem("refreshToken")
       setUser(null)
       setIsAdmin(false)
-    } finally {
-      setLoading(false)
     }
   }, [])
 
+  // 设置认证状态变化监听器
   useEffect(() => {
-    refreshUser()
+    setLoading(true)
+    
+    const { data: subscription } = supabaseRef.auth.onAuthStateChange(async (_event, session) => {
+      if (!session?.user) {
+        setUser(null)
+        setIsAdmin(false)
+        setLoading(false)
+        return
+      }
 
-    const onStorage = (event: StorageEvent) => {
-      if (event.key === "accessToken" || event.key === "refreshToken") {
-        refreshUser()
+      try {
+        const { data: profile } = await supabaseRef
+          .from("profiles")
+          .select("display_name, avatar_url, points, vip_tier, status, user_type")
+          .eq("id", session.user.id)
+          .maybeSingle()
+
+        const userData = {
+          id: session.user.id,
+          email: session.user.email ?? "",
+          displayName:
+            profile?.display_name ??
+            (session.user.user_metadata?.display_name as string) ??
+            (session.user.email?.split("@")[0] ?? "用户"),
+          avatarUrl: profile?.avatar_url ?? null,
+          points: profile?.points ?? 0,
+          vipTier:
+            (profile?.vip_tier as CurrentUser extends infer U ? (U extends null ? never : U["vipTier"]) : never) ?? null,
+          status: (profile?.status ?? "active") as "active" | "suspended" | "banned",
+          userType: (profile?.user_type ?? "normal") as "normal" | "admin",
+        }
+
+        setUser(userData)
+        setIsAdmin(userData.userType === "admin")
+      } catch (error) {
+        console.error("[v0] Auth state change error:", error)
+        setUser(null)
+        setIsAdmin(false)
+      } finally {
+        setLoading(false)
+      }
+    })
+
+    unsubscribeRef = subscription.subscription.unsubscribe
+
+    return () => {
+      if (unsubscribeRef) {
+        unsubscribeRef()
       }
     }
-    const onAuthTokenChanged = () => refreshUser()
-    window.addEventListener("storage", onStorage)
-    window.addEventListener("auth-token-changed", onAuthTokenChanged)
-    return () => {
-      window.removeEventListener("storage", onStorage)
-      window.removeEventListener("auth-token-changed", onAuthTokenChanged)
-    }
-  }, [refreshUser])
+  }, [])
 
+  // 定期检查会话是否有效（每 5 分钟检查一次）
   useEffect(() => {
-    const interval = setInterval(refreshUser, 5 * 60 * 1000)
+    const interval = setInterval(() => {
+      refreshUser()
+    }, 5 * 60 * 1000)
+
     return () => clearInterval(interval)
   }, [refreshUser])
 
-  return <UserContext.Provider value={{ user, loading, isAdmin, refreshUser }}>{children}</UserContext.Provider>
+  return (
+    <UserContext.Provider value={{ user, loading, isAdmin, refreshUser }}>
+      {children}
+    </UserContext.Provider>
+  )
 }
 
 export function useUser() {

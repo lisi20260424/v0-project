@@ -1,13 +1,17 @@
-﻿import type { Metadata } from "next"
+import type { Metadata } from "next"
 import { CategoryPageShell } from "@/components/category-page-shell"
 import { VideoGeneratorServer } from "@/components/video-generator-server"
 
 export const metadata: Metadata = {
-  title: "AI 视频生成 | 灵境 AI",
-  description: "使用平台后端提供的视频模型 catalog 生成内容。",
+  title: "AI 视频生成 · 灵境 AI",
+  description: "聚合 Sora、Veo、可灵等主流视频模型，支持文生视频、图生视频、4K 超清输出。",
 }
 
-export default async function VideoPage({ searchParams }: { searchParams: Promise<{ provider?: string }> }) {
+export default async function VideoPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ provider?: string }>
+}) {
   const { provider } = await searchParams
   return (
     <CategoryPageShell category="video" activeProviderName={provider ?? null}>
