@@ -24,7 +24,6 @@ import {
   type ModelConfigField,
   type ModelType,
 } from "@/lib/admin"
-import { API_BASE_URL } from "@/lib/platform-api"
 import type { AdminModel } from "@/components/admin/models-manager"
 
 type Provider = {
@@ -81,10 +80,7 @@ export function ModelDialog({ open, onOpenChange, model, defaultModelType = "vid
   async function loadProviders() {
     setLoadingProviders(true)
     try {
-      const token = localStorage.getItem("accessToken") ?? ""
-      const res = await fetch(`${API_BASE_URL}/v1/admin/providers`, {
-        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-      })
+      const res = await fetch("/api/admin/providers")
       const json = await res.json()
       setProviders(json.providers ?? [])
     } catch (err) {
@@ -160,6 +156,7 @@ export function ModelDialog({ open, onOpenChange, model, defaultModelType = "vid
                 </Label>
                 <Input
                   id="m-name"
+                  size="sm"
                   value={form.name}
                   onChange={(e) => update("name", e.target.value)}
                   placeholder="例如：Sora Turbo"
@@ -360,11 +357,11 @@ function initial(model: AdminModel | undefined, defaultModelType: ModelType): Fo
       name: model.name,
       provider: model.provider,
       modelType: model.model_type,
-      costPerUse: model.cost_per_use ?? 0,
+      costPerUse: model.cost_per_use,
       description: model.description ?? "",
       config: { ...(model.config ?? {}) },
       enabled: model.enabled,
-      sortOrder: model.sort_order ?? 0,
+      sortOrder: model.sort_order,
     }
   }
   return {

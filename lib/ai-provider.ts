@@ -1,4 +1,5 @@
-﻿import {
+import { createAdminClient } from "@/lib/supabase/admin"
+import {
   type AnyFormat,
   type AnyRequestParams,
   type EndpointConfig,
@@ -12,7 +13,6 @@
   buildPollUrl,
   parsePollResponse,
 } from "@/lib/api-formats"
-import { getPublicModels, getPublicProviders } from "@/lib/public-catalog"
 
 export type AIGatewayConfig = {
   baseURL: string
@@ -22,10 +22,21 @@ export type AIGatewayConfig = {
   endpoint: EndpointConfig
 }
 
-export async function callAIGateway(config: AIGatewayConfig, params: AnyRequestParams): Promise<ParsedResponse> {
+/**
+ * 调用 AI 网关创建生成请求；自动按 format 构造请求体并解析响应。
+ */
+export async function callAIGateway(
+  config: AIGatewayConfig,
+  params: AnyRequestParams,
+): Promise<ParsedResponse> {
   const { baseURL, apiKey, modelType, endpoint } = config
   const { body, headers: extraHeaders } = buildRequestBody(modelType, endpoint.format, params)
   const url = `${baseURL.replace(/\/+$/, "")}${endpoint.path.startsWith("/") ? endpoint.path : `/${endpoint.path}`}`
+
+  const startTime = Date.now()
+  console.log(`[v0:gateway:start] ${modelType} | format=${endpoint.format} | model=${config.modelId}`)
+  console.log(`[v0:gateway:request] POST ${url}`)
+  console.log(`[v0:gateway:body] ${JSON.stringify(body).slice(0, 800)}`)
 
   const response = await fetch(url, {
     method: "POST",
@@ -37,14 +48,37 @@ export async function callAIGateway(config: AIGatewayConfig, params: AnyRequestP
     body: JSON.stringify(body),
   })
 
+  const duration = Date.now() - startTime
+  console.log(`[v0:gateway:response] status=${response.status} | duration=${duration}ms`)
+
   if (!response.ok) {
-    const detail = await response.text().catch(() => "")
-    throw new Error(`API Gateway Error (${response.status}): ${detail.slice(0, 500)}`)
+    let detail = ""
+    try {
+      const json = await response.clone().json()
+      detail = json?.error?.message || json?.message || JSON.stringify(json)
+    } catch {
+      detail = await response.text()
+    }
+    const error = `API Gateway Error (${response.status}): ${detail.slice(0, 500)}`
+    console.error(`[v0:gateway:error] ${error}`)
+    throw new Error(error)
   }
 
-  return parseResponse(modelType, endpoint.format, response)
+  const result = await parseResponse(modelType, endpoint.format, response)
+  if (result.kind === "sync") {
+    console.log(`[v0:gateway:parsed] kind=sync | urls=${result.urls.length}`)
+  } else if (result.kind === "async") {
+    console.log(`[v0:gateway:parsed] kind=async | providerTaskId=${result.providerTaskId}`)
+  } else {
+    console.log(`[v0:gateway:parsed] kind=binary`)
+  }
+  
+  return result
 }
 
+/**
+ * 轮询上游视频任务的最新状态
+ */
 export async function pollProviderTask(
   baseURL: string,
   apiKey: string,
@@ -53,58 +87,147 @@ export async function pollProviderTask(
   pollPath?: string,
 ): Promise<PollResult> {
   const url = buildPollUrl(format, baseURL.replace(/\/+$/, ""), providerTaskId, pollPath)
+  const startTime = Date.now()
+  console.log(`[v0:poll:start] format=${format} | taskId=${providerTaskId} | url=${url}`)
+
   const response = await fetch(url, {
     method: "GET",
-    headers: { Authorization: `Bearer ${apiKey}`, Accept: "application/json" },
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      Accept: "application/json",
+    },
   })
 
+  const duration = Date.now() - startTime
+  console.log(`[v0:poll:response] status=${response.status} | duration=${duration}ms`)
+
   if (!response.ok) {
-    const text = await response.text().catch(() => "")
-    return { status: "failed", error: `轮询失败 (${response.status}): ${text.slice(0, 200)}`, raw: { status: response.status, text } }
+    const text = await response.text()
+    const error = `轮询失败 (${response.status}): ${text.slice(0, 200)}`
+    console.warn(`[v0:poll:error] ${error}`)
+    return {
+      status: "failed",
+      error,
+      raw: { status: response.status, text },
+    }
   }
 
   const json = await response.json().catch(() => ({}))
-  return parsePollResponse(format, json)
-}
-
-export async function getModelInfo(modelId: string) {
-  const models = await getPublicModels()
-  const model = models.find((item) => item.id === modelId && item.enabled !== false)
-  if (!model) throw new Error(`Model not found: ${modelId}`)
-  return {
-    id: model.id,
-    name: model.name,
-    provider: model.provider,
-    model_type: model.model_type,
-    cost_per_use: model.cost_per_use ?? 0,
-    config: model.config ?? {},
+  const result = parsePollResponse(format, json)
+  
+  if (result.status === "running") {
+    console.log(`[v0:poll:parsed] status=running | progress=${result.progress ?? "N/A"}`)
+  } else if (result.status === "success") {
+    console.log(`[v0:poll:parsed] status=success | urls=${result.urls.length}`)
+  } else {
+    console.log(`[v0:poll:parsed] status=failed | error=${result.error}`)
   }
+  
+  return result
 }
 
-export async function getEndpointForModel(providerName: string, modelType: GenerationType): Promise<EndpointConfig> {
-  const providers = await getPublicProviders()
-  const provider = providers.find((item) => item.name === providerName)
+/**
+ * 获取模型信息（含供应商配置中的 endpoints）
+ */
+export async function getModelInfo(modelId: string) {
+  console.log(`[v0:model:fetch] modelId=${modelId}`)
+  const supabase = createAdminClient()
+  const { data, error } = await supabase
+    .from("admin_models")
+    .select("id, name, provider, model_type, cost_per_use, config")
+    .eq("id", modelId)
+    .eq("enabled", true)
+    .single()
+
+  if (error) {
+    const msg = `Model not found: ${modelId}`
+    console.error(`[v0:model:error] ${msg}`)
+    throw new Error(msg)
+  }
+  
+  console.log(`[v0:model:found] name=${data.name} | provider=${data.provider} | type=${data.model_type}`)
+  return data
+}
+
+/**
+ * 根据模型查找对应供应商，并解析出该类型的端点配置
+ */
+export async function getEndpointForModel(
+  providerName: string,
+  modelType: GenerationType,
+): Promise<EndpointConfig> {
+  console.log(`[v0:endpoint:fetch] provider=${providerName} | type=${modelType}`)
+  const supabase = createAdminClient()
+  const { data, error } = await supabase
+    .from("admin_providers")
+    .select("config")
+    .eq("name", providerName)
+    .single()
+
   const fallback = DEFAULT_ENDPOINTS[modelType]
-  const cfg = (provider?.config ?? {}) as { endpoints?: Partial<Record<GenerationType, Partial<EndpointConfig>>> }
+  if (error || !data) {
+    console.warn(`[v0:endpoint:fallback] ${error?.message || "provider config not found"} | using default`)
+    return fallback
+  }
+
+  const cfg = (data.config ?? {}) as { endpoints?: Partial<Record<GenerationType, Partial<EndpointConfig>>> }
   const ep = cfg.endpoints?.[modelType]
-  if (!ep) return fallback
-  return {
+  if (!ep) {
+    console.warn(`[v0:endpoint:fallback] no endpoint config for ${modelType}`)
+    return fallback
+  }
+
+  const result = {
     path: ep.path?.trim() || fallback.path,
     format: (ep.format as AnyFormat) || fallback.format,
     pollPath: ep.pollPath?.trim() || undefined,
     contentPath: (ep as any).contentPath?.trim() || undefined,
   }
+  console.log(`[v0:endpoint:resolved] path=${result.path} | format=${result.format} | pollPath=${result.pollPath ? "yes" : "no"} | contentPath=${result.contentPath ? "yes" : "no"}`)
+  return result
 }
 
+/**
+ * 获取 API 网关配置
+ */
 export async function getGatewayConfig() {
-  const gatewayURL = process.env.AI_GATEWAY_URL
-  const apiKey = process.env.AI_GATEWAY_API_KEY
-  if (!gatewayURL || !apiKey) {
-    throw new Error("Gateway settings incomplete: set AI_GATEWAY_URL and AI_GATEWAY_API_KEY")
+  console.log(`[v0:gateway:config] fetching...`)
+  const supabase = createAdminClient()
+  const { data, error } = await supabase
+    .from("admin_gateway_settings")
+    .select("gateway_url, api_key")
+    .eq("id", 1)
+    .single()
+
+  if (error || !data) {
+    const msg = "Gateway settings not found"
+    console.error(`[v0:gateway:config:error] ${msg}`)
+    throw new Error(msg)
   }
-  return { gateway_url: gatewayURL, api_key: apiKey }
+  if (!data.gateway_url || !data.api_key) {
+    const msg = "Gateway settings incomplete: 请先在系统设置中配置网关 URL 与 API Key"
+    console.error(`[v0:gateway:config:error] ${msg}`)
+    throw new Error(msg)
+  }
+  console.log(`[v0:gateway:config] url=${data.gateway_url.replace(/\/+$/, "")} | apiKey=${data.api_key.slice(0, 10)}***`)
+  return data
 }
 
+/**
+ * 获取生成任务超时配置
+ */
 export async function getGenerationTimeouts() {
-  return { musicTimeout: 600, imageTimeout: 300, videoTimeout: 1800 }
+  const supabase = createAdminClient()
+  const { data, error } = await supabase
+    .from("admin_generation_config")
+    .select("music_timeout, image_timeout, video_timeout")
+    .eq("id", 1)
+    .maybeSingle()
+
+  // 使用默认值：若配置不存在则返回默认值
+  return {
+    musicTimeout: data?.music_timeout ?? 600, // 10 分钟
+    imageTimeout: data?.image_timeout ?? 300, // 5 分钟
+    videoTimeout: data?.video_timeout ?? 1800, // 30 分钟
+  }
 }

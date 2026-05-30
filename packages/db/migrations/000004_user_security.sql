@@ -1,5 +1,0 @@
-ALTER TABLE users
-  ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ,
-  ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ;
-
-CREATE INDEX IF NOT EXISTS idx_users_status ON users(status);

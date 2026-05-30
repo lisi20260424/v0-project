@@ -1,3 +1,0 @@
-﻿-- Baseline migration staging area.
--- Existing SQL from /scripts should be gradually normalized into ordered migrate files.
--- This file is intentionally empty and documents migration strategy.

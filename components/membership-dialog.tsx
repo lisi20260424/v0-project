@@ -45,7 +45,7 @@ const MEMBERSHIP_PLANS: MembershipPlan[] = [
     bonusPoints: 3000,
     badge: "限时优惠",
     badgeTone: "orange",
-    features: ["赠送 3000 点数，永久有效", "专享点数消耗折扣", "付费点数不过期", "享受会员专属权益"],
+    features: ["赠送 3000 点数，点数永久有效", "专享点数消耗折扣", "付费点数永不过期，永久有效", "享受会员权益价"],
   },
   {
     id: "yearly",
@@ -57,7 +57,7 @@ const MEMBERSHIP_PLANS: MembershipPlan[] = [
     bonusPoints: 20500,
     badge: "限时优惠",
     badgeTone: "orange",
-    features: ["赠送 20500 点数，永久有效", "包含月会员全部权益", "优先体验新功能和模型升级", "专属 1 对 1 客服", "享受会员专属权益"],
+    features: ["赠送 20500 点数，点数永久有效", "包含月会员所有权益", "尊享优化体验功能升级，功能上新", "尊享专属 1 对 1 客服", "享受会员权益价"],
   },
   {
     id: "lifetime",
@@ -70,7 +70,7 @@ const MEMBERSHIP_PLANS: MembershipPlan[] = [
     badge: "最强选择",
     badgeTone: "primary",
     recommended: true,
-    features: ["赠送 31000 点数，永久有效", "点数可用于 AI 编辑、AI 视频等全部产品", "包含年会员全部权益", "专属 VIP 客服", "享受会员专属权益"],
+    features: ["赠送 31000 点数，点数永久有效", "点数可用于 AI 编辑、AI 视频编辑全产品", "包含年度会员所有权益", "尊享专属 VIP1 客服", "享受会员权益价"],
   },
 ]
 
@@ -85,9 +85,9 @@ const POINTS_PACKAGES: PointsPackage[] = [
     save: 188,
     badge: "限时优惠",
     features: [
-      "到账 5100 点数，永久有效",
-      "点数可用于 AI 编辑、AI 视频等全部产品",
-      "付费点数不过期",
+      "含 5100 点数，点数永久有效",
+      "点数可用于 AI 编辑、AI 视频编辑全产品",
+      "付费点数永不过期，永久有效",
       "会员用户享受点数折扣",
       "丰富的创意视频模板全部可用",
     ],
@@ -101,7 +101,7 @@ const POINTS_PACKAGES: PointsPackage[] = [
     perHundred: "约 0.9 元/100 点",
     save: 108,
     badge: "限时优惠",
-    features: ["到账 20000 点数，永久有效", "包含 3000 点套餐全部权益", "专属 1 对 1 客服"],
+    features: ["含 20000 点数，点数永久有效", "包含 3000 点套餐所有权益", "尊享专属 1 对 1 客服"],
   },
   {
     id: "p-100000",
@@ -112,27 +112,27 @@ const POINTS_PACKAGES: PointsPackage[] = [
     perHundred: "约 0.9 元/100 点",
     save: 899,
     badge: "限时优惠",
-    features: ["到账 100000 点数，永久有效", "专属 VIP 客服"],
+    features: ["含 100000 点数，点数永久有效", "尊享专属 VIP1 客服"],
   },
 ]
 
 const POINT_COSTS = [
-  { name: "Veo 3.1 Fast", desc: "Veo 视频生成服务，快速模式", normal: 40, vip: 30 },
-  { name: "Veo 3.1 Fast Components", desc: "Veo 视频生成服务，快速组件版，支持参考图", normal: 50, vip: 30 },
-  { name: "Veo 3.1 Fast 4K", desc: "Veo 视频生成服务，快速模式 4K 分辨率", normal: 80, vip: 50 },
-  { name: "Veo 3.1 Fast Components 4K", desc: "Veo 视频生成服务，快速组件版 4K 分辨率，支持参考图", normal: 90, vip: 50 },
-  { name: "Sora-2 视频", desc: "Sora-2 视频生成服务，标准模式", normal: 400, vip: 200 },
-  { name: "Sora-2 Pro", desc: "Sora-2 视频生成服务，Pro 高质量模式", normal: 600, vip: 360 },
-  { name: "可灵 2.1 标准", desc: "可灵视频生成服务，5 秒，720P", normal: 35, vip: 25 },
-  { name: "可灵 2.1 高质量", desc: "可灵视频生成服务，5 秒，1080P 高画质", normal: 100, vip: 70 },
-  { name: "Nano Banana", desc: "Nano 图像生成服务，标准版", normal: 10, vip: 10 },
-  { name: "Nano Banana Pro 1K", desc: "Nano 图像生成服务，专业版 1K 分辨率", normal: 28, vip: 28 },
-  { name: "Nano Banana Pro 2K", desc: "Nano 图像生成服务，专业版 2K 分辨率", normal: 28, vip: 28 },
-  { name: "Nano Banana Pro 4K", desc: "Nano 图像生成服务，专业版 4K 分辨率", normal: 28, vip: 28 },
-  { name: "Nano Banana 2", desc: "Nano 图像生成服务，Banana 2", normal: 20, vip: 20 },
-  { name: "GPT-Image 高清", desc: "GPT-Image 图像生成，高清版", normal: 24, vip: 16 },
-  { name: "Suno V4", desc: "Suno 音乐生成服务，完整曲目", normal: 60, vip: 40 },
-  { name: "智能对话 · GPT-5", desc: "GPT-5 高级推理对话，每千 tokens", normal: 8, vip: 5 },
+  { name: "Veo 3.1 Fast", desc: "Veo 视频生成服务（快速模式）", normal: 40, vip: 30 },
+  { name: "Veo 3.1 Fast Components", desc: "Veo 视频生成服务（快速组件版，支持参考图）", normal: 50, vip: 30 },
+  { name: "Veo 3.1 Fast 4K", desc: "Veo 视频生成服务（快速模式 4K 分辨率）", normal: 80, vip: 50 },
+  { name: "Veo 3.1 Fast Components 4K", desc: "Veo 视频生成服务（快速组件版 4K 分辨率，支持参考图）", normal: 90, vip: 50 },
+  { name: "Sora-2 视频", desc: "Sora-2 视频生成服务（标准模式）", normal: 400, vip: 200 },
+  { name: "Sora-2 Pro", desc: "Sora-2 视频生成服务（Pro 高质量模式）", normal: 600, vip: 360 },
+  { name: "可灵 2.1 标准", desc: "可灵视频生成服务（5 秒，720P）", normal: 35, vip: 25 },
+  { name: "可灵 2.1 高质量", desc: "可灵视频生成服务（5 秒，1080P 高画质）", normal: 100, vip: 70 },
+  { name: "Nano Banana", desc: "Nano 图像生成服务（标准版）", normal: 10, vip: 10 },
+  { name: "Nano Banana Pro 1K", desc: "Nano 图像生成服务（专业版 1K 分辨率）", normal: 28, vip: 28 },
+  { name: "Nano Banana Pro 2K", desc: "Nano 图像生成服务（专业版 2K 分辨率）", normal: 28, vip: 28 },
+  { name: "Nano Banana Pro 4K", desc: "Nano 图像生成服务（专业版 4K 分辨率）", normal: 28, vip: 28 },
+  { name: "Nano Banana 2", desc: "Nano 图像生成服务（Banana 2）", normal: 20, vip: 20 },
+  { name: "GPT-Image 高清", desc: "GPT-Image 图像生成（高清版）", normal: 24, vip: 16 },
+  { name: "Suno V4", desc: "Suno 音乐生成服务（完整曲目）", normal: 60, vip: 40 },
+  { name: "智能对话 · GPT-5", desc: "GPT-5 高级推理对话（每千 tokens）", normal: 8, vip: 5 },
 ]
 
 function BadgeTag({ tone, children }: { tone?: "primary" | "accent" | "orange"; children: React.ReactNode }) {
@@ -201,7 +201,7 @@ export function MembershipDialog({
                 让创意灵感即刻成片
               </DialogTitle>
               <DialogDescription className="mt-1.5 text-xs text-muted-foreground sm:text-sm">
-                选择合适的套餐，会员用户创作可享受点数优惠折扣
+                选择合适的套餐，会员用户创作享受点数优惠折扣
               </DialogDescription>
 
               <div className="mt-5 flex flex-wrap items-center justify-between gap-3 sm:mt-6">
@@ -260,7 +260,7 @@ export function MembershipDialog({
                           {plan.recommended && (
                             <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-orange-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-orange-500">
                               <Sparkles className="h-3 w-3" />
-                              推荐
+                              Recommended
                             </span>
                           )}
                         </header>
@@ -275,7 +275,7 @@ export function MembershipDialog({
                         </p>
 
                         <p className="mt-5 text-sm font-semibold text-primary">
-                          赠送 <span className="tabular-nums">{plan.bonusPoints.toLocaleString()}</span> 点数，永久有效
+                          赠送 <span className="tabular-nums">{plan.bonusPoints.toLocaleString()}</span> 点数，点数永久有效
                         </p>
 
                         <ul className="mt-3 flex-1 space-y-2 text-sm">
@@ -323,7 +323,7 @@ export function MembershipDialog({
                         </p>
 
                         <p className="mt-5 text-sm font-semibold text-primary">
-                          到账 <span className="tabular-nums">{pkg.totalPoints.toLocaleString()}</span> 点数，永久有效
+                          含 <span className="tabular-nums">{pkg.totalPoints.toLocaleString()}</span> 点数，点数永久有效
                         </p>
 
                         <ul className="mt-3 flex-1 space-y-2 text-sm">
@@ -349,7 +349,7 @@ export function MembershipDialog({
               <div className="mt-6 flex flex-col items-center gap-2 border-t border-border/60 pt-5 text-xs text-muted-foreground sm:flex-row sm:justify-between">
                 <p className="flex items-center gap-1.5">
                   <Zap className="h-3 w-3 text-accent" fill="currentColor" />
-                  支持支付宝、微信、银联、对公转账，可开增值税发票
+                  支付宝 · 微信 · 银联 · ���公转��� · 可开增值税发票
                 </p>
                 <p>购买即视为同意《服务条款》和《会员协议》</p>
               </div>
