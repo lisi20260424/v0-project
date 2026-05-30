@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 
@@ -13,16 +12,7 @@ export function OAuthButtons({ redirectTo }: { redirectTo?: string }) {
     setError(null)
     setLoading(true)
     try {
-      const supabase = createClient()
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo:
-            process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ??
-            `${window.location.origin}/auth/callback${redirectTo ? `?next=${encodeURIComponent(redirectTo)}` : ""}`,
-        },
-      })
-      if (error) throw error
+      throw new Error("Google 登录暂未接入 Go API")
     } catch (err) {
       setError(err instanceof Error ? err.message : "Google 登录失败，请稍后重试")
       setLoading(false)

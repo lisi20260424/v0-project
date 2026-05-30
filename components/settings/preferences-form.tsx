@@ -1,8 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { AlertCircle, CheckCircle2 } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
+import { platformAPI } from "@/lib/platform-api"
+import { getPlatformSession } from "@/lib/platform-session"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
@@ -60,28 +61,41 @@ export function PreferencesForm({ initial }: { initial: PreferencesInput }) {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
 
+  useEffect(() => {
+    const session = getPlatformSession()
+    if (!session?.accessToken) return
+    platformAPI.getPreferences(session.accessToken)
+      .then((res) => {
+        const data = res.data ?? res
+        setDefaultVideoModel(data.defaultVideoModel ?? data.default_video_model ?? defaultVideoModel)
+        setDefaultImageModel(data.defaultImageModel ?? data.default_image_model ?? defaultImageModel)
+        setDefaultRatio(data.defaultRatio ?? data.default_ratio ?? defaultRatio)
+        setLanguage(data.language ?? language)
+        setNotifyEmail(data.notifyEmail ?? data.notify_email ?? notifyEmail)
+        setNotifySms(data.notifySms ?? data.notify_sms ?? notifySms)
+        setNotifyInbox(data.notifyInbox ?? data.notify_inbox ?? notifyInbox)
+      })
+      .catch(() => {})
+  }, [])
+
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError(null)
     setSuccess(false)
     setLoading(true)
     try {
-      const supabase = createClient()
-      const { error } = await supabase.from("user_preferences").upsert(
-        {
-          user_id: initial.userId,
-          default_video_model: defaultVideoModel,
-          default_image_model: defaultImageModel,
-          default_ratio: defaultRatio,
-          language,
-          notify_email: notifyEmail,
-          notify_sms: notifySms,
-          notify_inbox: notifyInbox,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "user_id" },
-      )
-      if (error) throw error
+      const session = getPlatformSession()
+      if (!session?.accessToken) throw new Error("请先登录")
+      await platformAPI.updatePreferences(session.accessToken, {
+        defaultVideoModel,
+        defaultImageModel,
+        defaultRatio,
+        language,
+        theme: initial.theme,
+        notifyEmail,
+        notifySms,
+        notifyInbox,
+      })
       setSuccess(true)
       setTimeout(() => setSuccess(false), 3000)
     } catch (err) {

@@ -1,6 +1,8 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { platformAuthFetch } from "@/lib/platform-session"
+
+import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Plus, Pencil, Trash2, AlertCircle, CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -52,6 +54,16 @@ export function PromptsManager({ initialPrompts }: { initialPrompts: AdminPrompt
     return result
   }, [prompts])
 
+  useEffect(() => {
+    platformAuthFetch("/v1/admin/prompts", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        const items = json?.prompts ?? json?.data?.prompts ?? json?.data ?? []
+        setPrompts(items)
+      })
+      .catch(() => {})
+  }, [])
+
   function showBanner(b: Banner) {
     setBanner(b)
     if (b) setTimeout(() => setBanner(null), 3000)
@@ -67,15 +79,16 @@ export function PromptsManager({ initialPrompts }: { initialPrompts: AdminPrompt
     sortOrder: number
   }) {
     const isEdit = !!form.id
-    const url = isEdit ? `/api/admin/prompts/${form.id}` : "/api/admin/prompts"
-    const res = await fetch(url, {
+    const url = isEdit ? `/v1/admin/prompts/${form.id}` : "/v1/admin/prompts"
+    const res = await platformAuthFetch(url, {
       method: isEdit ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),
     })
     const json = await res.json()
-    if (!res.ok) throw new Error(json.error ?? "保存失败")
-    const saved = json.prompt as AdminPrompt
+    if (!res.ok) throw new Error(json.error ?? json.message ?? "保存失败")
+    const saved = (json.data ?? json.prompt) as AdminPrompt
+    if (!saved?.id) throw new Error("保存返回数据异常")
     setPrompts((prev) => {
       const exists = prev.some((m) => m.id === saved.id)
       if (exists) return prev.map((m) => (m.id === saved.id ? saved : m))
@@ -88,14 +101,15 @@ export function PromptsManager({ initialPrompts }: { initialPrompts: AdminPrompt
   async function handleToggle(prompt: AdminPrompt, enabled: boolean) {
     setPendingId(prompt.id)
     try {
-      const res = await fetch(`/api/admin/prompts/${prompt.id}`, {
+      const res = await platformAuthFetch(`/v1/admin/prompts/${prompt.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ enabled }),
       })
       const json = await res.json()
-      if (!res.ok) throw new Error(json.error ?? "更新失败")
-      setPrompts((prev) => prev.map((m) => (m.id === prompt.id ? { ...m, enabled } : m)))
+      if (!res.ok) throw new Error(json.error ?? json.message ?? "更新失败")
+      const saved = (json.data ?? json.prompt) as AdminPrompt | undefined
+      setPrompts((prev) => prev.map((m) => (m.id === prompt.id ? { ...m, ...(saved ?? {}), enabled } : m)))
     } catch (err) {
       showBanner({ ok: false, message: err instanceof Error ? err.message : "更新失败" })
     } finally {
@@ -107,9 +121,9 @@ export function PromptsManager({ initialPrompts }: { initialPrompts: AdminPrompt
     if (!deleteTarget) return
     setPendingId(deleteTarget.id)
     try {
-      const res = await fetch(`/api/admin/prompts/${deleteTarget.id}`, { method: "DELETE" })
+      const res = await platformAuthFetch(`/v1/admin/prompts/${deleteTarget.id}`, { method: "DELETE" })
       const json = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(json.error ?? "删除失败")
+      if (!res.ok) throw new Error(json.error ?? json.message ?? "删除失败")
       setPrompts((prev) => prev.filter((m) => m.id !== deleteTarget.id))
       showBanner({ ok: true, message: "提示词已删除" })
       router.refresh()

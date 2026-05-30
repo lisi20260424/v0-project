@@ -89,7 +89,7 @@ export function AdminSettingsNav() {
 
             {hasChildren && expandedItem === item.href && (
               <div className="mt-2 ml-4 space-y-1 border-l border-border/50 pl-4">
-                {item.children.map((child) => {
+                {item.children!.map((child) => {
                   const childActive = pathname === child.href
                   return (
                     <Link

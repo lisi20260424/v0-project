@@ -1,16 +1,8 @@
-import { createAdminClient } from "@/lib/supabase/admin"
-import { ProvidersManager, type AdminProvider } from "@/components/admin/providers-manager"
+import { ProvidersManager } from "@/components/admin/providers-manager"
 
 export const dynamic = "force-dynamic"
 
 export default async function ProvidersPage() {
-  const admin = createAdminClient()
-  const { data } = await admin
-    .from("admin_providers")
-    .select("*")
-    .order("sort_order", { ascending: true })
-    .order("created_at", { ascending: false })
-
   return (
     <div className="space-y-6">
       <header className="flex flex-col gap-1.5">
@@ -19,8 +11,7 @@ export default async function ProvidersPage() {
           管理 AI 模型供应商，配置后可在模型配置中选择使用。
         </p>
       </header>
-
-      <ProvidersManager initialProviders={(data ?? []) as AdminProvider[]} />
+      <ProvidersManager initialProviders={[]} />
     </div>
   )
 }

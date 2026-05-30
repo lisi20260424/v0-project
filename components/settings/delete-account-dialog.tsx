@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { AlertCircle, AlertTriangle } from "lucide-react"
+import { logoutPlatformSession, platformAuthFetch } from "@/lib/platform-session"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -31,11 +32,12 @@ export function DeleteAccountDialog({ email }: { email: string }) {
     setError(null)
     setLoading(true)
     try {
-      const res = await fetch("/api/account/delete", { method: "POST" })
+      const res = await platformAuthFetch("/v1/account/delete", { method: "POST" })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
         throw new Error(data.error || "删除失败")
       }
+      await logoutPlatformSession()
       setOpen(false)
       router.push("/")
       router.refresh()

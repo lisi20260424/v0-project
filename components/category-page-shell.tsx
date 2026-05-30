@@ -3,9 +3,6 @@ import { ChevronRight, AlertCircle } from "lucide-react"
 import { AnnouncementBar } from "@/components/announcement-bar"
 import { SiteHeaderServer } from "@/components/site-header-server"
 import { SiteFooter } from "@/components/site-footer"
-import { createClient } from "@/lib/supabase/server"
-import { createClient as createClientWeb } from "@/lib/supabase/client"
-import { getCurrentUser } from "@/lib/supabase/get-user"
 import { getDisplayTools } from "@/lib/display-tools"
 import { CATEGORY_LABEL, type ToolCategory } from "@/lib/tools"
 import { resolveIcon, defaultIconNameForType, defaultAccentForType } from "@/lib/icon-map"
@@ -42,9 +39,8 @@ type Props = {
  * 统一生成页头壳：根据 category 从数据库读取该类型下的所有 tools 作为切换器。
  */
 export async function CategoryPageShell({ category, activeProviderName, children }: Props) {
-  const supabase = await createClient()
-  const user = await getCurrentUser()
-  const allTools = await getDisplayTools(supabase as any)
+  const disabledStatus: "suspended" | "banned" | null = null
+  const allTools = await getDisplayTools()
   const toolCategory = CATEGORY_TO_TOOL[category]
   const siblings = allTools.filter((t) => t.category === toolCategory)
 
@@ -59,7 +55,7 @@ export async function CategoryPageShell({ category, activeProviderName, children
   const desc = activeTool?.desc ?? CATEGORY_FALLBACK_DESC[category]
 
   // 检查用户是否被禁用
-  const isUserDisabled = user && user.status !== "active"
+  const isUserDisabled = disabledStatus !== null
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -72,7 +68,7 @@ export async function CategoryPageShell({ category, activeProviderName, children
           <div className="mx-auto flex max-w-7xl items-center gap-2">
             <AlertCircle className="h-5 w-5 shrink-0" />
             <span>
-              {user.status === "suspended"
+              {disabledStatus === "suspended"
                 ? "您的账户已暂停，无法进行生成操作。请联系客服。"
                 : "您的账户已被禁用，无法继续使用。"}
             </span>

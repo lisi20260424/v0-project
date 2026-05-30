@@ -1,6 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { platformAuthFetch } from "@/lib/platform-session"
+
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Plus, Trash2, CheckCircle2, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -41,6 +43,16 @@ export function ProvidersManager({ initialProviders }: { initialProviders: Admin
   const [banner, setBanner] = useState<Banner>(null)
   const [pendingId, setPendingId] = useState<string | null>(null)
 
+  useEffect(() => {
+    platformAuthFetch("/v1/admin/providers", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        const items = json?.providers ?? json?.data?.providers ?? json?.data ?? []
+        setProviders(items)
+      })
+      .catch(() => {})
+  }, [])
+
   function showBanner(b: Banner) {
     setBanner(b)
     if (b) setTimeout(() => setBanner(null), 3000)
@@ -68,7 +80,7 @@ export function ProvidersManager({ initialProviders }: { initialProviders: Admin
     }>
   }) {
     const isEdit = !!form.id
-    const url = isEdit ? `/api/admin/providers/${form.id}` : "/api/admin/providers"
+    const url = isEdit ? `/v1/admin/providers/${form.id}` : "/v1/admin/providers"
     // 把 uiByType / endpointsByType 编码到 config，清理空值
     const cleanUiByType: any = {}
     for (const [type, ui] of Object.entries(form.uiByType)) {
@@ -93,16 +105,17 @@ export function ProvidersManager({ initialProviders }: { initialProviders: Admin
       ...form,
       config: { ui_by_type: cleanUiByType, endpoints: cleanEndpoints },
     }
-    const res = await fetch(url, {
+    const res = await platformAuthFetch(url, {
       method: isEdit ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     })
     const json = await res.json()
     if (!res.ok) {
-      throw new Error(json.error ?? "保存失败")
+      throw new Error(json.error ?? json.message ?? "保存失败")
     }
-    const saved = json.provider as AdminProvider
+    const saved = (json.data ?? json.provider) as AdminProvider
+    if (!saved?.id) throw new Error("保存返回数据异常")
     setProviders((prev) => {
       const exists = prev.some((p) => p.id === saved.id)
       if (exists) return prev.map((p) => (p.id === saved.id ? saved : p))
@@ -115,7 +128,7 @@ export function ProvidersManager({ initialProviders }: { initialProviders: Admin
   async function handleToggle(provider: AdminProvider, enabled: boolean) {
     setPendingId(provider.id)
     try {
-      const res = await fetch(`/api/admin/providers/${provider.id}`, {
+      const res = await platformAuthFetch(`/v1/admin/providers/${provider.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ enabled }),
@@ -133,7 +146,7 @@ export function ProvidersManager({ initialProviders }: { initialProviders: Admin
   async function handleDelete(provider: AdminProvider) {
     setPendingId(provider.id)
     try {
-      const res = await fetch(`/api/admin/providers/${provider.id}`, { method: "DELETE" })
+      const res = await platformAuthFetch(`/v1/admin/providers/${provider.id}`, { method: "DELETE" })
       if (!res.ok) throw new Error("删除失败")
       setProviders((prev) => prev.filter((p) => p.id !== provider.id))
       showBanner({ ok: true, message: "供应商已删除" })

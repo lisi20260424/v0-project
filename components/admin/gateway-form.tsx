@@ -1,5 +1,7 @@
 "use client"
 
+import { platformAuthFetch } from "@/lib/platform-session"
+
 import { useState } from "react"
 import { toast } from "sonner"
 import { Eye, EyeOff, Plug } from "lucide-react"
@@ -25,7 +27,7 @@ export function GatewayForm({ initialApiKey, initialGatewayUrl, updatedAt }: Pro
     e.preventDefault()
     setSaving(true)
     try {
-      const res = await fetch("/api/admin/gateway", {
+      const res = await platformAuthFetch("/v1/admin/gateway", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ apiKey, gatewayUrl }),
@@ -43,7 +45,7 @@ export function GatewayForm({ initialApiKey, initialGatewayUrl, updatedAt }: Pro
   async function handleTest() {
     setTesting(true)
     try {
-      const res = await fetch("/api/admin/gateway/test", {
+      const res = await platformAuthFetch("/v1/admin/gateway/test", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ apiKey, gatewayUrl }),

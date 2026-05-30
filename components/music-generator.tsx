@@ -1,5 +1,7 @@
 "use client"
 
+import { platformAuthFetch } from "@/lib/platform-session"
+
 import * as React from "react"
 import Image from "next/image"
 import {
@@ -131,14 +133,14 @@ export function MusicGenerator({ models, defaultModelId, prompts = [] }: MusicGe
     // 检查用户是否登录
     if (!user) {
       toast.error("请先登录或注册账户")
-      membership.open("login")
+      membership.open()
       return
     }
 
     setLoading(true)
     setResults([])
     try {
-      const response = await fetch("/api/tasks", {
+      const response = await platformAuthFetch("/v1/tasks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -161,7 +163,8 @@ export function MusicGenerator({ models, defaultModelId, prompts = [] }: MusicGe
         throw new Error(err.error || "生成失败")
       }
 
-      const { task } = await response.json()
+      const json = await response.json()
+      const task = json.data ?? json.task
       if (task?.status === "failed") throw new Error(task.error_message || "生成失败")
       const urls: string[] = task?.result_urls ?? []
       if (urls.length === 0) throw new Error("未获取到生成的音乐")

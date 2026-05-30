@@ -1,5 +1,7 @@
 "use client"
 
+import { platformAuthFetch } from "@/lib/platform-session"
+
 import * as React from "react"
 import { useRouter } from "next/navigation"
 import QRCode from "qrcode"
@@ -30,14 +32,21 @@ type Props = {
 
 type OrderResp = {
   orderId: string
+  id?: string
   qrCode: string
+  qr_code?: string
   expiresAt: string
+  expires_at?: string
+  created_at?: string
   paymentMethod: PaymentMethod
+  payment_method?: PaymentMethod
   amount: number
   planName: string
+  plan_name?: string
 }
 
 type OrderStatusResp = {
+  data?: OrderStatusResp["order"]
   order: {
     id: string
     status: "pending" | "paid" | "canceled" | "expired" | "refunded" | "failed"
@@ -45,6 +54,27 @@ type OrderStatusResp = {
     paymentMethod: PaymentMethod | null
     expiresAt: string | null
     paidAt: string | null
+  }
+}
+
+function normalizeOrder(json: any): OrderResp | null {
+  const data = json?.data ?? json?.order ?? json
+  if (!data) return null
+
+  const orderId = data.orderId ?? data.id
+  const createdAt = data.created_at ?? data.createdAt
+  const fallbackExpiresAt =
+    createdAt
+      ? new Date(new Date(createdAt).getTime() + 15 * 60 * 1000).toISOString()
+      : new Date(Date.now() + 15 * 60 * 1000).toISOString()
+
+  return {
+    ...data,
+    orderId,
+    qrCode: data.qrCode ?? data.qr_code ?? orderId,
+    expiresAt: data.expiresAt ?? data.expires_at ?? fallbackExpiresAt,
+    paymentMethod: data.paymentMethod ?? data.payment_method,
+    planName: data.planName ?? data.plan_name ?? data.planCode ?? data.plan_code,
   }
 }
 
@@ -82,19 +112,21 @@ export function CheckoutClient({
     setPollStatus("pending")
 
     try {
-      const res = await fetch("/api/payment/orders", {
+      const res = await platformAuthFetch("/v1/pay/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ planKind, planCode, paymentMethod: method }),
       })
       const json = await res.json()
       if (!res.ok) {
-        setCreateError(json.error ?? "创建订单失败")
-        if (json.orderId) setOrderId(json.orderId)
+        setCreateError(json.error ?? json.message ?? "创建订单失败")
+        const failedOrder = normalizeOrder(json)
+        if (failedOrder?.orderId) setOrderId(failedOrder.orderId)
         return
       }
 
-      const data = json as OrderResp
+      const data = normalizeOrder(json)
+      if (!data?.orderId || !data.qrCode) throw new Error("订单信息不完整")
       setOrderId(data.orderId)
       setExpiresAt(data.expiresAt)
 
@@ -133,11 +165,12 @@ export function CheckoutClient({
 
     const poll = async () => {
       try {
-        const res = await fetch(`/api/payment/orders/${orderId}`, { cache: "no-store" })
+        const res = await platformAuthFetch(`/v1/pay/orders/${orderId}`, { cache: "no-store" })
         if (!res.ok) return
         const json = (await res.json()) as OrderStatusResp
         if (cancelled) return
-        const status = json.order?.status
+        const order = json.data ?? json.order
+        const status = order?.status
         if (!status) return
         setPollStatus(status)
         if (status === "paid") {

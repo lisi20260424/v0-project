@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Menu, Zap, ChevronDown, LayoutDashboard, ListChecks, Images, CreditCard, Settings, LogOut, Plug, Cpu, Sparkles, Globe, Users, Receipt } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -18,15 +19,25 @@ import { TOOLS, CATEGORY_LABEL, type ToolCategory, type Tool } from "@/lib/tools
 import { resolveIcon } from "@/lib/icon-map"
 import { useMembership } from "@/components/membership-provider"
 import { useUser } from "@/components/user-provider"
+import { logoutPlatformSession } from "@/lib/platform-session"
 
 export type SiteHeaderProps = {
   models?: Tool[]
 }
 
 export function SiteHeader({ models }: SiteHeaderProps) {
+  const router = useRouter()
   const tools = models || TOOLS
   const membership = useMembership()
-  const { user, isAdmin } = useUser()
+  const { user, isAdmin, refreshUser } = useUser()
+  const [mounted, setMounted] = React.useState(false)
+  const displayUser = mounted ? user : null
+  const displayIsAdmin = mounted ? isAdmin : false
+
+  React.useEffect(() => {
+    setMounted(true)
+  }, [])
+
   const tierLabel: Record<NonNullable<NonNullable<typeof user>["vipTier"]>, string> = {
     monthly: "月会员",
     annual: "年会员",
@@ -44,6 +55,13 @@ export function SiteHeader({ models }: SiteHeaderProps) {
     { href: "/docs", label: "API文档" },
     { href: "/#features", label: "帮助" },
   ]
+
+  async function handleSignOut() {
+    await logoutPlatformSession()
+    await refreshUser()
+    router.replace("/")
+    router.refresh()
+  }
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/60 bg-background/80 backdrop-blur-xl">
@@ -125,7 +143,7 @@ export function SiteHeader({ models }: SiteHeaderProps) {
         </div>
 
         <div className="flex items-center gap-2">
-          {user ? (
+          {displayUser ? (
             <>
               <button
                 type="button"
@@ -134,7 +152,7 @@ export function SiteHeader({ models }: SiteHeaderProps) {
                 aria-label="充值点数"
               >
                 <Zap className="h-3.5 w-3.5 text-accent" fill="currentColor" />
-                <span className="tabular-nums">{user.points.toLocaleString()}</span>
+                <span className="tabular-nums">{displayUser.points.toLocaleString()}</span>
                 <span className="text-muted-foreground">点</span>
               </button>
               <Button
@@ -159,7 +177,7 @@ export function SiteHeader({ models }: SiteHeaderProps) {
 
           <ThemeToggle />
 
-          {user ? (
+          {displayUser ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
@@ -167,13 +185,13 @@ export function SiteHeader({ models }: SiteHeaderProps) {
                   className="relative hidden h-8 w-8 overflow-hidden rounded-full ring-1 ring-border transition hover:ring-primary/40 sm:inline-flex"
                 >
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={user.avatarUrl ?? undefined} alt="用户头像" />
+                    <AvatarImage src={displayUser.avatarUrl ?? undefined} alt="用户头像" />
                     <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-xs text-primary-foreground">
-                      {user.displayName.slice(0, 1).toUpperCase()}
+                      {displayUser.displayName.slice(0, 1).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   {/* 禁用标识 */}
-                  {user.status && user.status !== "active" && (
+                  {displayUser.status && displayUser.status !== "active" && (
                     <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm">
                       <span className="text-[10px] font-bold text-white">禁</span>
                     </div>
@@ -182,9 +200,9 @@ export function SiteHeader({ models }: SiteHeaderProps) {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
                 <div className="px-2 py-2">
-                  <p className="truncate text-sm font-semibold">{user.displayName}</p>
+                  <p className="truncate text-sm font-semibold">{displayUser.displayName}</p>
                   <p className="truncate text-xs text-muted-foreground">
-                    {user.vipTier ? tierLabel[user.vipTier] : "免费用户"} · {user.points.toLocaleString()} 点
+                    {displayUser.vipTier ? tierLabel[displayUser.vipTier] : "免费用户"} · {displayUser.points.toLocaleString()} 点
                   </p>
                 </div>
                 <DropdownMenuSeparator />
@@ -229,7 +247,7 @@ export function SiteHeader({ models }: SiteHeaderProps) {
                     账户设置
                   </Link>
                 </DropdownMenuItem>
-                {isAdmin && (
+                {displayIsAdmin && (
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuLabel className="px-2 py-1 text-[11px] uppercase tracking-wider text-muted-foreground">
@@ -268,11 +286,11 @@ export function SiteHeader({ models }: SiteHeaderProps) {
                   </>
                 )}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild className="text-muted-foreground">
-                  <a href="/auth/sign-out">
+                <DropdownMenuItem onSelect={handleSignOut} className="text-muted-foreground">
+                  <span className="flex items-center">
                     <LogOut className="mr-2 h-4 w-4" />
                     退出登录
-                  </a>
+                  </span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -300,7 +318,7 @@ export function SiteHeader({ models }: SiteHeaderProps) {
                 </DropdownMenuItem>
               ))}
               <DropdownMenuSeparator />
-              {user ? (
+              {displayUser ? (
                 <>
                   <DropdownMenuLabel className="text-[11px] uppercase tracking-wider text-muted-foreground">
                     用户中心
@@ -318,8 +336,8 @@ export function SiteHeader({ models }: SiteHeaderProps) {
                     <Link href="/settings">账户设置</Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild className="text-muted-foreground">
-                    <a href="/auth/sign-out">退出登录</a>
+                  <DropdownMenuItem onSelect={handleSignOut} className="text-muted-foreground">
+                    <span>退出登录</span>
                   </DropdownMenuItem>
                 </>
               ) : (
