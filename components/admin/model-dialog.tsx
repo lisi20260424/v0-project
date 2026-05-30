@@ -1,5 +1,7 @@
 "use client"
 
+import { platformAuthFetch } from "@/lib/platform-session"
+
 import { useEffect, useMemo, useState } from "react"
 import { AlertCircle, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -24,7 +26,6 @@ import {
   type ModelConfigField,
   type ModelType,
 } from "@/lib/admin"
-import { API_BASE_URL } from "@/lib/platform-api"
 import type { AdminModel } from "@/components/admin/models-manager"
 
 type Provider = {
@@ -81,10 +82,7 @@ export function ModelDialog({ open, onOpenChange, model, defaultModelType = "vid
   async function loadProviders() {
     setLoadingProviders(true)
     try {
-      const token = localStorage.getItem("accessToken") ?? ""
-      const res = await fetch(`${API_BASE_URL}/v1/admin/providers`, {
-        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-      })
+      const res = await platformAuthFetch("/v1/admin/providers")
       const json = await res.json()
       setProviders(json.providers ?? [])
     } catch (err) {
@@ -360,11 +358,11 @@ function initial(model: AdminModel | undefined, defaultModelType: ModelType): Fo
       name: model.name,
       provider: model.provider,
       modelType: model.model_type,
-      costPerUse: model.cost_per_use ?? 0,
+      costPerUse: model.cost_per_use,
       description: model.description ?? "",
       config: { ...(model.config ?? {}) },
       enabled: model.enabled,
-      sortOrder: model.sort_order ?? 0,
+      sortOrder: model.sort_order,
     }
   }
   return {

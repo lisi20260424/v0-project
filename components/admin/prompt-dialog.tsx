@@ -226,7 +226,7 @@ function initial(prompt: AdminPrompt | undefined, defaultModelType: ModelType): 
       content: prompt.content,
       category: prompt.category ?? "",
       enabled: prompt.enabled,
-      sortOrder: prompt.sort_order ?? 0,
+      sortOrder: prompt.sort_order,
     }
   }
   return {

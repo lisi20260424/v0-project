@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { AlertCircle, CheckCircle2, ShieldCheck } from "lucide-react"
 import { platformAPI } from "@/lib/platform-api"
+import { getPlatformSession } from "@/lib/platform-session"
 
 type SecurityInfo = {
   email: string
@@ -19,13 +20,13 @@ export function SecuritySummary() {
   const [error, setError] = useState("")
 
   useEffect(() => {
-    const token = localStorage.getItem("accessToken")
-    if (!token) {
+    const session = getPlatformSession()
+    if (!session?.accessToken) {
       setError("请先登录")
       return
     }
-    platformAPI.getSecurity(token)
-      .then((res) => setInfo(res.data))
+    platformAPI.getSecurity(session.accessToken)
+      .then((res) => setInfo(res.data ?? res))
       .catch((err) => setError(err instanceof Error ? err.message : "加载安全信息失败"))
   }, [])
 

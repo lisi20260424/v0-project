@@ -1,3 +1,3 @@
-﻿export default async function AdminPromptsLayout({ children }: { children: React.ReactNode }) {
+export default async function AdminSettingPageLayout({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }

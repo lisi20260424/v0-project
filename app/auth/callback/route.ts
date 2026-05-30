@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 
-export async function GET(request: Request) {
-  const url = new URL("/auth/login", request.url)
-  url.searchParams.set("error", "oauth_unavailable")
-  return NextResponse.redirect(url)
+export async function GET(request: NextRequest) {
+  const { searchParams, origin } = request.nextUrl
+  const next = searchParams.get("next") ?? "/dashboard"
+  return NextResponse.redirect(`${origin}${next}`)
 }

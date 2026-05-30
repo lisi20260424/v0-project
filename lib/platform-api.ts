@@ -1,5 +1,8 @@
 export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") || "http://localhost/api"
+  (typeof window === "undefined"
+    ? process.env.API_INTERNAL_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL
+    : process.env.NEXT_PUBLIC_API_BASE_URL
+  )?.replace(/\/$/, "") || "http://localhost/api"
 
 export class PlatformApiError extends Error {
   status: number
@@ -56,6 +59,9 @@ export const platformAPI = {
   logout: (token: string, refreshToken?: string) =>
     request("/v1/auth/logout", { method: "POST", token, body: JSON.stringify({ refreshToken }) }),
   me: (token: string) => request("/v1/me", { method: "GET", token, cache: "no-store" }),
+  publicModels: (modelType?: string) => request(`/v1/models${modelType ? `?type=${encodeURIComponent(modelType)}` : ""}`, { method: "GET", cache: "no-store" }),
+  publicProviders: () => request("/v1/providers", { method: "GET", cache: "no-store" }),
+  publicPrompts: (modelType?: string) => request(`/v1/prompts${modelType ? `?type=${encodeURIComponent(modelType)}` : ""}`, { method: "GET", cache: "no-store" }),
   createTask: (token: string, payload: { type: string; modelId: string; prompt: string; params?: Record<string, unknown> }) => request("/v1/tasks", { method: "POST", token, body: JSON.stringify(payload) }),
   listTasks: (token: string) => request("/v1/tasks", { method: "GET", token, cache: "no-store" }),
   getTask: (token: string, taskId: string) => request(`/v1/tasks/${taskId}`, { method: "GET", token, cache: "no-store" }),

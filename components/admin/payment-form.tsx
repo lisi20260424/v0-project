@@ -1,16 +1,31 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { platformAuthFetch } from "@/lib/platform-session"
+
+import { useState } from "react"
 import { toast } from "sonner"
-import { Eye, EyeOff, KeyRound, RefreshCw } from "lucide-react"
+import {
+  Eye,
+  EyeOff,
+  KeyRound,
+  RefreshCw,
+  Server,
+  Wallet,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Spinner } from "@/components/ui/spinner"
 import { Switch } from "@/components/ui/switch"
+import { Spinner } from "@/components/ui/spinner"
 import { Textarea } from "@/components/ui/textarea"
-import { API_BASE_URL } from "@/lib/platform-api"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
 export type PaymentSettingsValue = {
   enabled: boolean
@@ -33,25 +48,22 @@ type Props = {
   initialValue: PaymentSettingsValue
 }
 
-type PaymentSettingsRow = Partial<Record<string, any>>
-
-function rowToValue(row: PaymentSettingsRow | undefined, prev: PaymentSettingsValue): PaymentSettingsValue {
-  const source = row ?? {}
+function rowToValue(row: any, prev: PaymentSettingsValue): PaymentSettingsValue {
   return {
-    enabled: source.enabled ?? prev.enabled,
-    vendorSn: source.vendor_sn ?? source.vendorSn ?? prev.vendorSn,
-    vendorKey: source.vendor_key ?? source.vendorKey ?? prev.vendorKey,
-    appId: source.app_id ?? source.appId ?? prev.appId,
-    terminalSn: source.terminal_sn ?? source.terminalSn ?? prev.terminalSn,
-    terminalKey: source.terminal_key ?? source.terminalKey ?? prev.terminalKey,
-    deviceId: source.device_id ?? source.deviceId ?? prev.deviceId,
-    operator: source.operator ?? prev.operator,
-    notifyUrl: source.notify_url ?? source.notifyUrl ?? prev.notifyUrl,
-    returnUrl: source.return_url ?? source.returnUrl ?? prev.returnUrl,
-    gatewayUrl: source.gateway_url ?? source.gatewayUrl ?? prev.gatewayUrl,
-    callbackPublicKey: source.callback_public_key ?? source.callbackPublicKey ?? prev.callbackPublicKey,
-    testMode: source.test_mode ?? source.testMode ?? prev.testMode,
-    updatedAt: source.updated_at ?? source.updatedAt ?? prev.updatedAt,
+    enabled: row.enabled ?? prev.enabled,
+    vendorSn: row.vendor_sn ?? prev.vendorSn,
+    vendorKey: row.vendor_key ?? prev.vendorKey,
+    appId: row.app_id ?? prev.appId,
+    terminalSn: row.terminal_sn ?? prev.terminalSn,
+    terminalKey: row.terminal_key ?? prev.terminalKey,
+    deviceId: row.device_id ?? prev.deviceId,
+    operator: row.operator ?? prev.operator,
+    notifyUrl: row.notify_url ?? prev.notifyUrl,
+    returnUrl: row.return_url ?? prev.returnUrl,
+    gatewayUrl: row.gateway_url ?? prev.gatewayUrl,
+    callbackPublicKey: row.callback_public_key ?? prev.callbackPublicKey,
+    testMode: row.test_mode ?? prev.testMode,
+    updatedAt: row.updated_at ?? prev.updatedAt,
   }
 }
 
@@ -59,7 +71,6 @@ export function PaymentForm({ initialValue }: Props) {
   const [value, setValue] = useState<PaymentSettingsValue>(initialValue)
   const [showVendorKey, setShowVendorKey] = useState(false)
   const [showTerminalKey, setShowTerminalKey] = useState(false)
-  const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [activating, setActivating] = useState(false)
   const [activateOpen, setActivateOpen] = useState(false)
@@ -67,57 +78,28 @@ export function PaymentForm({ initialValue }: Props) {
   const [activateName, setActivateName] = useState("")
   const [checkingIn, setCheckingIn] = useState(false)
 
-  useEffect(() => {
-    const token = localStorage.getItem("accessToken") ?? ""
-    if (!token) return
-
-    setLoading(true)
-    fetch(`${API_BASE_URL}/v1/admin/payment`, {
-      cache: "no-store",
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then(async (res) => {
-        const json = await res.json()
-        if (!res.ok) throw new Error(json.error ?? "Failed to load payment settings")
-        setValue((prev) => rowToValue(json.data, prev))
-      })
-      .catch((err) => toast.error(err instanceof Error ? err.message : "Failed to load payment settings"))
-      .finally(() => setLoading(false))
-  }, [])
-
-  function update<K extends keyof PaymentSettingsValue>(key: K, nextValue: PaymentSettingsValue[K]) {
-    setValue((prev) => ({ ...prev, [key]: nextValue }))
-  }
-
-  async function fetchLatest(token: string) {
-    const latest = await fetch(`${API_BASE_URL}/v1/admin/payment`, {
-      cache: "no-store",
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    })
-    const json = await latest.json()
-    if (!latest.ok) throw new Error(json.error ?? "Failed to load latest payment settings")
-    setValue((prev) => rowToValue(json.data, prev))
+  function update<K extends keyof PaymentSettingsValue>(
+    key: K,
+    v: PaymentSettingsValue[K],
+  ) {
+    setValue((prev) => ({ ...prev, [key]: v }))
   }
 
   async function handleSave(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setSaving(true)
     try {
-      const token = localStorage.getItem("accessToken") ?? ""
-      const res = await fetch(`${API_BASE_URL}/v1/admin/payment`, {
+      const res = await platformAuthFetch("/v1/admin/payment", {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(value),
       })
       const json = await res.json()
-      if (!res.ok) throw new Error(json.error ?? "Failed to save payment settings")
+      if (!res.ok) throw new Error(json.error ?? "保存失败")
       setValue((prev) => rowToValue(json.data, prev))
-      toast.success("Payment settings saved")
+      toast.success("支付配置已更新")
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to save payment settings")
+      toast.error(err instanceof Error ? err.message : "保存失败")
     } finally {
       setSaving(false)
     }
@@ -125,35 +107,50 @@ export function PaymentForm({ initialValue }: Props) {
 
   async function handleActivate() {
     if (!activateCode.trim()) {
-      toast.error("Activation code is required")
+      toast.error("请填写激活码")
       return
     }
-
     setActivating(true)
     try {
-      const token = localStorage.getItem("accessToken") ?? ""
-      const res = await fetch(`${API_BASE_URL}/v1/admin/payment/activate`, {
+      const res = await platformAuthFetch("/v1/admin/payment/activate", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           code: activateCode.trim(),
           deviceId: value.deviceId,
           name: activateName.trim() || undefined,
         }),
       })
-      const json = await res.json()
-      if (!res.ok || !json.ok) throw new Error(json.error ?? "Activation failed")
 
-      await fetchLatest(token)
+      const contentType = res.headers.get("content-type")
+      if (!contentType?.includes("application/json")) {
+        const text = await res.text()
+        console.error("[v0] Non-JSON response:", text.slice(0, 200))
+        throw new Error(`服务器返回非 JSON 响应（HTTP ${res.status}），请检查网络或服务器状态`)
+      }
+
+      const json = await res.json()
+      if (!res.ok) {
+        throw new Error(json.error ?? `激活失败（HTTP ${res.status}）`)
+      }
+      if (!json.ok) {
+        throw new Error(json.error ?? "激活失败")
+      }
+
+      const latest = await platformAuthFetch("/v1/admin/payment", { cache: "no-store" })
+      if (!latest.ok) {
+        throw new Error("获取最新配置失败")
+      }
+      const latestJson = await latest.json()
+      setValue((prev) => rowToValue(latestJson.data, prev))
+
       setActivateOpen(false)
       setActivateCode("")
       setActivateName("")
-      toast.success("Terminal activated")
+      toast.success("终端激活成功，已更新终端凭证")
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Activation failed")
+      console.error("[v0] Activate error:", err)
+      toast.error(err instanceof Error ? err.message : "激活失败")
     } finally {
       setActivating(false)
     }
@@ -162,133 +159,323 @@ export function PaymentForm({ initialValue }: Props) {
   async function handleCheckin() {
     setCheckingIn(true)
     try {
-      const token = localStorage.getItem("accessToken") ?? ""
-      const res = await fetch(`${API_BASE_URL}/v1/admin/payment/checkin`, {
-        method: "POST",
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      })
-      const json = await res.json()
-      if (!res.ok || !json.ok) throw new Error(json.error ?? "Check-in failed")
+      const res = await platformAuthFetch("/v1/admin/payment/checkin", { method: "POST" })
 
-      await fetchLatest(token)
-      toast.success(json.message ?? "Check-in completed")
+      const contentType = res.headers.get("content-type")
+      if (!contentType?.includes("application/json")) {
+        const text = await res.text()
+        console.error("[v0] Non-JSON response:", text.slice(0, 200))
+        throw new Error(`服务器返回非 JSON 响应（HTTP ${res.status}），请检查网络或服务器状态`)
+      }
+
+      const json = await res.json()
+      if (!res.ok) {
+        throw new Error(json.error ?? `签到失败（HTTP ${res.status}）`)
+      }
+      if (!json.ok) {
+        throw new Error(json.error ?? "签到失败")
+      }
+
+      const latest = await platformAuthFetch("/v1/admin/payment", { cache: "no-store" })
+      if (!latest.ok) {
+        throw new Error("获取最新配置失败")
+      }
+      const latestJson = await latest.json()
+      setValue((prev) => rowToValue(latestJson.data, prev))
+
+      toast.success(json.message ?? "签到成功")
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Check-in failed")
+      console.error("[v0] Checkin error:", err)
+      toast.error(err instanceof Error ? err.message : "签到失败")
     } finally {
       setCheckingIn(false)
     }
   }
 
-  const busy = loading || saving
-
   return (
     <form onSubmit={handleSave} className="space-y-6">
       <section className="space-y-4">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center justify-between">
           <div>
-            <h3 className="font-semibold">Payment provider</h3>
-            <p className="mt-0.5 text-xs text-muted-foreground">Persisted through the Go API and PostgreSQL admin settings table.</p>
+            <h3 className="font-semibold">支付配置</h3>
+            <p className="mt-0.5 text-xs text-muted-foreground">收钱吧聚合支付配置</p>
           </div>
-          <Switch checked={value.enabled} onCheckedChange={(checked) => update("enabled", checked)} disabled={busy} />
-        </div>
-
-        <div className="space-y-4 rounded-lg border border-border/50 bg-background/40 p-4">
-          <h4 className="text-sm font-medium">Merchant credentials</h4>
-          <TextField id="vendor-sn" label="Vendor SN" value={value.vendorSn} onChange={(v) => update("vendorSn", v)} disabled={busy} />
-          <SecretField id="vendor-key" label="Vendor key" value={value.vendorKey} visible={showVendorKey} onToggle={() => setShowVendorKey((v) => !v)} onChange={(v) => update("vendorKey", v)} disabled={busy} />
-          <TextField id="app-id" label="App ID" value={value.appId} onChange={(v) => update("appId", v)} disabled={busy} />
-          <TextField id="device-id" label="Device ID" value={value.deviceId} onChange={(v) => update("deviceId", v)} disabled={busy} hint="Required when activating a payment terminal." />
-          <TextField id="operator" label="Operator" value={value.operator} onChange={(v) => update("operator", v)} disabled={busy} hint="Optional. Defaults to the current admin user when omitted." />
-          <TextField id="terminal-sn" label="Terminal SN" value={value.terminalSn} onChange={() => undefined} disabled readOnly />
-          <SecretField id="terminal-key" label="Terminal key" value={value.terminalKey} visible={showTerminalKey} onToggle={() => setShowTerminalKey((v) => !v)} onChange={() => undefined} disabled readOnly />
-
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => setActivateOpen(true)} disabled={busy || !value.deviceId}>
-              <KeyRound className="mr-2 h-4 w-4" />
-              Activate terminal
-            </Button>
-            <Button type="button" variant="outline" size="sm" onClick={handleCheckin} disabled={busy || checkingIn || !value.terminalSn || !value.terminalKey}>
-              {checkingIn ? <Spinner className="mr-2 h-4 w-4" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-              {checkingIn ? "Checking in..." : "Manual check-in"}
-            </Button>
+          <div className="flex items-center gap-2">
+            <Switch checked={value.enabled} onCheckedChange={(v) => update("enabled", v)} disabled={saving} />
           </div>
         </div>
 
         <div className="space-y-4 rounded-lg border border-border/50 bg-background/40 p-4">
-          <h4 className="text-sm font-medium">Gateway and callbacks</h4>
-          <TextField id="gateway-url" label="Payment gateway URL" value={value.gatewayUrl} onChange={(v) => update("gatewayUrl", v)} disabled={busy} placeholder="https://vsi-api.shouqianba.com" />
-          <TextField id="notify-url" label="Notify URL" value={value.notifyUrl} onChange={(v) => update("notifyUrl", v)} disabled={busy} placeholder="https://your-domain.com/v1/pay/notify/shouqianba" />
-          <TextField id="return-url" label="Return URL" value={value.returnUrl} onChange={(v) => update("returnUrl", v)} disabled={busy} placeholder="https://your-domain.com/billing/result" />
+          <h4 className="text-sm font-medium">商户凭证</h4>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="callback-public-key">Callback public key</Label>
-            <Textarea id="callback-public-key" value={value.callbackPublicKey} onChange={(e) => update("callbackPublicKey", e.target.value)} disabled={busy} autoComplete="off" rows={5} className="resize-y font-mono text-xs" placeholder="-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----" />
+            <Label htmlFor="vendor-sn">服务商代码 (vendor_sn)</Label>
+            <Input
+              id="vendor-sn"
+              value={value.vendorSn}
+              onChange={(e) => update("vendorSn", e.target.value)}
+              placeholder="收钱吧后台服务商 SN"
+              disabled={saving}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="vendor-key">服务商密钥 (vendor_key)</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                id="vendor-key"
+                type={showVendorKey ? "text" : "password"}
+                value={value.vendorKey}
+                onChange={(e) => update("vendorKey", e.target.value)}
+                placeholder="收钱吧后台服务商 KEY"
+                disabled={saving}
+              />
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => setShowVendorKey(!showVendorKey)}
+                disabled={saving}
+              >
+                {showVendorKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="app-id">应用 ID (app_id)</Label>
+            <Input
+              id="app-id"
+              value={value.appId}
+              onChange={(e) => update("appId", e.target.value)}
+              placeholder="应用唯一标识"
+              disabled={saving}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="device-id">设备 ID (device_id)</Label>
+            <Input
+              id="device-id"
+              value={value.deviceId}
+              onChange={(e) => update("deviceId", e.target.value)}
+              placeholder="设备唯一标识"
+              disabled={saving}
+            />
+            <p className="text-[11px] text-muted-foreground">激活时需要，建议填写服务器 ID 或机器码</p>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="operator">操作员 (operator)</Label>
+            <Input
+              id="operator"
+              value={value.operator}
+              onChange={(e) => update("operator", e.target.value)}
+              placeholder="默认使用用户邮箱"
+              disabled={saving}
+            />
+            <p className="text-[11px] text-muted-foreground">创建订单时使用，留空则自动使用管理员邮箱</p>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="terminal-sn">终端 SN (terminal_sn) - 只读</Label>
+            <Input id="terminal-sn" value={value.terminalSn} readOnly className="bg-muted text-muted-foreground" />
+            <p className="text-[11px] text-muted-foreground">激活终端后自动获取</p>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="terminal-key">终端密钥 (terminal_key) - 只读</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                id="terminal-key"
+                type={showTerminalKey ? "text" : "password"}
+                value={value.terminalKey}
+                readOnly
+                className="bg-muted text-muted-foreground"
+              />
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => setShowTerminalKey(!showTerminalKey)}
+              >
+                {showTerminalKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </Button>
+            </div>
+            <p className="text-[11px] text-muted-foreground">激活或签到后自动更新</p>
+          </div>
+
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setActivateOpen(true)}
+              disabled={saving || !value.deviceId}
+            >
+              <KeyRound className="mr-2 h-4 w-4" />
+              激活终端
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleCheckin}
+              disabled={saving || checkingIn || !value.terminalSn || !value.terminalKey}
+            >
+              {checkingIn ? <Spinner className="mr-2 h-4 w-4" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+              {checkingIn ? "签到中..." : "手动签到"}
+            </Button>
+          </div>
+        </div>
+
+        <div className="space-y-4 rounded-lg border border-border/50 bg-background/40 p-4">
+          <h4 className="text-sm font-medium">网关与回调</h4>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="gateway-url">支付网关地址</Label>
+            <Input
+              id="gateway-url"
+              type="url"
+              value={value.gatewayUrl}
+              onChange={(e) => update("gatewayUrl", e.target.value)}
+              placeholder="https://vsi-api.shouqianba.com"
+              disabled={saving}
+            />
+            <p className="text-[11px] text-muted-foreground">
+              生产环境：https://vsi-api.shouqianba.com，沙箱环境：https://test-api-vsi.shouqianba.com，留空将根据测试模式自动选择
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="notify-url">异步通知地址 (notify_url)</Label>
+            <Input
+              id="notify-url"
+              type="url"
+              value={value.notifyUrl}
+              onChange={(e) => update("notifyUrl", e.target.value)}
+              placeholder="https://your-domain.com/api/payment/notify"
+              disabled={saving}
+            />
+            <p className="text-[11px] text-muted-foreground">
+              收钱吧支付成功后服务端推送通知的地址，必须公网可访问
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="return-url">同步跳转地址 (return_url)</Label>
+            <Input
+              id="return-url"
+              type="url"
+              value={value.returnUrl}
+              onChange={(e) => update("returnUrl", e.target.value)}
+              placeholder="https://your-domain.com/billing/result"
+              disabled={saving}
+            />
+            <p className="text-[11px] text-muted-foreground">
+              用户在收钱吧支付页完成后浏览器跳转地址，留空则使用站内默认结果页
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="callback-public-key">回调公钥 (callback_public_key)</Label>
+            <Textarea
+              id="callback-public-key"
+              value={value.callbackPublicKey}
+              onChange={(e) => update("callbackPublicKey", e.target.value)}
+              placeholder="-----BEGIN PUBLIC KEY-----\n…\n-----END PUBLIC KEY-----"
+              disabled={saving}
+              autoComplete="off"
+              rows={5}
+              className="resize-y font-mono text-xs"
+            />
+            <p className="text-[11px] text-muted-foreground">
+              收钱吧异步通知签名验证使用的公钥，可留空（默认使用 terminal_key 进行 MD5 校验）
+            </p>
           </div>
 
           <div className="flex items-center justify-between rounded-lg border border-border bg-background/40 px-4 py-3">
             <div className="flex flex-col gap-0.5">
-              <span className="text-sm font-medium">Test mode</span>
-              <span className="text-[11px] text-muted-foreground">Use sandbox endpoints where supported.</span>
+              <span className="text-sm font-medium">沙箱测试模式</span>
+              <span className="text-[11px] text-muted-foreground">
+                开启后下单将使用收钱吧沙箱环境，不会产生真实交易
+              </span>
             </div>
-            <Switch checked={value.testMode} onCheckedChange={(checked) => update("testMode", checked)} disabled={busy} />
+            <Switch
+              checked={value.testMode}
+              onCheckedChange={(v) => update("testMode", v)}
+              disabled={saving}
+            />
           </div>
         </div>
       </section>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-xs text-muted-foreground">{loading ? "Loading settings..." : value.updatedAt ? `Last updated: ${new Date(value.updatedAt).toLocaleString("zh-CN")}` : "Not configured"}</p>
-        <Button type="submit" disabled={busy}>
+        <p className="text-xs text-muted-foreground">
+          {value.updatedAt ? `上次更新：${new Date(value.updatedAt).toLocaleString("zh-CN")}` : "尚未配置"}
+        </p>
+        <Button type="submit" disabled={saving}>
           {saving ? <Spinner className="mr-2 h-4 w-4" /> : null}
-          {saving ? "Saving..." : "Save settings"}
+          {saving ? "保存中..." : "保存配置"}
         </Button>
       </div>
 
-      <Dialog open={activateOpen} onOpenChange={(open) => !activating && setActivateOpen(open)}>
+      <Dialog open={activateOpen} onOpenChange={(v) => !activating && setActivateOpen(v)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Activate terminal</DialogTitle>
-            <DialogDescription>Use the activation code generated by the payment provider. Terminal credentials will be refreshed after activation.</DialogDescription>
+            <DialogTitle>激活终端</DialogTitle>
+            <DialogDescription>
+              使用收钱吧商户后台生成的激活码完成终端激活，激活成功后会自动写回 terminal_sn 和 terminal_key
+            </DialogDescription>
           </DialogHeader>
 
           <div className="flex flex-col gap-4 py-2">
-            <TextField id="activate-code" label="Activation code" value={activateCode} onChange={setActivateCode} disabled={activating} />
-            <TextField id="activate-device" label="Device ID" value={value.deviceId} onChange={(v) => update("deviceId", v)} disabled={activating} />
-            <TextField id="activate-name" label="Terminal name" value={activateName} onChange={setActivateName} disabled={activating} />
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="activate-code">激活码 (code)</Label>
+              <Input
+                id="activate-code"
+                value={activateCode}
+                onChange={(e) => setActivateCode(e.target.value)}
+                placeholder="收钱吧后台生成的激活码"
+                disabled={activating}
+                autoComplete="off"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="activate-device">设备 ID</Label>
+              <Input
+                id="activate-device"
+                value={value.deviceId}
+                onChange={(e) => update("deviceId", e.target.value)}
+                placeholder="必填，唯一标识"
+                disabled={activating}
+                autoComplete="off"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="activate-name">终端名称（可选）</Label>
+              <Input
+                id="activate-name"
+                value={activateName}
+                onChange={(e) => setActivateName(e.target.value)}
+                placeholder="便于在收钱吧后台识别"
+                disabled={activating}
+                autoComplete="off"
+              />
+            </div>
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setActivateOpen(false)} disabled={activating}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={() => setActivateOpen(false)} disabled={activating}>
+              取消
+            </Button>
             <Button type="button" onClick={handleActivate} disabled={activating}>
               {activating ? <Spinner className="mr-2 h-4 w-4" /> : null}
-              {activating ? "Activating..." : "Confirm activation"}
+              {activating ? "激活中..." : "确认激活"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </form>
-  )
-}
-
-function TextField({ id, label, value, onChange, disabled, readOnly, placeholder, hint }: { id: string; label: string; value: string; onChange: (value: string) => void; disabled?: boolean; readOnly?: boolean; placeholder?: string; hint?: string }) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <Label htmlFor={id}>{label}</Label>
-      <Input id={id} value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled} readOnly={readOnly} placeholder={placeholder} className={readOnly ? "bg-muted text-muted-foreground" : undefined} autoComplete="off" />
-      {hint ? <p className="text-[11px] text-muted-foreground">{hint}</p> : null}
-    </div>
-  )
-}
-
-function SecretField({ id, label, value, visible, onToggle, onChange, disabled, readOnly }: { id: string; label: string; value: string; visible: boolean; onToggle: () => void; onChange: (value: string) => void; disabled?: boolean; readOnly?: boolean }) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <Label htmlFor={id}>{label}</Label>
-      <div className="flex items-center gap-2">
-        <Input id={id} type={visible ? "text" : "password"} value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled} readOnly={readOnly} className={readOnly ? "bg-muted text-muted-foreground" : undefined} autoComplete="off" />
-        <Button type="button" size="sm" variant="ghost" onClick={onToggle} disabled={disabled && !readOnly}>
-          {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-        </Button>
-      </div>
-    </div>
   )
 }

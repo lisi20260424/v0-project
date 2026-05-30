@@ -32,6 +32,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
+
   return (
     <html lang="zh-CN" suppressHydrationWarning className={`${inter.variable} ${jetbrainsMono.variable} bg-background`}>
       <body className="font-sans antialiased">

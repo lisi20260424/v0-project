@@ -1,3 +1,3 @@
-﻿export default async function AdminSettingsLayout({ children }: { children: React.ReactNode }) {
+export default async function AdminSettingsLayout({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }

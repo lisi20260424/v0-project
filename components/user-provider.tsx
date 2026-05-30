@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react"
 import { platformAPI } from "@/lib/platform-api"
+import { clearPlatformSession, getPlatformSession } from "@/lib/platform-session"
 
 export type CurrentUser = {
   id: string
@@ -19,6 +20,7 @@ type UserContextValue = {
   loading: boolean
   isAdmin: boolean
   refreshUser: () => Promise<void>
+  setUserFromApi: (raw: any) => void
 }
 
 const UserContext = createContext<UserContextValue>({
@@ -26,24 +28,24 @@ const UserContext = createContext<UserContextValue>({
   loading: true,
   isAdmin: false,
   refreshUser: async () => {},
+  setUserFromApi: () => {},
 })
 
-function normalizeUser(payload: any): NonNullable<CurrentUser> {
-  const role = payload.role ?? payload.userType ?? payload.user_type
-  const email = String(payload.email ?? payload.id ?? "")
-  const displayName = String(
-    payload.displayName ?? payload.display_name ?? (email ? email.split("@")[0] : "User"),
-  )
+function normalizeUser(raw: any): NonNullable<CurrentUser> {
+  const email = raw?.email ?? ""
+  const userType = (raw?.userType ?? raw?.user_type ?? (raw?.role === "admin" ? "admin" : "normal")) as
+    | "normal"
+    | "admin"
 
   return {
-    id: String(payload.id ?? email),
+    id: raw?.id ?? email,
     email,
-    displayName,
-    avatarUrl: payload.avatarUrl ?? payload.avatar_url ?? null,
-    points: Number(payload.points ?? 0),
-    vipTier: (payload.vipTier ?? payload.vip_tier ?? null) as NonNullable<CurrentUser>["vipTier"],
-    status: (payload.status ?? "active") as NonNullable<CurrentUser>["status"],
-    userType: (role === "admin" ? "admin" : "normal") as NonNullable<CurrentUser>["userType"],
+    displayName: raw?.displayName ?? raw?.display_name ?? email.split("@")[0] ?? "User",
+    avatarUrl: raw?.avatarUrl ?? raw?.avatar_url ?? null,
+    points: raw?.points ?? 0,
+    vipTier: (raw?.vipTier ?? raw?.vip_tier ?? null) as "monthly" | "annual" | "lifetime" | null,
+    status: (raw?.status ?? "active") as "active" | "suspended" | "banned",
+    userType,
   }
 }
 
@@ -58,56 +60,51 @@ export function UserProvider({
 }) {
   const [user, setUser] = useState<CurrentUser>(initialUser)
   const [isAdmin, setIsAdmin] = useState<boolean>(initialIsAdmin)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
 
-  const refreshUser = useCallback(async () => {
-    setLoading(true)
-    try {
-      const token = localStorage.getItem("accessToken") ?? ""
-      if (!token) {
-        setUser(null)
-        setIsAdmin(false)
-        return
-      }
-
-      const json = await platformAPI.me(token)
-      const nextUser = normalizeUser(json.data ?? json)
-      setUser(nextUser)
-      setIsAdmin(nextUser.userType === "admin")
-    } catch (error) {
-      console.error("[v0] Failed to refresh user:", error)
-      localStorage.removeItem("accessToken")
-      localStorage.removeItem("refreshToken")
-      setUser(null)
-      setIsAdmin(false)
-    } finally {
-      setLoading(false)
-    }
+  const setUserFromApi = useCallback((raw: any) => {
+    const userData = normalizeUser(raw)
+    setUser(userData)
+    setIsAdmin(userData.userType === "admin")
   }, [])
 
-  useEffect(() => {
-    refreshUser()
+  const refreshUser = useCallback(async () => {
+    const session = getPlatformSession()
+    if (!session?.accessToken) {
+      setUser(null)
+      setIsAdmin(false)
+      return
+    }
 
-    const onStorage = (event: StorageEvent) => {
-      if (event.key === "accessToken" || event.key === "refreshToken") {
-        refreshUser()
-      }
+    try {
+      const res = await platformAPI.me(session.accessToken)
+      setUserFromApi(res.data ?? res)
+    } catch (error) {
+      console.error("[v0] Failed to refresh user:", error)
+      clearPlatformSession()
+      setUser(null)
+      setIsAdmin(false)
     }
-    const onAuthTokenChanged = () => refreshUser()
-    window.addEventListener("storage", onStorage)
-    window.addEventListener("auth-token-changed", onAuthTokenChanged)
-    return () => {
-      window.removeEventListener("storage", onStorage)
-      window.removeEventListener("auth-token-changed", onAuthTokenChanged)
-    }
+  }, [setUserFromApi])
+
+  useEffect(() => {
+    setLoading(true)
+    refreshUser().finally(() => setLoading(false))
   }, [refreshUser])
 
   useEffect(() => {
-    const interval = setInterval(refreshUser, 5 * 60 * 1000)
+    const interval = setInterval(() => {
+      refreshUser()
+    }, 5 * 60 * 1000)
+
     return () => clearInterval(interval)
   }, [refreshUser])
 
-  return <UserContext.Provider value={{ user, loading, isAdmin, refreshUser }}>{children}</UserContext.Provider>
+  return (
+    <UserContext.Provider value={{ user, loading, isAdmin, refreshUser, setUserFromApi }}>
+      {children}
+    </UserContext.Provider>
+  )
 }
 
 export function useUser() {

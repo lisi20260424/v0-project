@@ -4,7 +4,6 @@ import { AnnouncementBar } from "@/components/announcement-bar"
 import { SiteHeaderServer } from "@/components/site-header-server"
 import { SiteFooter } from "@/components/site-footer"
 import { TOOLS, CATEGORY_LABEL } from "@/lib/tools"
-import { resolveIcon } from "@/lib/icon-map"
 import { cn } from "@/lib/utils"
 
 type Props = {
@@ -15,7 +14,7 @@ type Props = {
 export function ToolPageShell({ toolId, children }: Props) {
   const tool = TOOLS.find((t) => t.id === toolId)
   if (!tool) return null
-  const Icon = resolveIcon(tool.icon)
+  const Icon = tool.icon
   const siblings = TOOLS.filter((t) => t.category === tool.category)
 
   return (
